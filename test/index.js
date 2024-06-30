@@ -20,10 +20,14 @@ describe('lsp', function () {
 			throw new Error(`can't spawn process`);
 		}
 
-		return createConnection(
+		const server = createConnection(
 			new StreamMessageReader(p.stdout),
 			new StreamMessageWriter(p.stdin),
 		);
+
+		server.process = p;
+
+		return server;
 	}
 
 	/** @type {import('vscode-languageserver/node').Connection} */
@@ -38,6 +42,7 @@ describe('lsp', function () {
 	after(function () {
 		if (server) {
 			server.dispose();
+			server.process.kill();
 			server = null;
 		}
 	});
