@@ -147,7 +147,7 @@ func SemanticTokensRange(ctx *glsp.Context, params *proto.SemanticTokensRangePar
 		return nil, err
 	}
 
-	nodes := getFamiliesNodesByRange(tree, &params.Range)
+	nodes := getNodesByRange(tree, &params.Range)
 	list := make([]*sitter.QueryCapture, 0)
 	startLine := params.Range.Start.Line
 	startChar := params.Range.Start.Character
@@ -261,32 +261,115 @@ func getTree(uri proto.DocumentUri) (*sitter.Tree, error) {
 	return tree, nil
 }
 
-func getFamiliesNodesByRange(tree *sitter.Tree, r *proto.Range) []*sitter.Node {
+func getNodesByRange(tree *sitter.Tree, r *proto.Range) (targets []*sitter.Node) {
 	selectStartLine := r.Start.Line
 	selectEndLine := r.End.Line
 
 	c := sitter.NewTreeCursor(tree.RootNode())
 	defer c.Close()
 
-	targets := make([]*sitter.Node, 0)
+	targets = make([]*sitter.Node, 0)
 
 	if !c.GoToFirstChild() {
-		return targets
+		return
+	}
+
+	// -1 - node before range
+	//  0 - node inside range
+	//  1 - node overlaps range
+	//  2 - node after range
+	getPos := func(node *sitter.Node) int8 {
+		startLine := node.StartPoint().Row
+		endLine := node.EndPoint().Row
+
+		if endLine < selectStartLine {
+			return -1
+		}
+
+		if selectStartLine <= startLine && endLine <= selectEndLine {
+			return 0
+		}
+
+		if selectEndLine < startLine {
+			return 2
+		}
+
+		return 1
 	}
 
 	for {
-		node := c.CurrentNode()
-		nodeStartLine := node.StartPoint().Row
-		nodeEndLine := node.EndPoint().Row
+		family := c.CurrentNode()
+		pos := getPos(family)
 
-		if (nodeStartLine <= selectStartLine && selectStartLine <= nodeEndLine) ||
-			(nodeStartLine <= selectEndLine && selectEndLine <= nodeEndLine) {
-			targets = append(targets, node)
+		if pos == 0 {
+			targets = append(targets, family)
 		}
 
-		if selectEndLine < nodeStartLine {
+		if pos <= 0 {
+			if c.GoToNextSibling() {
+				continue
+			}
+
 			break
 		}
+
+		if pos == 2 {
+			return
+		}
+
+		c.GoToFirstChild()
+
+		for {
+			node := c.CurrentNode()
+			pos = getPos(node)
+
+			if pos == 0 {
+				targets = append(targets, node)
+			}
+
+			if pos <= 0 {
+				if c.GoToNextSibling() {
+					continue
+				}
+
+				break
+			}
+
+			if pos == 2 {
+				return
+			}
+
+			if node.Type() == "relations" {
+				c.GoToFirstChild()
+
+				for {
+					rel := c.CurrentNode()
+					pos = getPos(rel)
+
+					if pos == 0 || pos == 1 {
+						targets = append(targets, rel)
+					}
+
+					if pos == 2 {
+						return
+					}
+
+					if !c.GoToNextSibling() {
+						break
+					}
+				}
+
+				c.GoToParent()
+			} else {
+				targets = append(targets, node)
+			}
+
+			if !c.GoToNextSibling() {
+				break
+			}
+		}
+
+		c.GoToParent()
 
 		if !c.GoToNextSibling() {
 			break

@@ -3,7 +3,7 @@ module github.com/redexp/familymarkup-lsp
 go 1.22
 
 require (
-	github.com/redexp/tree-sitter-familymarkup v1.3.0
+	github.com/redexp/tree-sitter-familymarkup v1.4.0
 	github.com/smacker/go-tree-sitter v0.0.0-20240625050157-a31a98a7c0f6
 	github.com/tliron/glsp v0.2.2
 )

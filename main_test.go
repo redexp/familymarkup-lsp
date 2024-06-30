@@ -66,38 +66,40 @@ func TestSemanticTokensFull(t *testing.T) {
 func TestSemanticTokensRange(t *testing.T) {
 	Initialize(t)
 
-	ranges := make([]uint32, 0)
+	type Range struct {
+		startLine uint32
+		endLine   uint32
+		count     uint32
+		endChar   uint32
+	}
 
-	ranges = append(ranges, 1, 9, 12)
-	ranges = append(ranges, 1, 3, 5)
-	ranges = append(ranges, 3, 3, 4)
-	ranges = append(ranges, 3, 4, 6)
-	ranges = append(ranges, 3, 5, 6)
-	ranges = append(ranges, 3, 6, 10)
-	ranges = append(ranges, 5, 9, 5)
-	ranges = append(ranges, 7, 9, 1)
-	ranges = append(ranges, 7, 10, 2)
-	ranges = append(ranges, 10, 10, 1)
+	ranges := []Range{
+		{1, 9, 12, 100},
+		{1, 3, 5, 100},
+		{3, 3, 4, 100},
+		{3, 4, 6, 100},
+		{3, 5, 6, 100},
+		{3, 6, 10, 100},
+		{5, 9, 5, 100},
+		{7, 9, 1, 100},
+		{7, 10, 2, 100},
+		{10, 10, 1, 100},
+		{1, 3, 3, 6},
+	}
 
-	count := len(ranges)
-
-	for i := 0; i < count; i += 3 {
-		startLine := ranges[i]
-		endLine := ranges[i+1]
-		tokensCount := ranges[i+2]
-
+	for i, r := range ranges {
 		res, err := main.SemanticTokensRange(nil, &proto.SemanticTokensRangeParams{
 			TextDocument: proto.TextDocumentIdentifier{
 				URI: "file://" + getTestRoot("semanticTokens.txt", t),
 			},
 			Range: proto.Range{
 				Start: proto.Position{
-					Line:      startLine - 1,
+					Line:      r.startLine - 1,
 					Character: 0,
 				},
 				End: proto.Position{
-					Line:      endLine - 1,
-					Character: 100,
+					Line:      r.endLine - 1,
+					Character: r.endChar,
 				},
 			},
 		})
@@ -116,8 +118,8 @@ func TestSemanticTokensRange(t *testing.T) {
 			t.Errorf("res is not *SemanticTokesn")
 		}
 
-		if len(data.Data) != int(5*tokensCount) {
-			t.Errorf("%d tokens %d when should be %d", i/3, len(data.Data)/5, tokensCount)
+		if len(data.Data) != int(5*r.count) {
+			t.Errorf("%d tokens %d when should be %d", i, len(data.Data)/5, r.count)
 		}
 	}
 }
