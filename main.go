@@ -2,6 +2,9 @@ package main
 
 import (
 	"context"
+	"encoding/json"
+
+	// "io"
 	"math"
 	"net/url"
 	"os"
@@ -10,6 +13,9 @@ import (
 
 	familymarkup "github.com/redexp/tree-sitter-familymarkup"
 	sitter "github.com/smacker/go-tree-sitter"
+	"github.com/spf13/pflag"
+	"github.com/tliron/commonlog"
+	_ "github.com/tliron/commonlog/simple"
 	"github.com/tliron/glsp"
 	proto "github.com/tliron/glsp/protocol_3_16"
 	serv "github.com/tliron/glsp/server"
@@ -19,11 +25,25 @@ var (
 	documents map[proto.DocumentUri]*sitter.Tree = make(map[string]*sitter.Tree)
 	parser    *sitter.Parser                     = createParser()
 	typesMap  []TokenType
+	server    *serv.Server
 )
 
 type TokenType struct {
 	Type uint32
 	Mod  uint32
+}
+
+func init() {
+	pflag.CommandLine.ParseErrorsWhitelist.UnknownFlags = true
+	logLevel := pflag.IntP("log-level", "l", -4, "log level: -4 - None (Default), -3 - Critical, -2 - Error, -1 - Warning, 0 - Notice, 1 - Info, 2 - Debug")
+	logFile := pflag.StringP("log-file", "f", "", "path to log file")
+	pflag.Parse()
+
+	if *logFile == "" {
+		logFile = nil
+	}
+
+	commonlog.Configure(*logLevel, logFile)
 }
 
 func main() {
@@ -33,19 +53,20 @@ func main() {
 		TextDocumentSemanticTokensRange: SemanticTokensRange,
 	}
 
-	server := serv.NewServer(&handlers, "familymarkup", false)
-
+	server = serv.NewServer(&handlers, "familymarkup", false)
 	server.RunStdio()
 }
 
 func Initialize(ctx *glsp.Context, params *proto.InitializeParams) (any, error) {
+	logDebug("Initialize req %s", params)
+
 	legend, err := GetLegend()
 
 	if err != nil {
 		return nil, err
 	}
 
-	return &proto.InitializeResult{
+	res := &proto.InitializeResult{
 		ServerInfo: &proto.InitializeResultServerInfo{
 			Name: "familymarkup",
 		},
@@ -56,7 +77,11 @@ func Initialize(ctx *glsp.Context, params *proto.InitializeParams) (any, error) 
 				Legend: *legend,
 			},
 		},
-	}, nil
+	}
+
+	logDebug("Initialize res %s", res)
+
+	return res, nil
 }
 
 func GetLegend() (*proto.SemanticTokensLegend, error) {
@@ -74,9 +99,8 @@ func GetLegend() (*proto.SemanticTokensLegend, error) {
 	}
 
 	mapMod := map[string]string{
-		"def":     "definition",
-		"ref":     "reference",
-		"builtin": "readonly",
+		"def": "definition",
+		"ref": "reference",
 	}
 
 	add := func(list *[]string, item string, hash map[string]string) uint32 {
@@ -117,6 +141,8 @@ func GetLegend() (*proto.SemanticTokensLegend, error) {
 }
 
 func SemanticTokensFull(ctx *glsp.Context, params *proto.SemanticTokensParams) (*proto.SemanticTokens, error) {
+	logDebug("SemanticTokens/Full req %s", params)
+
 	tree, err := getTree(params.TextDocument.URI)
 
 	if err != nil {
@@ -135,12 +161,18 @@ func SemanticTokensFull(ctx *glsp.Context, params *proto.SemanticTokensParams) (
 		return nil, err
 	}
 
-	return &proto.SemanticTokens{
+	res := &proto.SemanticTokens{
 		Data: *tokens,
-	}, nil
+	}
+
+	logDebug("SemanticTokens/Full res %s", res)
+
+	return res, nil
 }
 
 func SemanticTokensRange(ctx *glsp.Context, params *proto.SemanticTokensRangeParams) (any, error) {
+	logDebug("SemanticTokens/Range req %s", params)
+
 	tree, err := getTree(params.TextDocument.URI)
 
 	if err != nil {
@@ -182,9 +214,13 @@ func SemanticTokensRange(ctx *glsp.Context, params *proto.SemanticTokensRangePar
 		return nil, err
 	}
 
-	return &proto.SemanticTokens{
+	res := &proto.SemanticTokens{
 		Data: *tokens,
-	}, nil
+	}
+
+	logDebug("SemanticTokens/Range res %s", res)
+
+	return res, nil
 }
 
 func CapturesToSemanticTokens(list []*sitter.QueryCapture) (*[]proto.UInteger, error) {
@@ -197,7 +233,7 @@ func CapturesToSemanticTokens(list []*sitter.QueryCapture) (*[]proto.UInteger, e
 		Length uint32
 	}
 
-	var prev *Token
+	var prev *sitter.Point
 
 	for i, cap := range list {
 		node := cap.Node
@@ -217,7 +253,7 @@ func CapturesToSemanticTokens(list []*sitter.QueryCapture) (*[]proto.UInteger, e
 			}
 		}
 
-		prev = &token
+		prev = &start
 
 		n := i * 5
 
@@ -385,12 +421,11 @@ func createParser() *sitter.Parser {
 	return p
 }
 
-// func _getTokens(src []byte) ([]sitter.QueryCapture, error) {
-// 	lang := familymarkup.GetLanguage()
-// 	p := sitter.NewParser()
-// 	p.SetLanguage(lang)
+func logDebug(msg string, data any) {
+	if server == nil || server.Log.GetMaxLevel() < 2 {
+		return
+	}
 
-// 	tree, _ := p.ParseCtx(context.Background(), nil, src)
-
-// 	return familymarkup.GetHighlightCaptures(tree.RootNode())
-// }
+	str, _ := json.MarshalIndent(data, "", "  ")
+	server.Log.Debugf(msg, str)
+}
