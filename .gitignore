@@ -22,4 +22,4 @@ build
 go.work
 go.work.sum
 
-log.*.txt
+*.log
