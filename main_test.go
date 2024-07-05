@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	main "github.com/redexp/familymarkup-lsp"
+	h "github.com/redexp/familymarkup-lsp/handlers"
 	proto "github.com/tliron/glsp/protocol_3_16"
 )
 
@@ -24,7 +24,7 @@ func getTestRoot(file string, t *testing.T) string {
 }
 
 func Initialize(t *testing.T) {
-	_, err := main.Initialize(nil, nil)
+	_, err := h.Initialize(nil, nil)
 
 	if err != nil {
 		t.Errorf("Initialize: %v", err)
@@ -34,7 +34,7 @@ func Initialize(t *testing.T) {
 func TestSemanticTokensFull(t *testing.T) {
 	Initialize(t)
 
-	res, err := main.SemanticTokensFull(nil, &proto.SemanticTokensParams{
+	res, err := h.SemanticTokensFull(nil, &proto.SemanticTokensParams{
 		TextDocument: proto.TextDocumentIdentifier{
 			URI: "file://" + getTestRoot("semanticTokens.txt", t),
 		},
@@ -52,7 +52,7 @@ func TestSemanticTokensFull(t *testing.T) {
 		t.Errorf("res.Data len %d expected %d", len(res.Data)/5, 18)
 	}
 
-	_, err = main.SemanticTokensFull(nil, &proto.SemanticTokensParams{
+	_, err = h.SemanticTokensFull(nil, &proto.SemanticTokensParams{
 		TextDocument: proto.TextDocumentIdentifier{
 			URI: "file://" + getTestRoot("not-exist.txt", t),
 		},
@@ -88,7 +88,7 @@ func TestSemanticTokensRange(t *testing.T) {
 	}
 
 	for i, r := range ranges {
-		res, err := main.SemanticTokensRange(nil, &proto.SemanticTokensRangeParams{
+		res, err := h.SemanticTokensRange(nil, &proto.SemanticTokensRangeParams{
 			TextDocument: proto.TextDocumentIdentifier{
 				URI: "file://" + getTestRoot("semanticTokens.txt", t),
 			},
