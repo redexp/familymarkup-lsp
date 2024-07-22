@@ -12,9 +12,11 @@ describe('lsp', function () {
 	const ROOT = resolve(__dirname, 'root');
 
 	function connectServer() {
-		const dir = resolve(__dirname, '..')
+		const dir = resolve(__dirname, '..');
+		const file = resolve(dir, 'build', 'main');
 
-		const p = spawn('/usr/local/go/bin/go', ['run', 'main.go'], {cwd: dir});
+		const p = spawn('/usr/local/go/bin/go', ['run', 'main.go', '--log-file=test.log', '--log-level=2'], {cwd: dir});
+		// const p = spawn(file, ['--log-file=test.log', '--log-level=2'], {cwd: dir});
 
 		if (!p || !p.pid) {
 			throw new Error(`can't spawn process`);

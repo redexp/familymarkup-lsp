@@ -11,7 +11,7 @@ import (
 )
 
 func Initialize(ctx *glsp.Context, params *proto.InitializeParams) (any, error) {
-	logDebug("Initialize req %s", params)
+	// logDebug("Initialize WorkspaceFolders %s", params.WorkspaceFolders)
 
 	parser = createParser()
 
@@ -22,21 +22,31 @@ func Initialize(ctx *glsp.Context, params *proto.InitializeParams) (any, error) 
 	}
 
 	typesMap = types
+	syncType := proto.TextDocumentSyncKindIncremental
 
 	res := &proto.InitializeResult{
 		ServerInfo: &proto.InitializeResultServerInfo{
 			Name: "familymarkup",
 		},
 		Capabilities: proto.ServerCapabilities{
+			TextDocumentSync: proto.TextDocumentSyncOptions{
+				OpenClose: &proto.True,
+				Change:    &syncType,
+			},
 			SemanticTokensProvider: proto.SemanticTokensOptions{
 				Full:   true,
 				Range:  true,
 				Legend: *legend,
 			},
+			Workspace: &proto.ServerCapabilitiesWorkspace{
+				WorkspaceFolders: &proto.WorkspaceFoldersServerCapabilities{
+					Supported: &proto.True,
+				},
+			},
 		},
 	}
 
-	logDebug("Initialize res %s", res)
+	// logDebug("Initialize res %s", res)
 
 	return res, nil
 }

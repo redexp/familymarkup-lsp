@@ -10,19 +10,19 @@ import (
 func SemanticTokensFull(ctx *glsp.Context, params *proto.SemanticTokensParams) (*proto.SemanticTokens, error) {
 	logDebug("SemanticTokens/Full req %s", params)
 
-	tree, err := getTree(params.TextDocument.URI)
+	doc, err := openDoc(params.TextDocument.URI)
 
 	if err != nil {
 		return nil, err
 	}
 
-	list, err := familymarkup.GetHighlightCaptures(tree.RootNode())
+	list, err := GetCaptures(doc.Tree.RootNode())
 
 	if err != nil {
 		return nil, err
 	}
 
-	tokens, err := CapturesToSemanticTokens(list)
+	tokens, err := CapturesToSemanticTokens(list, doc)
 
 	if err != nil {
 		return nil, err
@@ -32,7 +32,7 @@ func SemanticTokensFull(ctx *glsp.Context, params *proto.SemanticTokensParams) (
 		Data: *tokens,
 	}
 
-	logDebug("SemanticTokens/Full res %s", res)
+	logDebug("SemanticTokens/Full res %s", "res")
 
 	return res, nil
 }
@@ -40,11 +40,13 @@ func SemanticTokensFull(ctx *glsp.Context, params *proto.SemanticTokensParams) (
 func SemanticTokensRange(ctx *glsp.Context, params *proto.SemanticTokensRangeParams) (any, error) {
 	logDebug("SemanticTokens/Range req %s", params)
 
-	tree, err := getTree(params.TextDocument.URI)
+	doc, err := openDoc(params.TextDocument.URI)
 
 	if err != nil {
 		return nil, err
 	}
+
+	tree := doc.Tree
 
 	nodes := getNodesByRange(tree, &params.Range)
 	list := make([]*sitter.QueryCapture, 0)
@@ -54,20 +56,24 @@ func SemanticTokensRange(ctx *glsp.Context, params *proto.SemanticTokensRangePar
 	endChar := params.Range.End.Character
 
 	for _, node := range nodes {
-		items, err := familymarkup.GetHighlightCaptures(node)
+		items, err := GetCaptures(node)
 
 		if err != nil {
 			return nil, err
 		}
 
 		for _, cap := range items {
-			nodePoint := cap.Node.StartPoint()
+			nodePos, err := doc.PointToPosition(cap.Node.StartPoint())
 
-			if nodePoint.Row < startLine || (nodePoint.Row == startLine && nodePoint.Column < startChar) {
+			if err != nil {
+				return nil, err
+			}
+
+			if nodePos.Line < startLine || (nodePos.Line == startLine && nodePos.Character < startChar) {
 				continue
 			}
 
-			if endLine < nodePoint.Row || (endLine == nodePoint.Row && endChar <= nodePoint.Column) {
+			if endLine < nodePos.Line || (endLine == nodePos.Line && endChar <= nodePos.Character) {
 				break
 			}
 
@@ -75,7 +81,7 @@ func SemanticTokensRange(ctx *glsp.Context, params *proto.SemanticTokensRangePar
 		}
 	}
 
-	tokens, err := CapturesToSemanticTokens(list)
+	tokens, err := CapturesToSemanticTokens(list, doc)
 
 	if err != nil {
 		return nil, err
@@ -85,47 +91,87 @@ func SemanticTokensRange(ctx *glsp.Context, params *proto.SemanticTokensRangePar
 		Data: *tokens,
 	}
 
-	logDebug("SemanticTokens/Range res %s", res)
+	logDebug("SemanticTokens/Range res %s", "res")
 
 	return res, nil
 }
 
-func CapturesToSemanticTokens(list []*sitter.QueryCapture) (*[]proto.UInteger, error) {
+func GetCaptures(root *sitter.Node) ([]*sitter.QueryCapture, error) {
+	caps, err := familymarkup.GetHighlightCaptures(root)
+
+	if err != nil {
+		return nil, err
+	}
+
+	list := []*sitter.QueryCapture{}
+
+	for _, cap := range caps {
+		if cap.Node.IsMissing() {
+			continue
+		}
+
+		list = append(list, cap)
+	}
+
+	return list, nil
+}
+
+func CapturesToSemanticTokens(list []*sitter.QueryCapture, doc *TextDocument) (*[]proto.UInteger, error) {
 	tokens := make([]proto.UInteger, len(list)*5)
 
 	type Token struct {
-		sitter.Point
+		proto.Position
 		TokenType
 
 		Length uint32
 	}
 
-	var prev *sitter.Point
+	var prev *proto.Position
 
 	for i, cap := range list {
 		node := cap.Node
-		start := node.StartPoint()
-		end := node.EndPoint()
+		start, err1 := doc.PointToPosition(node.StartPoint())
+		end, err2 := doc.PointToPosition(node.EndPoint())
+
+		if someError(err1, err2) {
+			if err2 != nil {
+				p := node.EndPoint()
+				logDebug("err EndPoint %s", p)
+				logDebug("Text %s", doc.Text)
+				logDebug("Tree %s", doc.Tree.RootNode().String())
+
+				m := getMissingChild(node)
+
+				if m != nil {
+					logDebug("missing %s", m.String())
+				} else {
+					logDebug("missing is %s", "nil")
+				}
+			}
+
+			return nil, findError(err1, err2)
+		}
+
 		token := Token{
-			Point:     start,
+			Position:  *start,
 			TokenType: typesMap[cap.Index],
-			Length:    uint32(end.Column - start.Column),
+			Length:    uint32(end.Character - start.Character),
 		}
 
 		if prev != nil {
-			token.Row = token.Row - prev.Row
+			token.Line = token.Line - prev.Line
 
-			if token.Row == 0 {
-				token.Column = token.Column - prev.Column
+			if token.Line == 0 {
+				token.Character = token.Character - prev.Character
 			}
 		}
 
-		prev = &start
+		prev = start
 
 		n := i * 5
 
-		tokens[n+0] = token.Row
-		tokens[n+1] = token.Column
+		tokens[n+0] = token.Line
+		tokens[n+1] = token.Character
 		tokens[n+2] = token.Length
 		tokens[n+3] = token.Type
 		tokens[n+4] = token.Mod
@@ -250,4 +296,24 @@ func getNodesByRange(tree *sitter.Tree, r *proto.Range) (targets []*sitter.Node)
 	}
 
 	return targets
+}
+
+func getMissingChild(node *sitter.Node) *sitter.Node {
+	logDebug("getMissingChild %s", node.Type())
+
+	count := int(node.ChildCount())
+
+	logDebug("getMissingChild %s", count)
+
+	for i := 0; i < count; i++ {
+		child := node.Child(i)
+
+		logDebug("getMissingChild %s", child.Type())
+
+		if child.Type() == "MISSING" {
+			return child
+		}
+	}
+
+	return nil
 }

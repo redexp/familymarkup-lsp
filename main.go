@@ -28,6 +28,8 @@ func main() {
 		Initialize:                      h.Initialize,
 		TextDocumentSemanticTokensFull:  h.SemanticTokensFull,
 		TextDocumentSemanticTokensRange: h.SemanticTokensRange,
-		// TextDocumentDidOpen: DocOpen,
+		TextDocumentDidOpen:             h.DocOpen,
+		TextDocumentDidChange:           h.DocChange,
+		TextDocumentDidClose:            h.DocClose,
 	})
 }
