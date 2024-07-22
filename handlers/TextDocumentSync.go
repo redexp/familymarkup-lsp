@@ -46,6 +46,8 @@ func DocChange(ctx *glsp.Context, params *proto.DidChangeTextDocumentParams) err
 			logDebug("DocChange unknown type %s", change)
 		}
 
+		trees[params.TextDocument.URI] = doc.Tree
+
 		if err != nil {
 			logDebug("DocChange err %s", err.Error())
 			return err
