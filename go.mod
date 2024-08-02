@@ -3,7 +3,7 @@ module github.com/redexp/familymarkup-lsp
 go 1.22.4
 
 require (
-	github.com/redexp/textdocument v1.3.1
+	github.com/redexp/textdocument v1.7.0
 	github.com/redexp/tree-sitter-familymarkup v1.6.0
 	github.com/smacker/go-tree-sitter v0.0.0-20240625050157-a31a98a7c0f6
 	github.com/spf13/pflag v1.0.5
@@ -17,7 +17,7 @@ require (
 	github.com/iancoleman/strcase v0.3.0 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
-	github.com/mattn/go-runewidth v0.0.15 // indirect
+	github.com/mattn/go-runewidth v0.0.16 // indirect
 	github.com/muesli/termenv v0.15.2 // indirect
 	github.com/petermattis/goid v0.0.0-20240716203034-badd1c0974d6 // indirect
 	github.com/pkg/errors v0.9.1 // indirect

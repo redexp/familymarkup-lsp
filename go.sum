@@ -14,6 +14,8 @@ github.com/mattn/go-isatty v0.0.20 h1:xfD0iDuEKnDkl03q4limB+vH+GxLEtL/jb4xVJSWWE
 github.com/mattn/go-isatty v0.0.20/go.mod h1:W+V8PltTTMOvKvAeJH7IuucS94S2C6jfK/D7dTCTo3Y=
 github.com/mattn/go-runewidth v0.0.15 h1:UNAjwbU9l54TA3KzvqLGxwWjHmMgBUVhBiTjelZgg3U=
 github.com/mattn/go-runewidth v0.0.15/go.mod h1:Jdepj2loyihRzMpdS35Xk/zdY8IAYHsh153qUoGf23w=
+github.com/mattn/go-runewidth v0.0.16 h1:E5ScNMtiwvlvB5paMFdw9p4kSQzbXFikJ5SQO6TULQc=
+github.com/mattn/go-runewidth v0.0.16/go.mod h1:Jdepj2loyihRzMpdS35Xk/zdY8IAYHsh153qUoGf23w=
 github.com/muesli/termenv v0.15.2 h1:GohcuySI0QmI3wN8Ok9PtKGkgkFIk7y6Vpb5PvrY+Wo=
 github.com/muesli/termenv v0.15.2/go.mod h1:Epx+iuz8sNs7mNKhxzH4fWXGNpZwUaJKRS1noLXviQ8=
 github.com/petermattis/goid v0.0.0-20180202154549-b0b1615b78e5/go.mod h1:jvVRKCrJTQWu0XVbaOlby/2lO20uSCHEMzzplHXte1o=
@@ -27,6 +29,14 @@ github.com/redexp/textdocument v1.3.0 h1:zPAUCoVkYZG/wNIbs2pRQhrMZLNz6ltkcUh3xb/
 github.com/redexp/textdocument v1.3.0/go.mod h1:h6A+OIbimLswJI1S8+Gbj8PB7MmGCWpAu4CJc9SWkFc=
 github.com/redexp/textdocument v1.3.1 h1:rR7Q9h7k5w5zms58DZWq+lszEHtrMa1BEXSGG6AX4kk=
 github.com/redexp/textdocument v1.3.1/go.mod h1:h6A+OIbimLswJI1S8+Gbj8PB7MmGCWpAu4CJc9SWkFc=
+github.com/redexp/textdocument v1.4.0 h1:UcAAxhLeV3Y6zNwbf8RWCbXQrwNxO2VSJktAcoYdi+M=
+github.com/redexp/textdocument v1.4.0/go.mod h1:h6A+OIbimLswJI1S8+Gbj8PB7MmGCWpAu4CJc9SWkFc=
+github.com/redexp/textdocument v1.5.0 h1:owYIwYqHkK0J07HVGqct4pz4L7hh41r+xflTZOlBabQ=
+github.com/redexp/textdocument v1.5.0/go.mod h1:h6A+OIbimLswJI1S8+Gbj8PB7MmGCWpAu4CJc9SWkFc=
+github.com/redexp/textdocument v1.6.0 h1:4i3OO7u4gidvVDw/PZMDdqIkT9lLqtYFzYJIrNjqXq4=
+github.com/redexp/textdocument v1.6.0/go.mod h1:h6A+OIbimLswJI1S8+Gbj8PB7MmGCWpAu4CJc9SWkFc=
+github.com/redexp/textdocument v1.7.0 h1:+bOoXx4SyNkN1aOuu+UMts7SPdEYQbTrJg3MV9OpC/U=
+github.com/redexp/textdocument v1.7.0/go.mod h1:h6A+OIbimLswJI1S8+Gbj8PB7MmGCWpAu4CJc9SWkFc=
 github.com/redexp/tree-sitter-familymarkup v1.5.1 h1:YCBIW2qpG378bvFQzBxZjsmvAOSR0iv0Fpuenw9s4D0=
 github.com/redexp/tree-sitter-familymarkup v1.5.1/go.mod h1:xHypbXWIEhCP0Rrpg2yhar5gdyWrwFgaKQvSpvopm+w=
 github.com/redexp/tree-sitter-familymarkup v1.5.2 h1:28Std1KW/wfK8qJpEhARm2HaGefLeJF+YXwv3ksGWnk=

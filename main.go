@@ -1,7 +1,7 @@
 package main
 
 import (
-	h "github.com/redexp/familymarkup-lsp/handlers"
+	lsp "github.com/redexp/familymarkup-lsp/src"
 	"github.com/spf13/pflag"
 	"github.com/tliron/commonlog"
 	_ "github.com/tliron/commonlog/simple"
@@ -13,6 +13,7 @@ func init() {
 
 	logLevel := pflag.IntP("log-level", "l", -4, "log level: -4 - None (Default), -3 - Critical, -2 - Error, -1 - Warning, 0 - Notice, 1 - Info, 2 - Debug")
 	logFile := pflag.StringP("log-file", "f", "", "path to log file")
+	logOnly := pflag.StringP("log-only", "p", "", "log only with prefix")
 
 	pflag.Parse()
 
@@ -20,16 +21,18 @@ func init() {
 		logFile = nil
 	}
 
+	lsp.LogOnly(*logOnly)
+
 	commonlog.Configure(*logLevel, logFile)
 }
 
 func main() {
-	h.CreateServer(&proto.Handler{
-		Initialize:                      h.Initialize,
-		TextDocumentSemanticTokensFull:  h.SemanticTokensFull,
-		TextDocumentSemanticTokensRange: h.SemanticTokensRange,
-		TextDocumentDidOpen:             h.DocOpen,
-		TextDocumentDidChange:           h.DocChange,
-		TextDocumentDidClose:            h.DocClose,
+	lsp.CreateServer(&proto.Handler{
+		Initialize:                     lsp.Initialize,
+		TextDocumentSemanticTokensFull: lsp.SemanticTokensFull,
+		TextDocumentDidOpen:            lsp.DocOpen,
+		TextDocumentDidChange:          lsp.DocChange,
+		TextDocumentDidClose:           lsp.DocClose,
+		TextDocumentCompletion:         lsp.Completion,
 	})
 }
