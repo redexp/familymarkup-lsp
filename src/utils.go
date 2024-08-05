@@ -66,3 +66,94 @@ func uriToPath(uri Uri) (string, error) {
 
 	return url.Path, nil
 }
+
+func toUri(path string) Uri {
+	if strings.HasPrefix(path, "/") {
+		path = "file://" + path
+	}
+
+	return path
+}
+
+// "surname-name", [2]*Node
+// "surname-nil", [1]*Node
+// "surname", [2]*Node
+// "surname", [1]*Node
+// "name", [1]*Node
+// "nil-name", [1]*Node
+// "nil", [0]*Node
+func getTypeNode(doc *TextDocument, pos *Position) (t string, nodes []*Node, err error) {
+	prev, target, next, err := doc.GetClosestHighlightCaptureByPosition(pos)
+
+	if err != nil {
+		return
+	}
+
+	caps := []*sitter.QueryCapture{prev, target, next}
+	nodes = make([]*Node, 3)
+	line := pos.Line
+
+	for i, cap := range caps {
+		if cap == nil {
+			continue
+		}
+
+		node := cap.Node
+		nt := node.Type()
+
+		if (nt != "name" && nt != "surname") || node.StartPoint().Row != line {
+			continue
+		}
+
+		nodes[i] = cap.Node
+	}
+
+	if nodes[0] != nil {
+		if nodes[1] != nil {
+			return "surname-name", nodes[0:2], nil
+		}
+
+		return "surname-nil", nodes[0:1], nil
+	}
+
+	if nodes[1] != nil {
+		if nodes[2] != nil {
+			return "surname", nodes[1:3], nil
+		}
+
+		t = "name"
+		p := nodes[1].Parent()
+		nodes = nodes[1:2]
+
+		if p != nil && p.Type() == "family_name" {
+			t = "surname"
+			return
+		}
+
+		return
+	}
+
+	if nodes[2] != nil {
+		return "nil-name", nodes[2:3], nil
+	}
+
+	return "nil", []*Node{}, nil
+}
+
+func getClosestNode(node *Node, t string) *Node {
+	for node != nil && node.Type() != t {
+		node = node.Parent()
+	}
+
+	return node
+}
+
+func getClosestFamilyName(node *Node) *Node {
+	family := getClosestNode(node, "family")
+
+	if family == nil || family.NamedChildCount() == 0 {
+		return nil
+	}
+
+	return family.NamedChild(0).NamedChild(0)
+}

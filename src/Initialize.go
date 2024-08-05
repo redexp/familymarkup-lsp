@@ -44,13 +44,14 @@ func Initialize(ctx *glsp.Context, params *proto.InitializeParams) (any, error) 
 					Supported: &proto.True,
 				},
 			},
+			DefinitionProvider: true,
 		},
 	}
 
 	if params.WorkspaceFolders != nil {
 		for _, folder := range params.WorkspaceFolders {
-			err := readTreesFromDir(folder.URI, func(tree *Tree, text []byte) error {
-				return root.Update(tree, text)
+			err := readTreesFromDir(folder.URI, func(tree *Tree, text []byte, path string) error {
+				return root.Update(tree, text, path)
 			})
 
 			if err != nil {

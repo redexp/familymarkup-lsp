@@ -14,7 +14,9 @@ func TestUpdate(t *testing.T) {
 		return
 	}
 
-	tree, text, err := getTreeText(filepath.Join(dir, "../test/root/simple.family"))
+	file := filepath.Join(dir, "../test/root/simple.family")
+
+	tree, text, err := getTreeText(file)
 
 	if err != nil {
 		t.Error(err)
@@ -23,7 +25,7 @@ func TestUpdate(t *testing.T) {
 
 	root := Families{}
 
-	err = root.Update(tree, text)
+	err = root.Update(tree, text, file)
 
 	if err != nil {
 		t.Error(err)

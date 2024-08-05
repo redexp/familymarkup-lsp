@@ -47,7 +47,7 @@ func parseTree(text []byte) (*sitter.Tree, error) {
 	return getParser().ParseCtx(context.Background(), nil, text)
 }
 
-func readTreesFromDir(dir Uri, cb func(*Tree, []byte) error) error {
+func readTreesFromDir(dir Uri, cb func(*Tree, []byte, string) error) error {
 	root, err := uriToPath(dir)
 
 	if err != nil {
@@ -74,7 +74,7 @@ func readTreesFromDir(dir Uri, cb func(*Tree, []byte) error) error {
 
 			tree, text, _ := getTreeText(path)
 
-			cb(tree, text)
+			cb(tree, text, path)
 		}()
 
 		return nil

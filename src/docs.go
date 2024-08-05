@@ -46,3 +46,7 @@ func openDocText(uri Uri, text string, tree *Tree) (*TextDocument, error) {
 
 	return doc, nil
 }
+
+func toString(node *Node, doc *TextDocument) string {
+	return node.Content([]byte(doc.Text))
+}

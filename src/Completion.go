@@ -1,7 +1,6 @@
 package src
 
 import (
-	sitter "github.com/smacker/go-tree-sitter"
 	"github.com/tliron/glsp"
 	proto "github.com/tliron/glsp/protocol_3_16"
 )
@@ -13,36 +12,13 @@ func Completion(context *glsp.Context, params *proto.CompletionParams) (any, err
 		return nil, err
 	}
 
-	prev, target, next, err := doc.GetClosestHighlightCaptureByPosition(&params.Position)
+	t, nodes, err := getTypeNode(doc, &params.Position)
 
 	if err != nil {
 		return nil, err
 	}
 
 	list := make([]proto.CompletionItem, 0)
-
-	if target != nil && target.Node.Type() != "name" {
-		return list, nil
-	}
-
-	caps := []*sitter.QueryCapture{prev, target, next}
-	line := params.Position.Line
-
-	for i, cap := range caps {
-		if cap == nil {
-			continue
-		}
-
-		node := cap.Node
-		t := node.Type()
-
-		if (t != "name" && t != "surname") || node.StartPoint().Row != line {
-			caps[i] = nil
-		}
-	}
-
-	prev = caps[0]
-	next = caps[2]
 
 	kind := proto.CompletionItemKindVariable
 
@@ -70,9 +46,8 @@ func Completion(context *glsp.Context, params *proto.CompletionParams) (any, err
 		}
 	}
 
-	if prev != nil {
-		value := prev.Node.Content([]byte(doc.Text))
-		family := root.FindFamily(value)
+	if t == "surname-name" || t == "surname-nil" {
+		family := root.FindFamily(toString(nodes[0], doc))
 
 		if family != nil {
 			addMembers(family)
@@ -80,7 +55,7 @@ func Completion(context *glsp.Context, params *proto.CompletionParams) (any, err
 		}
 	}
 
-	onlyFamilies := next != nil
+	onlyFamilies := t == "nil-name" || t == "surname"
 
 	for _, family := range root {
 		list = append(list, proto.CompletionItem{
