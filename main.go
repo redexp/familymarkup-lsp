@@ -42,5 +42,6 @@ func main() {
 		TextDocumentDidClose:           lsp.DocClose,
 		TextDocumentCompletion:         lsp.Completion,
 		TextDocumentDefinition:         lsp.Definition,
+		TextDocumentHover:              lsp.Hover,
 	})
 }

@@ -148,12 +148,22 @@ func getClosestNode(node *Node, t string) *Node {
 	return node
 }
 
-func getClosestFamilyName(node *Node) *Node {
-	family := getClosestNode(node, "family")
-
-	if family == nil || family.NamedChildCount() == 0 {
+func getNodeByFields(node *Node, fields ...string) *Node {
+	if node == nil {
 		return nil
 	}
 
-	return family.NamedChild(0).NamedChild(0)
+	for _, field := range fields {
+		node := node.ChildByFieldName(field)
+
+		if node == nil {
+			return nil
+		}
+	}
+
+	return node
+}
+
+func getClosestFamilyName(node *Node) *Node {
+	return getNodeByFields(getClosestNode(node, "family"), "name", "name")
 }

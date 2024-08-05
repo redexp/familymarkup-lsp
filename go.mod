@@ -3,8 +3,8 @@ module github.com/redexp/familymarkup-lsp
 go 1.22.4
 
 require (
-	github.com/redexp/textdocument v1.7.0
-	github.com/redexp/tree-sitter-familymarkup v1.6.0
+	github.com/redexp/textdocument v1.8.0
+	github.com/redexp/tree-sitter-familymarkup v1.7.0
 	github.com/smacker/go-tree-sitter v0.0.0-20240625050157-a31a98a7c0f6
 	github.com/spf13/pflag v1.0.5
 	github.com/tliron/commonlog v0.2.17
@@ -27,6 +27,6 @@ require (
 	github.com/sourcegraph/jsonrpc2 v0.2.0 // indirect
 	github.com/tliron/kutil v0.3.24 // indirect
 	golang.org/x/crypto v0.25.0 // indirect
-	golang.org/x/sys v0.22.0 // indirect
+	golang.org/x/sys v0.23.0 // indirect
 	golang.org/x/term v0.22.0 // indirect
 )

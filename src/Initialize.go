@@ -45,6 +45,7 @@ func Initialize(ctx *glsp.Context, params *proto.InitializeParams) (any, error) 
 				},
 			},
 			DefinitionProvider: true,
+			HoverProvider:      true,
 		},
 	}
 
