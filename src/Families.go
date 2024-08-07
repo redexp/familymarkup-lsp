@@ -31,15 +31,24 @@ type Member struct {
 
 func (root Families) Update(tree *Tree, text []byte, uri Uri) error {
 	q, err := createQuery(`
-		(family_name 
-			(name) @family_name
-			(name_aliases)? @family_aliases
-		)
+(family_name 
+	(name) @family_name
+	(name_aliases)? @family_aliases
+)
 
+(relation
+	arrow: "="
+	(targets
 		(name_def
 			(name) @member_name
 			(name_aliases)? @member_aliases
 		)
+	)
+)
+
+(sources
+	(name) @maybe_member
+)
 	`)
 
 	if err != nil {
@@ -54,6 +63,16 @@ func (root Families) Update(tree *Tree, text []byte, uri Uri) error {
 
 	var family *Family
 	var member *Member
+
+	addMember := func(node *Node, value string) {
+		member = &Member{
+			Id:   value,
+			Name: value,
+			Node: node,
+		}
+
+		family.Members[value] = member
+	}
 
 	toAliases := func(node *Node) []string {
 		count := int(node.NamedChildCount())
@@ -92,15 +111,18 @@ func (root Families) Update(tree *Tree, text []byte, uri Uri) error {
 				family.Aliases = toAliases(cap.Node)
 
 			case 2:
-				member = &Member{
-					Id:   value,
-					Name: value,
-					Node: node,
-				}
-				family.Members[value] = member
+				addMember(node, value)
 
 			case 3:
 				member.Aliases = toAliases(cap.Node)
+
+			case 4:
+				_, exist := family.Members[value]
+
+				if !exist {
+					addMember(node, value)
+				}
+
 			}
 		}
 	}
