@@ -15,34 +15,30 @@ func Hover(context *glsp.Context, params *proto.HoverParams) (h *proto.Hover, er
 		return
 	}
 
+	name := f.Name
+	aliases := f.Aliases
+
+	if m != nil {
+		name = m.Name
+		aliases = m.Aliases
+	}
+
+	if len(aliases) == 0 {
+		return
+	}
+
 	r, err := doc.NodeToRange(t)
 
 	if err != nil {
 		return
 	}
 
-	toAliases := func(aliases []string) string {
-		if len(aliases) == 0 {
-			return ""
-		}
-
-		return " (" + strings.Join(aliases, ", ") + ")"
-	}
-
 	h = &proto.Hover{
 		Range: r,
-	}
-
-	if m != nil {
-		h.Contents = proto.MarkupContent{
+		Contents: proto.MarkupContent{
 			Kind:  proto.MarkupKindMarkdown,
-			Value: fmt.Sprintf("**%s** %s", m.Name, toAliases(m.Aliases)),
-		}
-	} else {
-		h.Contents = proto.MarkupContent{
-			Kind:  proto.MarkupKindMarkdown,
-			Value: fmt.Sprintf("**%s** %s", f.Name, toAliases(f.Aliases)),
-		}
+			Value: fmt.Sprintf("**%s** (%s)", name, strings.Join(aliases, ", ")),
+		},
 	}
 
 	return
