@@ -23,7 +23,7 @@ func TestUpdate(t *testing.T) {
 		return
 	}
 
-	root := Families{}
+	root := createRoot()
 
 	err = root.Update(tree, text, file)
 

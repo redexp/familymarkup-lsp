@@ -17,5 +17,5 @@ var (
 	parser   *sitter.Parser
 	typesMap textdocument.HighlightLegend
 	server   *serv.Server
-	root     Families
+	root     *Root
 )

@@ -13,7 +13,7 @@ import (
 func Initialize(ctx *glsp.Context, params *proto.InitializeParams) (any, error) {
 	logDebug("Initialize %s", params)
 
-	root = Families{}
+	root = createRoot()
 
 	legend, types, err := GetLegend()
 
@@ -46,6 +46,7 @@ func Initialize(ctx *glsp.Context, params *proto.InitializeParams) (any, error) 
 			},
 			DefinitionProvider: true,
 			HoverProvider:      true,
+			ReferencesProvider: true,
 		},
 	}
 
@@ -59,6 +60,8 @@ func Initialize(ctx *glsp.Context, params *proto.InitializeParams) (any, error) 
 				return nil, err
 			}
 		}
+
+		root.UpdateUnknownRefs()
 	}
 
 	logDebug("Initialize RESULT %s", res)

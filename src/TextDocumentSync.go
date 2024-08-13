@@ -22,8 +22,6 @@ func DocClose(context *glsp.Context, params *proto.DidCloseTextDocumentParams) e
 }
 
 func DocChange(ctx *glsp.Context, params *proto.DidChangeTextDocumentParams) error {
-	logDebug("DocChange %s", params.TextDocument)
-
 	doc, err := openDoc(params.TextDocument.URI)
 
 	if err != nil {
@@ -35,28 +33,20 @@ func DocChange(ctx *glsp.Context, params *proto.DidChangeTextDocumentParams) err
 
 		switch change := wrap.(type) {
 		case proto.TextDocumentContentChangeEventWhole:
-			logDebug("DocChange change whole %s", change)
 			err = doc.SetText(change.Text)
 
 		case proto.TextDocumentContentChangeEvent:
-			logDebug("DocChange change range %s", change)
 			err = doc.Change(&change)
-
-		default:
-			logDebug("DocChange unknown type %s", change)
 		}
 
 		setTree(params.TextDocument.URI, doc.Tree)
 
 		if err != nil {
-			logDebug("DocChange err %s", err.Error())
 			return err
 		}
 	}
 
-	doc.Tree.RootNode().HasChanges()
-
-	logDebug("DocChange %s", "success")
+	root.DirtyUris.Set(params.TextDocument.URI)
 
 	return nil
 }

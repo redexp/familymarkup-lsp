@@ -8,8 +8,6 @@ import (
 )
 
 func SemanticTokensFull(ctx *glsp.Context, params *proto.SemanticTokensParams) (*proto.SemanticTokens, error) {
-	logDebug("SemanticTokens/Full req %s", params)
-
 	doc, err := openDoc(params.TextDocument.URI)
 
 	if err != nil {
@@ -25,8 +23,6 @@ func SemanticTokensFull(ctx *glsp.Context, params *proto.SemanticTokensParams) (
 	res := &proto.SemanticTokens{
 		Data: tokens,
 	}
-
-	logDebug("SemanticTokens/Full res %s", "res")
 
 	return res, nil
 }

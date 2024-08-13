@@ -43,5 +43,6 @@ func main() {
 		TextDocumentCompletion:         lsp.Completion,
 		TextDocumentDefinition:         lsp.Definition,
 		TextDocumentHover:              lsp.Hover,
+		TextDocumentReferences:         lsp.References,
 	})
 }

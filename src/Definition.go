@@ -39,6 +39,7 @@ func getDefinition(uri Uri, pos *Position) (family *Family, member *Member, targ
 	}
 
 	if t == "surname" || t == "surname-name" {
+		root.UpdateDirty()
 		family = root.FindFamily(toString(nodes[0], srcDoc))
 
 		if family == nil {
@@ -57,6 +58,7 @@ func getDefinition(uri Uri, pos *Position) (family *Family, member *Member, targ
 			target = member.Node
 		}
 	} else if t == "name" {
+		root.UpdateDirty()
 		list := root.FindFamiliesByUri(uri)
 
 		if len(list) == 0 {

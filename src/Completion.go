@@ -46,6 +46,8 @@ func Completion(context *glsp.Context, params *proto.CompletionParams) (any, err
 		}
 	}
 
+	root.UpdateDirty()
+
 	if t == "surname-name" || t == "surname-nil" {
 		family := root.FindFamily(toString(nodes[0], doc))
 
@@ -57,7 +59,7 @@ func Completion(context *glsp.Context, params *proto.CompletionParams) (any, err
 
 	onlyFamilies := t == "nil-name" || t == "surname"
 
-	for _, family := range root {
+	for _, family := range root.Families {
 		list = append(list, proto.CompletionItem{
 			Kind:  &kind,
 			Label: family.Name,
