@@ -6,7 +6,13 @@ import (
 )
 
 func Completion(context *glsp.Context, params *proto.CompletionParams) (any, error) {
-	doc, err := openDoc(params.TextDocument.URI)
+	uri, err := normalizeUri(params.TextDocument.URI)
+
+	if err != nil {
+		return nil, err
+	}
+
+	doc, err := openDoc(uri)
 
 	if err != nil {
 		return nil, err

@@ -7,20 +7,26 @@ import (
 	proto "github.com/tliron/glsp/protocol_3_16"
 )
 
-func SemanticTokensFull(ctx *glsp.Context, params *proto.SemanticTokensParams) (*proto.SemanticTokens, error) {
-	doc, err := openDoc(params.TextDocument.URI)
+func SemanticTokensFull(ctx *glsp.Context, params *proto.SemanticTokensParams) (res *proto.SemanticTokens, err error) {
+	uri, err := normalizeUri(params.TextDocument.URI)
 
 	if err != nil {
-		return nil, err
+		return
+	}
+
+	doc, err := openDoc(uri)
+
+	if err != nil {
+		return
 	}
 
 	tokens, err := doc.ConvertHighlightCaptures(typesMap)
 
 	if err != nil {
-		return nil, err
+		return
 	}
 
-	res := &proto.SemanticTokens{
+	res = &proto.SemanticTokens{
 		Data: tokens,
 	}
 

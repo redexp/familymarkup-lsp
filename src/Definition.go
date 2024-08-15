@@ -7,7 +7,13 @@ import (
 )
 
 func Definition(context *glsp.Context, params *proto.DefinitionParams) (res any, err error) {
-	family, _, target, doc, err := getDefinition(params.TextDocument.URI, &params.Position)
+	uri, err := normalizeUri(params.TextDocument.URI)
+
+	if err != nil {
+		return
+	}
+
+	family, _, target, doc, err := getDefinition(uri, &params.Position)
 
 	if err != nil || target == nil {
 		return

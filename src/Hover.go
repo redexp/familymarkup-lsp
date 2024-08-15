@@ -9,7 +9,13 @@ import (
 )
 
 func Hover(context *glsp.Context, params *proto.HoverParams) (h *proto.Hover, err error) {
-	f, m, t, doc, err := getDefinition(params.TextDocument.URI, &params.Position)
+	uri, err := normalizeUri(params.TextDocument.URI)
+
+	if err != nil {
+		return
+	}
+
+	f, m, t, doc, err := getDefinition(uri, &params.Position)
 
 	if err != nil || f == nil || t == nil {
 		return

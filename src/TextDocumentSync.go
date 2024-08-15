@@ -6,23 +6,37 @@ import (
 )
 
 func DocOpen(context *glsp.Context, params *proto.DidOpenTextDocumentParams) error {
-	logDebug("DocOpen %s", params)
+	uri, err := normalizeUri(params.TextDocument.URI)
 
-	_, err := openDocText(params.TextDocument.URI, params.TextDocument.Text, nil)
+	if err != nil {
+		return err
+	}
+
+	_, err = openDocText(uri, params.TextDocument.Text, nil)
 
 	return err
 }
 
 func DocClose(context *glsp.Context, params *proto.DidCloseTextDocumentParams) error {
-	logDebug("DocClose %s", params)
+	uri, err := normalizeUri(params.TextDocument.URI)
 
-	delete(documents, params.TextDocument.URI)
+	if err != nil {
+		return err
+	}
+
+	delete(documents, uri)
 
 	return nil
 }
 
 func DocChange(ctx *glsp.Context, params *proto.DidChangeTextDocumentParams) error {
-	doc, err := openDoc(params.TextDocument.URI)
+	uri, err := normalizeUri(params.TextDocument.URI)
+
+	if err != nil {
+		return err
+	}
+
+	doc, err := openDoc(uri)
 
 	if err != nil {
 		return err
@@ -39,14 +53,14 @@ func DocChange(ctx *glsp.Context, params *proto.DidChangeTextDocumentParams) err
 			err = doc.Change(&change)
 		}
 
-		setTree(params.TextDocument.URI, doc.Tree)
+		setTree(uri, doc.Tree)
 
 		if err != nil {
 			return err
 		}
 	}
 
-	root.DirtyUris.Set(params.TextDocument.URI)
+	root.DirtyUris.Set(uri)
 
 	return nil
 }

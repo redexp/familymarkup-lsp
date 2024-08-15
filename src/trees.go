@@ -47,16 +47,10 @@ func parseTree(text []byte) (*sitter.Tree, error) {
 	return getParser().ParseCtx(context.Background(), nil, text)
 }
 
-func readTreesFromDir(dir Uri, cb func(*Tree, []byte, string) error) error {
-	root, err := uriToPath(dir)
-
-	if err != nil {
-		return err
-	}
-
+func readTreesFromDir(root string, cb func(*Tree, []byte, string) error) error {
 	var wg sync.WaitGroup
 
-	err = filepath.Walk(root, func(path string, info fs.FileInfo, err error) error {
+	err := filepath.Walk(root, func(path string, info fs.FileInfo, err error) error {
 		if err != nil || info.IsDir() {
 			return nil
 		}

@@ -6,7 +6,13 @@ import (
 )
 
 func References(context *glsp.Context, params *proto.ReferenceParams) (res []proto.Location, err error) {
-	family, member, target, doc, err := getDefinition(params.TextDocument.URI, &params.Position)
+	uri, err := normalizeUri(params.TextDocument.URI)
+
+	if err != nil {
+		return
+	}
+
+	family, member, target, doc, err := getDefinition(uri, &params.Position)
 
 	if err != nil || member == nil {
 		return

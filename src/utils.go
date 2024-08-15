@@ -75,6 +75,16 @@ func toUri(path string) Uri {
 	return path
 }
 
+func normalizeUri(uri Uri) (Uri, error) {
+	path, err := uriToPath(uri)
+
+	if err != nil {
+		return "", err
+	}
+
+	return toUri(path), nil
+}
+
 // "surname-name", [2]*Node
 // "surname-nil", [1]*Node
 // "surname", [2]*Node

@@ -53,7 +53,7 @@ func createRoot() *Root {
 	}
 }
 
-func (root *Root) Update(tree *Tree, text []byte, uri Uri) error {
+func (root *Root) Update(tree *Tree, text []byte, uri Uri) (err error) {
 	q, err := createQuery(`
 (family_name 
 	(name) @family-name
@@ -76,13 +76,12 @@ func (root *Root) Update(tree *Tree, text []byte, uri Uri) error {
 	)
 )
 	`)
-	defer q.Close()
 
 	if err != nil {
-		return err
+		return
 	}
 
-	uri = toUri(uri)
+	defer q.Close()
 
 	c := createCursor(q, tree)
 	defer c.Close()
@@ -193,7 +192,7 @@ func (root *Root) Update(tree *Tree, text []byte, uri Uri) error {
 
 	root.UpdateUnknownRefs()
 
-	return nil
+	return
 }
 
 func (root *Root) UpdateUnknownRefs() {
@@ -208,10 +207,7 @@ func (root *Root) UpdateUnknownRefs() {
 		_, m := root.FindMember(ref.Surname, ref.Name)
 
 		if m != nil {
-			m.Refs = append(m.Refs, &Ref{
-				Uri:  ref.Uri,
-				Node: ref.Node,
-			})
+			m.Refs = append(m.Refs, ref)
 		} else {
 			root.UnknownRefs = append(root.UnknownRefs, ref)
 		}
@@ -268,11 +264,12 @@ func (root *Root) UpdateDirty() error {
 			(name)
 		) @name_ref
 	`)
-	defer q.Close()
 
 	if err != nil {
 		return err
 	}
+
+	defer q.Close()
 
 	for uri := range refsUris {
 		doc, err := openDoc(uri)
@@ -292,7 +289,22 @@ func (root *Root) UpdateDirty() error {
 			}
 
 			for _, cap := range match.Captures {
-				addRefByNode(uri, cap.Node, text)
+				node := cap.Node
+				surname := node.NamedChild(0).Content(text)
+				name := node.NamedChild(1).Content(text)
+
+				f, m := root.FindMember(surname, name)
+
+				if f == nil || !uris.Has(f.Uri) {
+					continue
+				}
+
+				addMemberRef(m, &Ref{
+					Uri:     uri,
+					Node:    node,
+					Surname: surname,
+					Name:    name,
+				})
 			}
 		}
 
@@ -480,17 +492,18 @@ func addRefByNode(uri Uri, node *Node, text []byte) {
 
 	_, m := root.FindMember(surname, name)
 
+	addMemberRef(m, &Ref{
+		Uri:     uri,
+		Node:    node,
+		Surname: surname,
+		Name:    name,
+	})
+}
+
+func addMemberRef(m *Member, ref *Ref) {
 	if m != nil {
-		m.Refs = append(m.Refs, &Ref{
-			Uri:  uri,
-			Node: node,
-		})
+		m.Refs = append(m.Refs, ref)
 	} else {
-		root.UnknownRefs = append(root.UnknownRefs, &Ref{
-			Uri:     uri,
-			Node:    node,
-			Surname: surname,
-			Name:    name,
-		})
+		root.UnknownRefs = append(root.UnknownRefs, ref)
 	}
 }
