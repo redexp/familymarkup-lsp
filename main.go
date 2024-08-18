@@ -44,5 +44,6 @@ func main() {
 		TextDocumentDefinition:         lsp.Definition,
 		TextDocumentHover:              lsp.Hover,
 		TextDocumentReferences:         lsp.References,
+		TextDocumentDocumentHighlight:  lsp.DocumentHighlight,
 	})
 }

@@ -117,8 +117,12 @@ func getTypeNode(doc *TextDocument, pos *Position) (t string, nodes []*Node, err
 
 		parent := node.Parent()
 
-		if i != 1 && parent != nil && parent.Type() == "name_aliases" {
-			continue
+		if parent != nil && parent.Type() == "name_aliases" {
+			if i != 1 {
+				continue
+			}
+
+			return "name", []*Node{cap.Node}, nil
 		}
 
 		nodes[i] = cap.Node

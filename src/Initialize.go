@@ -44,9 +44,10 @@ func Initialize(ctx *glsp.Context, params *proto.InitializeParams) (any, error) 
 					Supported: &proto.True,
 				},
 			},
-			DefinitionProvider: true,
-			HoverProvider:      true,
-			ReferencesProvider: true,
+			DefinitionProvider:        true,
+			HoverProvider:             true,
+			ReferencesProvider:        true,
+			DocumentHighlightProvider: true,
 		},
 	}
 
