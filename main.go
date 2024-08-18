@@ -45,5 +45,7 @@ func main() {
 		TextDocumentHover:              lsp.Hover,
 		TextDocumentReferences:         lsp.References,
 		TextDocumentDocumentHighlight:  lsp.DocumentHighlight,
+		TextDocumentPrepareRename:      lsp.PrepareRename,
+		TextDocumentRename:             lsp.Rename,
 	})
 }
