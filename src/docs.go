@@ -7,17 +7,23 @@ import (
 
 var documents map[Uri]*TextDocument = make(map[Uri]*TextDocument)
 
-func openDoc(uri Uri) (*TextDocument, error) {
+func openDoc(uri Uri) (doc *TextDocument, err error) {
+	uri, err = normalizeUri(uri)
+
+	if err != nil {
+		return
+	}
+
 	doc, ok := documents[uri]
 
 	if ok {
-		return doc, nil
+		return
 	}
 
 	tree, text, err := getTreeText(uri)
 
 	if err != nil {
-		return nil, err
+		return
 	}
 
 	return openDocText(uri, string(text), tree)

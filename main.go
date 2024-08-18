@@ -47,5 +47,6 @@ func main() {
 		TextDocumentDocumentHighlight:  lsp.DocumentHighlight,
 		TextDocumentPrepareRename:      lsp.PrepareRename,
 		TextDocumentRename:             lsp.Rename,
+		TextDocumentFoldingRange:       lsp.FoldingRange,
 	})
 }

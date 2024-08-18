@@ -48,6 +48,7 @@ func Initialize(ctx *glsp.Context, params *proto.InitializeParams) (any, error) 
 			HoverProvider:             true,
 			ReferencesProvider:        true,
 			DocumentHighlightProvider: true,
+			FoldingRangeProvider:      true,
 			RenameProvider: proto.RenameOptions{
 				PrepareProvider: &proto.True,
 			},
