@@ -11,8 +11,6 @@ import (
 )
 
 func Initialize(ctx *glsp.Context, params *proto.InitializeParams) (any, error) {
-	logDebug("Initialize %s", params)
-
 	root = createRoot()
 
 	legend, types, err := GetLegend()
@@ -75,7 +73,7 @@ func Initialize(ctx *glsp.Context, params *proto.InitializeParams) (any, error) 
 		root.UpdateUnknownRefs()
 	}
 
-	logDebug("Initialize RESULT %s", res)
+	supportDiagnostics = params.Capabilities.TextDocument != nil && params.Capabilities.TextDocument.PublishDiagnostics != nil
 
 	return res, nil
 }

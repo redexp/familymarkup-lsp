@@ -19,3 +19,5 @@ var (
 	server   *serv.Server
 	root     *Root
 )
+
+var supportDiagnostics = false

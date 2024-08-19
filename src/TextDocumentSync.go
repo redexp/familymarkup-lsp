@@ -5,16 +5,24 @@ import (
 	proto "github.com/tliron/glsp/protocol_3_16"
 )
 
-func DocOpen(context *glsp.Context, params *proto.DidOpenTextDocumentParams) error {
+var docDiagnostic = createDocDebouncer()
+
+func DocOpen(context *glsp.Context, params *proto.DidOpenTextDocumentParams) (err error) {
 	uri, err := normalizeUri(params.TextDocument.URI)
 
 	if err != nil {
-		return err
+		return
 	}
 
-	_, err = openDocText(uri, params.TextDocument.Text, nil)
+	doc, err := openDocText(uri, params.TextDocument.Text, nil)
 
-	return err
+	if err != nil {
+		return
+	}
+
+	PublishDiagnostics(context, uri, doc)
+
+	return
 }
 
 func DocClose(context *glsp.Context, params *proto.DidCloseTextDocumentParams) error {
@@ -24,7 +32,7 @@ func DocClose(context *glsp.Context, params *proto.DidCloseTextDocumentParams) e
 		return err
 	}
 
-	delete(documents, uri)
+	closeDoc(uri)
 
 	return nil
 }
@@ -61,6 +69,7 @@ func DocChange(ctx *glsp.Context, params *proto.DidChangeTextDocumentParams) err
 	}
 
 	root.DirtyUris.Set(uri)
+	docDiagnostic.Set(uri, ctx)
 
 	return nil
 }
