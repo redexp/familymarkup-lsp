@@ -29,19 +29,19 @@ func openDoc(uri Uri) (doc *TextDocument, err error) {
 	return openDocText(uri, string(text), tree)
 }
 
-func openDocText(uri Uri, text string, tree *Tree) (*TextDocument, error) {
-	doc := textdocument.NewTextDocument(text)
+func openDocText(uri Uri, text string, tree *Tree) (doc *TextDocument, err error) {
+	doc = textdocument.NewTextDocument(text)
 	doc.Tree = tree
-	err := doc.SetParser(getParser())
+	err = doc.SetParser(getParser())
 
 	if err != nil {
-		return nil, err
+		return
 	}
 
 	q, err := familymarkup.GetHighlightQuery()
 
 	if err != nil {
-		return nil, err
+		return
 	}
 
 	doc.SetHighlightQuery(q, &textdocument.Ignore{
@@ -49,12 +49,38 @@ func openDocText(uri Uri, text string, tree *Tree) (*TextDocument, error) {
 	})
 
 	documents[uri] = doc
+	setTree(uri, doc.Tree)
 
-	return doc, nil
+	return
 }
 
 func closeDoc(uri Uri) {
 	delete(documents, uri)
+}
+
+func tempDoc(uri Uri) (doc *TextDocument, err error) {
+	uri, err = normalizeUri(uri)
+
+	if err != nil {
+		return
+	}
+
+	doc = documents[uri]
+
+	if doc != nil {
+		return
+	}
+
+	tree, text, err := getTreeText(uri)
+
+	if err != nil {
+		return
+	}
+
+	doc = textdocument.NewTextDocument(string(text))
+	doc.Tree = tree
+
+	return
 }
 
 func toString(node *Node, doc *TextDocument) string {

@@ -58,11 +58,7 @@ func Rename(context *glsp.Context, params *proto.RenameParams) (res *proto.Works
 			edits = make([]proto.TextEdit, 0)
 		}
 
-		node := ref.Node
-
-		if node.Type() == "name_ref" {
-			node = node.NamedChild(1)
-		}
+		node := nameRefName(ref.Node)
 
 		r, err := doc.NodeToRange(node)
 

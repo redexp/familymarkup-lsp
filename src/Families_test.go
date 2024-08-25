@@ -14,9 +14,9 @@ func TestUpdate(t *testing.T) {
 		return
 	}
 
-	file := filepath.Join(dir, "../test/root/simple.family")
+	uri := toUri(filepath.Join(dir, "../test/root/simple.family"))
 
-	tree, text, err := getTreeText(file)
+	doc, err := openDoc(uri)
 
 	if err != nil {
 		t.Error(err)
@@ -25,7 +25,7 @@ func TestUpdate(t *testing.T) {
 
 	root := createRoot()
 
-	err = root.Update(tree, text, file)
+	err = root.Update(doc.Tree, []byte(doc.Text), uri)
 
 	if err != nil {
 		t.Error(err)

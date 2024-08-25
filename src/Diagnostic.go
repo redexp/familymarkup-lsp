@@ -1,6 +1,7 @@
 package src
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/bep/debounce"
@@ -21,7 +22,7 @@ func PublishDiagnostics(ctx *glsp.Context, uri Uri, doc *TextDocument) {
 	var err error
 
 	if doc == nil {
-		doc, err = openDoc(uri)
+		doc, err = tempDoc(uri)
 
 		if err != nil {
 			logDebug("Diagnostic open doc error: %s", err.Error())
@@ -30,6 +31,8 @@ func PublishDiagnostics(ctx *glsp.Context, uri Uri, doc *TextDocument) {
 	}
 
 	list := make([]proto.Diagnostic, 0)
+	severityError := proto.DiagnosticSeverityError
+	severityWarning := proto.DiagnosticSeverityWarning
 
 	for _, ref := range root.UnknownRefs {
 		if ref.Uri != uri {
@@ -39,7 +42,7 @@ func PublishDiagnostics(ctx *glsp.Context, uri Uri, doc *TextDocument) {
 		node := ref.Node
 		message := "Unknown person"
 
-		if node.Type() == "name_ref" {
+		if isNameRef(node) {
 			f := root.FindFamily(ref.Surname)
 
 			if f != nil {
@@ -58,9 +61,73 @@ func PublishDiagnostics(ctx *glsp.Context, uri Uri, doc *TextDocument) {
 		}
 
 		list = append(list, proto.Diagnostic{
-			Range:   *r,
-			Message: message,
+			Severity: &severityError,
+			Range:    *r,
+			Message:  message,
 		})
+	}
+
+	tempDocs := make(map[Uri]*TextDocument)
+	tempDocs[uri] = doc
+
+	for _, family := range root.Families {
+		for name, dups := range family.Duplicates {
+			member := family.Members[name]
+			dups = append(dups, &Duplicate{Member: member})
+			count := len(dups)
+
+			var locations []proto.DiagnosticRelatedInformation
+
+			for _, ref := range member.Refs {
+				if ref.Uri != uri {
+					continue
+				}
+
+				r, err := doc.NodeToRange(nameRefName(ref.Node))
+
+				if err != nil {
+					logDebug("Diagnostic error: %s", err.Error())
+					continue
+				}
+
+				if locations == nil {
+					d := tempDocs[family.Uri]
+
+					if d == nil {
+						d, err = tempDoc(family.Uri)
+						if err != nil {
+							logDebug("Diagnostic error: %s", err.Error())
+							continue
+						}
+						tempDocs[family.Uri] = d
+					}
+
+					locations = make([]proto.DiagnosticRelatedInformation, count)
+					for i, dup := range dups {
+						rr, err := d.NodeToRange(dup.Member.Node)
+
+						if err != nil {
+							logDebug("Diagnostic error: %s", err.Error())
+							continue
+						}
+
+						locations[i] = proto.DiagnosticRelatedInformation{
+							Location: proto.Location{
+								URI:   family.Uri,
+								Range: *rr,
+							},
+						}
+					}
+				}
+
+				list = append(list, proto.Diagnostic{
+					Severity:           &severityWarning,
+					Range:              *r,
+					Message:            fmt.Sprintf("An unobvious name. There are %d persons with the name %s.", count, name),
+					RelatedInformation: locations,
+				})
+			}
+		}
 	}
 
 	ctx.Notify(proto.ServerTextDocumentPublishDiagnostics, proto.PublishDiagnosticsParams{

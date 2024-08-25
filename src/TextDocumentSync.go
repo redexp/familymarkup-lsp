@@ -20,6 +20,8 @@ func DocOpen(context *glsp.Context, params *proto.DidOpenTextDocumentParams) (er
 		return
 	}
 
+	root.DirtyUris.Set(uri)
+
 	PublishDiagnostics(context, uri, doc)
 
 	return

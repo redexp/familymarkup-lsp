@@ -187,3 +187,23 @@ func getNodeByFields(node *Node, fields ...string) *Node {
 func getClosestFamilyName(node *Node) *Node {
 	return getNodeByFields(getClosestNode(node, "family"), "name", "name")
 }
+
+func nameRefName(node *Node) *Node {
+	if isNameRef(node) {
+		return node.NamedChild(1)
+	}
+
+	return node
+}
+
+func isNameAliases(node *Node) bool {
+	return node != nil && node.Type() == "name_aliases"
+}
+
+func isNameRef(node *Node) bool {
+	return node != nil && node.Type() == "name_ref"
+}
+
+func isNameDef(node *Node) bool {
+	return node != nil && node.Type() == "name_def"
+}

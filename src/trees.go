@@ -19,28 +19,34 @@ func setTree(uri Uri, tree *Tree) {
 	trees[uri] = tree
 }
 
-func getTreeText(uri Uri) (*Tree, []byte, error) {
+func getTreeText(uri Uri) (tree *Tree, text []byte, err error) {
+	uri, err = normalizeUri(uri)
+
+	if err != nil {
+		return
+	}
+
 	path, err := uriToPath(uri)
 
 	if err != nil {
-		return nil, nil, err
+		return
 	}
 
-	text, err := os.ReadFile(path)
+	text, err = os.ReadFile(path)
 
 	if err != nil {
-		return nil, nil, err
+		return
 	}
 
-	tree, err := parseTree(text)
+	tree, err = parseTree(text)
 
 	if err != nil {
-		return nil, nil, err
+		return
 	}
 
 	setTree(uri, tree)
 
-	return tree, text, nil
+	return
 }
 
 func parseTree(text []byte) (*sitter.Tree, error) {
