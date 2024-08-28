@@ -12,7 +12,7 @@ func DocumentHighlight(context *glsp.Context, params *proto.DocumentHighlightPar
 		return
 	}
 
-	family, member, _, _, err := getDefinition(uri, &params.Position)
+	family, member, _, err := getDefinition(uri, &params.Position)
 
 	if err != nil || member == nil || len(member.Refs) == 0 {
 		return

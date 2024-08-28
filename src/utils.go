@@ -8,6 +8,7 @@ import (
 	familymarkup "github.com/redexp/tree-sitter-familymarkup"
 	sitter "github.com/smacker/go-tree-sitter"
 	"github.com/tliron/glsp"
+	proto "github.com/tliron/glsp/protocol_3_16"
 	serv "github.com/tliron/glsp/server"
 )
 
@@ -174,7 +175,7 @@ func getNodeByFields(node *Node, fields ...string) *Node {
 	}
 
 	for _, field := range fields {
-		node := node.ChildByFieldName(field)
+		node = node.ChildByFieldName(field)
 
 		if node == nil {
 			return nil
@@ -194,6 +195,16 @@ func nameRefName(node *Node) *Node {
 	}
 
 	return node
+}
+
+func nodeToRange(uri Uri, node *Node) (res *proto.Range, err error) {
+	doc, err := tempDoc(uri)
+
+	if err != nil {
+		return
+	}
+
+	return doc.NodeToRange(node)
 }
 
 func isNameAliases(node *Node) bool {

@@ -4,6 +4,7 @@ go 1.22.4
 
 require (
 	github.com/bep/debounce v1.2.1
+	github.com/mitchellh/mapstructure v1.5.0
 	github.com/redexp/textdocument v1.9.0
 	github.com/redexp/tree-sitter-familymarkup v1.7.0
 	github.com/smacker/go-tree-sitter v0.0.0-20240625050157-a31a98a7c0f6

@@ -12,22 +12,23 @@ func References(context *glsp.Context, params *proto.ReferenceParams) (res []pro
 		return
 	}
 
-	family, member, target, doc, err := getDefinition(uri, &params.Position)
+	family, member, target, err := getDefinition(uri, &params.Position)
 
 	if err != nil || member == nil {
 		return
 	}
 
+	tempDocs := make(Docs)
 	res = make([]proto.Location, len(member.Refs))
 
 	for i, ref := range member.Refs {
-		refDoc, err := openDoc(ref.Uri)
+		doc, err := tempDocs.Get(ref.Uri)
 
 		if err != nil {
 			return nil, err
 		}
 
-		r, err := refDoc.NodeToRange(ref.Node)
+		r, err := doc.NodeToRange(ref.Node)
 
 		if err != nil {
 			return nil, err
@@ -40,6 +41,12 @@ func References(context *glsp.Context, params *proto.ReferenceParams) (res []pro
 	}
 
 	if params.Context.IncludeDeclaration {
+		doc, err := tempDocs.Get(uri)
+
+		if err != nil {
+			return nil, err
+		}
+
 		r, err := doc.NodeToRange(target)
 
 		if err != nil {

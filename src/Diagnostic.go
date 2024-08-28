@@ -14,6 +14,10 @@ type DocDebouncer struct {
 	Debounce func(func())
 }
 
+const (
+	UnknownFamilyError = iota
+)
+
 func PublishDiagnostics(ctx *glsp.Context, uri Uri, doc *TextDocument) {
 	if !supportDiagnostics {
 		return
@@ -64,10 +68,11 @@ func PublishDiagnostics(ctx *glsp.Context, uri Uri, doc *TextDocument) {
 			Severity: &severityError,
 			Range:    *r,
 			Message:  message,
+			Data:     UnknownFamilyError,
 		})
 	}
 
-	tempDocs := make(map[Uri]*TextDocument)
+	tempDocs := make(Docs)
 	tempDocs[uri] = doc
 
 	for _, family := range root.Families {
@@ -91,15 +96,11 @@ func PublishDiagnostics(ctx *glsp.Context, uri Uri, doc *TextDocument) {
 				}
 
 				if locations == nil {
-					d := tempDocs[family.Uri]
+					d, err := tempDocs.Get(family.Uri)
 
-					if d == nil {
-						d, err = tempDoc(family.Uri)
-						if err != nil {
-							logDebug("Diagnostic error: %s", err.Error())
-							continue
-						}
-						tempDocs[family.Uri] = d
+					if err != nil {
+						logDebug("Diagnostic error: %s", err.Error())
+						continue
 					}
 
 					locations = make([]proto.DiagnosticRelatedInformation, count)

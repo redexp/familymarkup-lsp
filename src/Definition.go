@@ -13,13 +13,13 @@ func Definition(context *glsp.Context, params *proto.DefinitionParams) (res any,
 		return
 	}
 
-	family, _, target, doc, err := getDefinition(uri, &params.Position)
+	family, _, target, err := getDefinition(uri, &params.Position)
 
 	if err != nil || target == nil {
 		return
 	}
 
-	r, err := doc.NodeToRange(target)
+	r, err := nodeToRange(uri, target)
 
 	if err != nil {
 		return
@@ -31,11 +31,11 @@ func Definition(context *glsp.Context, params *proto.DefinitionParams) (res any,
 	}, nil
 }
 
-func getDefinition(uri Uri, pos *Position) (family *Family, member *Member, target *Node, doc *TextDocument, err error) {
+func getDefinition(uri Uri, pos *Position) (family *Family, member *Member, target *Node, err error) {
 	err = root.UpdateDirty()
 
 	if err != nil {
-		Debugf("getDefinition UpdateDirty %s", err)
+		logDebug("getDefinition UpdateDirty %s", err)
 	}
 
 	srcDoc, err := openDoc(uri)
@@ -53,8 +53,7 @@ func getDefinition(uri Uri, pos *Position) (family *Family, member *Member, targ
 	member = root.GetMemberByUriNode(uri, node)
 
 	if member != nil {
-		doc, err = tempDoc(member.Family.Uri)
-		return member.Family, member, member.Node, doc, err
+		return member.Family, member, member.Node, nil
 	}
 
 	t, nodes, err := getTypeNode(srcDoc, pos)
@@ -117,10 +116,6 @@ func getDefinition(uri Uri, pos *Position) (family *Family, member *Member, targ
 		}
 
 		target = member.Node
-	}
-
-	if family != nil {
-		doc, err = openDoc(family.Uri)
 	}
 
 	return

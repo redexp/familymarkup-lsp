@@ -50,6 +50,12 @@ func Initialize(ctx *glsp.Context, params *proto.InitializeParams) (any, error) 
 			RenameProvider: proto.RenameOptions{
 				PrepareProvider: &proto.True,
 			},
+			CodeActionProvider: proto.CodeActionOptions{
+				CodeActionKinds: []proto.CodeActionKind{
+					proto.CodeActionKindQuickFix,
+				},
+				ResolveProvider: &proto.True,
+			},
 		},
 	}
 

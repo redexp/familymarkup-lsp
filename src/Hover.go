@@ -15,7 +15,7 @@ func Hover(context *glsp.Context, params *proto.HoverParams) (h *proto.Hover, er
 		return
 	}
 
-	f, m, t, doc, err := getDefinition(uri, &params.Position)
+	f, m, t, err := getDefinition(uri, &params.Position)
 
 	if err != nil || f == nil || t == nil {
 		return
@@ -33,7 +33,7 @@ func Hover(context *glsp.Context, params *proto.HoverParams) (h *proto.Hover, er
 		return
 	}
 
-	r, err := doc.NodeToRange(t)
+	r, err := nodeToRange(uri, t)
 
 	if err != nil {
 		return

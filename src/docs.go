@@ -5,7 +5,9 @@ import (
 	familymarkup "github.com/redexp/tree-sitter-familymarkup"
 )
 
-var documents map[Uri]*TextDocument = make(map[Uri]*TextDocument)
+type Docs map[Uri]*TextDocument
+
+var documents Docs = make(Docs)
 
 func openDoc(uri Uri) (doc *TextDocument, err error) {
 	uri, err = normalizeUri(uri)
@@ -85,4 +87,22 @@ func tempDoc(uri Uri) (doc *TextDocument, err error) {
 
 func toString(node *Node, doc *TextDocument) string {
 	return node.Content([]byte(doc.Text))
+}
+
+func (docs Docs) Get(uri Uri) (doc *TextDocument, err error) {
+	doc = docs[uri]
+
+	if doc != nil {
+		return
+	}
+
+	doc, err = tempDoc(uri)
+
+	if err != nil {
+		return
+	}
+
+	docs[uri] = doc
+
+	return
 }

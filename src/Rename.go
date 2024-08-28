@@ -12,7 +12,7 @@ func PrepareRename(context *glsp.Context, params *proto.PrepareRenameParams) (re
 		return
 	}
 
-	_, member, _, _, err := getDefinition(uri, &params.Position)
+	_, member, _, err := getDefinition(uri, &params.Position)
 
 	if err != nil || member == nil {
 		return
@@ -32,7 +32,7 @@ func Rename(context *glsp.Context, params *proto.RenameParams) (res *proto.Works
 		return
 	}
 
-	family, member, _, _, err := getDefinition(uri, &params.Position)
+	family, member, _, err := getDefinition(uri, &params.Position)
 
 	if err != nil || member == nil {
 		return
@@ -43,10 +43,11 @@ func Rename(context *glsp.Context, params *proto.RenameParams) (res *proto.Works
 		Node: member.Node,
 	})
 
+	tempDocs := make(Docs)
 	changes := make(map[proto.DocumentUri][]proto.TextEdit)
 
 	for _, ref := range refs {
-		doc, err := openDoc(ref.Uri)
+		doc, err := tempDocs.Get(ref.Uri)
 
 		if err != nil {
 			return nil, err
