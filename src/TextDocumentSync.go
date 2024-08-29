@@ -75,3 +75,54 @@ func DocChange(ctx *glsp.Context, params *proto.DidChangeTextDocumentParams) err
 
 	return nil
 }
+
+func DocCreate(ctx *glsp.Context, params *proto.CreateFilesParams) error {
+	for _, file := range params.Files {
+		err := setDirtyUri(ctx, file.URI)
+
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func DocRename(ctx *glsp.Context, params *proto.RenameFilesParams) error {
+	for _, file := range params.Files {
+		err := setDirtyUri(ctx, file.OldURI, file.NewURI)
+
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func DocDelete(ctx *glsp.Context, params *proto.DeleteFilesParams) error {
+	for _, file := range params.Files {
+		err := setDirtyUri(ctx, file.URI)
+
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func setDirtyUri(ctx *glsp.Context, uris ...Uri) error {
+	for _, uri := range uris {
+		uri, err := normalizeUri(uri)
+
+		if err != nil {
+			return err
+		}
+
+		root.DirtyUris.Set(uri)
+		docDiagnostic.Set(uri, ctx)
+	}
+
+	return nil
+}

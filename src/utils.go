@@ -3,6 +3,7 @@ package src
 import (
 	"encoding/json"
 	urlParser "net/url"
+	"path/filepath"
 	"strings"
 
 	familymarkup "github.com/redexp/tree-sitter-familymarkup"
@@ -84,6 +85,16 @@ func normalizeUri(uri Uri) (Uri, error) {
 	}
 
 	return toUri(path), nil
+}
+
+func renameUri(uri Uri, name string) (Uri, error) {
+	base, err := uriToPath(uri)
+
+	if err != nil {
+		return "", err
+	}
+
+	return toUri(filepath.Join(base, "..", name+filepath.Ext(base))), nil
 }
 
 // "surname-name", [2]*Node
@@ -217,4 +228,8 @@ func isNameRef(node *Node) bool {
 
 func isNameDef(node *Node) bool {
 	return node != nil && node.Type() == "name_def"
+}
+
+func pt[T string](src T) *T {
+	return &src
 }

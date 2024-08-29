@@ -21,6 +21,16 @@ func Initialize(ctx *glsp.Context, params *proto.InitializeParams) (any, error) 
 
 	typesMap = types
 	syncType := proto.TextDocumentSyncKindIncremental
+	fileFilters := proto.FileOperationRegistrationOptions{
+		Filters: []proto.FileOperationFilter{
+			{
+				Scheme: pt("file"),
+				Pattern: proto.FileOperationPattern{
+					Glob: "**/*.{fm,fml,family}",
+				},
+			},
+		},
+	}
 
 	res := &proto.InitializeResult{
 		ServerInfo: &proto.InitializeResultServerInfo{
@@ -40,6 +50,11 @@ func Initialize(ctx *glsp.Context, params *proto.InitializeParams) (any, error) 
 			Workspace: &proto.ServerCapabilitiesWorkspace{
 				WorkspaceFolders: &proto.WorkspaceFoldersServerCapabilities{
 					Supported: &proto.True,
+				},
+				FileOperations: &proto.ServerCapabilitiesWorkspaceFileOperations{
+					DidCreate: &fileFilters,
+					DidRename: &fileFilters,
+					DidDelete: &fileFilters,
 				},
 			},
 			DefinitionProvider:        true,

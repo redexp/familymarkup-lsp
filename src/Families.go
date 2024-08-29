@@ -231,9 +231,14 @@ func (root *Root) UpdateDirty() error {
 	}
 
 	root.UnknownRefs = filterRefs(root.UnknownRefs, uris)
+	tempDocs := make(Docs)
 
 	for uri := range uris {
-		doc, err := openDoc(uri)
+		if !docExist(uri) {
+			continue
+		}
+
+		doc, err := tempDocs.Get(uri)
 
 		if err != nil {
 			return err
@@ -256,7 +261,11 @@ func (root *Root) UpdateDirty() error {
 	defer q.Close()
 
 	for uri := range refsUris {
-		doc, err := openDoc(uri)
+		if !docExist(uri) {
+			continue
+		}
+
+		doc, err := tempDocs.Get(uri)
 
 		if err != nil {
 			return err

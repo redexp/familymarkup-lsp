@@ -156,7 +156,12 @@ func (dd *DocDebouncer) Flush() {
 	root.UpdateDirty()
 
 	for uri, ctx := range dd.Docs {
-		PublishDiagnostics(ctx, uri, nil)
 		delete(dd.Docs, uri)
+
+		if !docExist(uri) {
+			continue
+		}
+
+		PublishDiagnostics(ctx, uri, nil)
 	}
 }

@@ -1,6 +1,8 @@
 package src
 
 import (
+	"os"
+
 	"github.com/redexp/textdocument"
 	familymarkup "github.com/redexp/tree-sitter-familymarkup"
 )
@@ -83,6 +85,21 @@ func tempDoc(uri Uri) (doc *TextDocument, err error) {
 	doc.Tree = tree
 
 	return
+}
+
+func docExist(uri Uri) bool {
+	path, err := uriToPath(uri)
+
+	if err != nil {
+		return false
+	}
+
+	info, err := os.Stat(path)
+	if os.IsNotExist(err) {
+		return false
+	}
+
+	return !info.IsDir()
 }
 
 func toString(node *Node, doc *TextDocument) string {
