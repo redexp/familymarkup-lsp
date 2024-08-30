@@ -172,9 +172,13 @@ func getTypeNode(doc *TextDocument, pos *Position) (t string, nodes []*Node, err
 	return "nil", []*Node{}, nil
 }
 
-func getClosestNode(node *Node, t string) *Node {
-	for node != nil && node.Type() != t {
+func getClosestNode(node *Node, parentType string, fields ...string) *Node {
+	for node != nil && node.Type() != parentType {
 		node = node.Parent()
+	}
+
+	if node != nil && len(fields) > 0 {
+		return getNodeByFields(node, fields...)
 	}
 
 	return node
@@ -198,6 +202,10 @@ func getNodeByFields(node *Node, fields ...string) *Node {
 
 func getClosestFamilyName(node *Node) *Node {
 	return getNodeByFields(getClosestNode(node, "family"), "name", "name")
+}
+
+func getClosestSources(node *Node) *Node {
+	return getClosestNode(node, "relation", "sources")
 }
 
 func nameRefName(node *Node) *Node {
@@ -230,6 +238,6 @@ func isNameDef(node *Node) bool {
 	return node != nil && node.Type() == "name_def"
 }
 
-func pt[T string](src T) *T {
+func pt[T ~string | ~int32](src T) *T {
 	return &src
 }

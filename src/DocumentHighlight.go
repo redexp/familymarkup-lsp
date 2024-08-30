@@ -24,8 +24,6 @@ func DocumentHighlight(context *glsp.Context, params *proto.DocumentHighlightPar
 		return
 	}
 
-	kind := proto.DocumentHighlightKindRead
-
 	res = make([]proto.DocumentHighlight, 0)
 
 	if family.Uri == uri {
@@ -37,7 +35,7 @@ func DocumentHighlight(context *glsp.Context, params *proto.DocumentHighlightPar
 
 		res = append(res, proto.DocumentHighlight{
 			Range: *r,
-			Kind:  &kind,
+			Kind:  pt(proto.DocumentHighlightKindRead),
 		})
 	}
 
@@ -54,7 +52,7 @@ func DocumentHighlight(context *glsp.Context, params *proto.DocumentHighlightPar
 
 		res = append(res, proto.DocumentHighlight{
 			Range: *r,
-			Kind:  &kind,
+			Kind:  pt(proto.DocumentHighlightKindRead),
 		})
 	}
 

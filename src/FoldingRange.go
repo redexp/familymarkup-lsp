@@ -24,7 +24,6 @@ func FoldingRange(context *glsp.Context, params *proto.FoldingRangeParams) (res 
 	defer c.Close()
 
 	res = make([]proto.FoldingRange, 0)
-	kind := "region"
 
 	for {
 		match, ok := c.NextMatch()
@@ -45,7 +44,7 @@ func FoldingRange(context *glsp.Context, params *proto.FoldingRangeParams) (res 
 			res = append(res, proto.FoldingRange{
 				StartLine: start,
 				EndLine:   end,
-				Kind:      &kind,
+				Kind:      pt("region"),
 			})
 		}
 	}

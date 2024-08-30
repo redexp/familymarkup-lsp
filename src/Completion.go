@@ -26,8 +26,6 @@ func Completion(context *glsp.Context, params *proto.CompletionParams) (any, err
 
 	list := make([]proto.CompletionItem, 0)
 
-	kind := proto.CompletionItemKindVariable
-
 	addAliases := func(aliases []string) {
 		if aliases == nil {
 			return
@@ -35,7 +33,7 @@ func Completion(context *glsp.Context, params *proto.CompletionParams) (any, err
 
 		for _, value := range aliases {
 			list = append(list, proto.CompletionItem{
-				Kind:  &kind,
+				Kind:  pt(proto.CompletionItemKindVariable),
 				Label: value,
 			})
 		}
@@ -44,7 +42,7 @@ func Completion(context *glsp.Context, params *proto.CompletionParams) (any, err
 	addMembers := func(family *Family) {
 		for _, member := range family.Members {
 			list = append(list, proto.CompletionItem{
-				Kind:  &kind,
+				Kind:  pt(proto.CompletionItemKindVariable),
 				Label: member.Name,
 			})
 
@@ -67,7 +65,7 @@ func Completion(context *glsp.Context, params *proto.CompletionParams) (any, err
 
 	for _, family := range root.Families {
 		list = append(list, proto.CompletionItem{
-			Kind:  &kind,
+			Kind:  pt(proto.CompletionItemKindVariable),
 			Label: family.Name,
 		})
 
