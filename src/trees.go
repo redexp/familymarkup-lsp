@@ -13,10 +13,23 @@ import (
 
 type Trees map[Uri]*Tree
 
-var trees Trees = Trees{}
+var trees Trees = make(Trees)
+var lock sync.Mutex
 
 func setTree(uri Uri, tree *Tree) {
+	lock.Lock()
 	trees[uri] = tree
+	lock.Unlock()
+}
+
+func getTree(uri Uri) *Tree {
+	lock.Lock()
+	defer lock.Unlock()
+	return trees[uri]
+}
+
+func removeTree(uri Uri) {
+	delete(trees, uri)
 }
 
 func getTreeText(uri Uri) (tree *Tree, text []byte, err error) {
@@ -35,6 +48,12 @@ func getTreeText(uri Uri) (tree *Tree, text []byte, err error) {
 	text, err = os.ReadFile(path)
 
 	if err != nil {
+		return
+	}
+
+	tree = getTree(uri)
+
+	if tree != nil {
 		return
 	}
 
