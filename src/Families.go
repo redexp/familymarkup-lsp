@@ -199,8 +199,7 @@ func (root *Root) UpdateDirty() error {
 
 	uris := root.DirtyUris
 	root.DirtyUris = UriSet{}
-
-	refsUris := UriSet{}
+	root.UnknownRefs = filterRefs(root.UnknownRefs, uris)
 
 	for uri := range root.NodeRefs {
 		if uris.Has(uri) {
@@ -216,7 +215,7 @@ func (root *Root) UpdateDirty() error {
 						continue
 					}
 
-					refsUris.Set(ref.Uri)
+					root.UnknownRefs = append(root.UnknownRefs, ref)
 				}
 			}
 
@@ -230,7 +229,6 @@ func (root *Root) UpdateDirty() error {
 		}
 	}
 
-	root.UnknownRefs = filterRefs(root.UnknownRefs, uris)
 	tempDocs := make(Docs)
 
 	for uri := range uris {
@@ -245,63 +243,6 @@ func (root *Root) UpdateDirty() error {
 		}
 
 		root.Update(doc.Tree, []byte(doc.Text), uri)
-	}
-
-	q, err := createQuery(`
-		(name_ref
-			(surname)
-			(name)
-		) @name_ref
-	`)
-
-	if err != nil {
-		return err
-	}
-
-	defer q.Close()
-
-	for uri := range refsUris {
-		if !docExist(uri) {
-			continue
-		}
-
-		doc, err := tempDocs.Get(uri)
-
-		if err != nil {
-			return err
-		}
-
-		c := createCursor(q, doc.Tree)
-		text := []byte(doc.Text)
-
-		for {
-			match, ok := c.NextMatch()
-
-			if !ok {
-				break
-			}
-
-			for _, cap := range match.Captures {
-				node := cap.Node
-				surname := node.NamedChild(0).Content(text)
-				name := node.NamedChild(1).Content(text)
-
-				f, m := root.FindMember(surname, name)
-
-				if f == nil || !uris.Has(f.Uri) {
-					continue
-				}
-
-				root.AddMemberRef(m, &Ref{
-					Uri:     uri,
-					Node:    node,
-					Surname: surname,
-					Name:    name,
-				})
-			}
-		}
-
-		c.Close()
 	}
 
 	root.UpdateUnknownRefs()
