@@ -16,7 +16,14 @@ type DocDebouncer struct {
 
 const (
 	UnknownFamilyError = iota
+	NameDuplicateWarning
 )
+
+type DiagnosticData struct {
+	Type    uint8  `json:"type"`
+	Surname string `json:"surname"`
+	Name    string `json:"name"`
+}
 
 func PublishDiagnostics(ctx *glsp.Context, uri Uri, doc *TextDocument) {
 	if !supportDiagnostics {
@@ -35,8 +42,6 @@ func PublishDiagnostics(ctx *glsp.Context, uri Uri, doc *TextDocument) {
 	}
 
 	list := make([]proto.Diagnostic, 0)
-	severityError := proto.DiagnosticSeverityError
-	severityWarning := proto.DiagnosticSeverityWarning
 
 	for _, ref := range root.UnknownRefs {
 		if ref.Uri != uri {
@@ -65,10 +70,12 @@ func PublishDiagnostics(ctx *glsp.Context, uri Uri, doc *TextDocument) {
 		}
 
 		list = append(list, proto.Diagnostic{
-			Severity: &severityError,
+			Severity: pt(proto.DiagnosticSeverityError),
 			Range:    *r,
 			Message:  message,
-			Data:     UnknownFamilyError,
+			Data: DiagnosticData{
+				Type: UnknownFamilyError,
+			},
 		})
 	}
 
@@ -105,27 +112,36 @@ func PublishDiagnostics(ctx *glsp.Context, uri Uri, doc *TextDocument) {
 
 					locations = make([]proto.DiagnosticRelatedInformation, count)
 					for i, dup := range dups {
-						rr, err := d.NodeToRange(dup.Member.Node)
+						node := dup.Member.Node
+						rr, err := d.NodeToRange(node)
 
 						if err != nil {
 							logDebug("Diagnostic error: %s", err.Error())
 							continue
 						}
 
+						sources := getClosestSources(node)
+
 						locations[i] = proto.DiagnosticRelatedInformation{
 							Location: proto.Location{
 								URI:   family.Uri,
 								Range: *rr,
 							},
+							Message: fmt.Sprintf("Child of %s", toString(sources, d)),
 						}
 					}
 				}
 
 				list = append(list, proto.Diagnostic{
-					Severity:           &severityWarning,
+					Severity:           pt(proto.DiagnosticSeverityWarning),
 					Range:              *r,
-					Message:            fmt.Sprintf("An unobvious name. There are %d persons with the name %s.", count, name),
+					Message:            fmt.Sprintf("An unobvious name. There are %d persons with the name %s. Add uniq name alias to one of them", count, name),
 					RelatedInformation: locations,
+					Data: DiagnosticData{
+						Type:    NameDuplicateWarning,
+						Surname: family.Name,
+						Name:    name,
+					},
 				})
 			}
 		}
