@@ -19,7 +19,7 @@ func Definition(context *glsp.Context, params *proto.DefinitionParams) (res any,
 		return
 	}
 
-	r, err := nodeToRange(uri, target)
+	r, err := nodeToRange(family.Uri, target)
 
 	if err != nil {
 		return
