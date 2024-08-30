@@ -394,6 +394,22 @@ func (family *Family) addDuplicate(name string, member *Member, node *Node) {
 	})
 }
 
+func (member *Member) GetUniqName() string {
+	family := member.Family
+	names := []string{member.Name}
+	names = append(names, member.Aliases...)
+
+	for _, name := range names {
+		_, exist := family.Duplicates[name]
+
+		if !exist {
+			return name
+		}
+	}
+
+	return ""
+}
+
 func (uris UriSet) Set(uri Uri) {
 	uris[uri] = true
 }
