@@ -70,10 +70,7 @@ func DocChange(ctx *glsp.Context, params *proto.DidChangeTextDocumentParams) err
 		}
 	}
 
-	root.DirtyUris.Set(uri)
-	docDiagnostic.Set(uri, ctx)
-
-	return nil
+	return setDirtyUri(ctx, uri)
 }
 
 func DocCreate(ctx *glsp.Context, params *proto.CreateFilesParams) error {
@@ -85,29 +82,47 @@ func DocCreate(ctx *glsp.Context, params *proto.CreateFilesParams) error {
 		}
 	}
 
+	diagnosticOpenDocs(ctx)
+
 	return nil
 }
 
 func DocRename(ctx *glsp.Context, params *proto.RenameFilesParams) error {
 	for _, file := range params.Files {
-		err := setDirtyUri(ctx, file.OldURI, file.NewURI)
+		err := removeDoc(file.OldURI)
+
+		if err != nil {
+			return err
+		}
+
+		err = setDirtyUri(ctx, file.OldURI, file.NewURI)
 
 		if err != nil {
 			return err
 		}
 	}
+
+	diagnosticOpenDocs(ctx)
 
 	return nil
 }
 
 func DocDelete(ctx *glsp.Context, params *proto.DeleteFilesParams) error {
 	for _, file := range params.Files {
-		err := setDirtyUri(ctx, file.URI)
+		err := removeDoc(file.URI)
+
+		if err != nil {
+			return err
+		}
+
+		err = setDirtyUri(ctx, file.URI)
 
 		if err != nil {
 			return err
 		}
 	}
+
+	diagnosticOpenDocs(ctx)
 
 	return nil
 }
@@ -125,4 +140,10 @@ func setDirtyUri(ctx *glsp.Context, uris ...Uri) error {
 	}
 
 	return nil
+}
+
+func diagnosticOpenDocs(ctx *glsp.Context) {
+	for uri := range documents {
+		docDiagnostic.Set(uri, ctx)
+	}
 }
