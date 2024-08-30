@@ -62,6 +62,19 @@ func closeDoc(uri Uri) {
 	delete(documents, uri)
 }
 
+func removeDoc(uri Uri) error {
+	uri, err := normalizeUri(uri)
+
+	if err != nil {
+		return err
+	}
+
+	closeDoc(uri)
+	removeTree(uri)
+
+	return nil
+}
+
 func tempDoc(uri Uri) (doc *TextDocument, err error) {
 	uri, err = normalizeUri(uri)
 
