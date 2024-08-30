@@ -135,7 +135,7 @@ func CodeActionResolve(ctx *glsp.Context, params *proto.CodeAction) (res *proto.
 			next := node.NextSibling()
 
 			if next != nil && next.Type() == "name" {
-				text = fmt.Sprintf("%s? + ? =\n%s", text, toString(next, doc))
+				text = fmt.Sprintf("%s? + ? =\n1. %s", text, toString(next, doc))
 			}
 		}
 
