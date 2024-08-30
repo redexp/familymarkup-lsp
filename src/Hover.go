@@ -15,9 +15,9 @@ func Hover(context *glsp.Context, params *proto.HoverParams) (h *proto.Hover, er
 		return
 	}
 
-	f, m, t, err := getDefinition(uri, &params.Position)
+	f, m, _, err := getDefinition(uri, &params.Position)
 
-	if err != nil || f == nil || t == nil {
+	if err != nil || f == nil {
 		return
 	}
 
@@ -25,15 +25,50 @@ func Hover(context *glsp.Context, params *proto.HoverParams) (h *proto.Hover, er
 	aliases := f.Aliases
 
 	if m != nil {
+		if m.Node.Parent().Type() == "sources" {
+			return
+		}
+
 		name = m.Name
 		aliases = m.Aliases
-	}
-
-	if len(aliases) == 0 {
+	} else if len(aliases) == 0 {
 		return
 	}
 
-	r, err := nodeToRange(uri, t)
+	message := fmt.Sprintf("**%s**", name)
+
+	if len(aliases) > 0 {
+		message += " (" + strings.Join(aliases, ", ") + ")"
+	}
+
+	if m != nil {
+		sources := getClosestSources(m.Node)
+		doc, err := tempDoc(f.Uri)
+
+		if err != nil {
+			return nil, err
+		}
+
+		message += " child of " + toString(sources, doc)
+	}
+
+	doc, err := tempDoc(uri)
+
+	if err != nil {
+		return
+	}
+
+	target, err := doc.GetClosestNodeByPosition(&params.Position)
+
+	if err != nil || target == nil {
+		return
+	}
+
+	if isNameRef(target.Parent()) {
+		target = target.Parent()
+	}
+
+	r, err := doc.NodeToRange(target)
 
 	if err != nil {
 		return
@@ -43,7 +78,7 @@ func Hover(context *glsp.Context, params *proto.HoverParams) (h *proto.Hover, er
 		Range: r,
 		Contents: proto.MarkupContent{
 			Kind:  proto.MarkupKindMarkdown,
-			Value: fmt.Sprintf("**%s** (%s)", name, strings.Join(aliases, ", ")),
+			Value: message,
 		},
 	}
 
