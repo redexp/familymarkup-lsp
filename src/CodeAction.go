@@ -12,6 +12,7 @@ type CodeActionData struct {
 	Uri  string `json:"uri"`
 	Type uint8  `json:"type"`
 	Mod  uint8  `json:"mod"`
+	Name string `json:"name"`
 }
 
 const (
@@ -32,18 +33,23 @@ func CodeAction(context *glsp.Context, params *proto.CodeActionParams) (any, err
 	}
 
 	list := make([]proto.CodeAction, 0)
-	kindQuickFix := proto.CodeActionKindQuickFix
+	tempDocs := make(Docs)
 
 	for _, d := range params.Context.Diagnostics {
-		data, ok := d.Data.(float64)
-
-		if !ok {
+		if d.Data == nil {
 			continue
 		}
 
-		switch data {
+		var data DiagnosticData
+		err := mapstructure.Decode(d.Data, &data)
+
+		if err != nil {
+			return nil, err
+		}
+
+		switch data.Type {
 		case UnknownFamilyError:
-			doc, err := tempDoc(uri)
+			doc, err := tempDocs.Get(uri)
 
 			if err != nil {
 				return nil, err
@@ -63,7 +69,7 @@ func CodeAction(context *glsp.Context, params *proto.CodeActionParams) (any, err
 				list,
 				proto.CodeAction{
 					Title:       fmt.Sprintf("Create %s family after %s", name, toString(family, doc)),
-					Kind:        &kindQuickFix,
+					Kind:        pt(proto.CodeActionKindQuickFix),
 					Diagnostics: []proto.Diagnostic{d},
 					Data: CodeActionData{
 						Uri:  uri,
@@ -73,7 +79,7 @@ func CodeAction(context *glsp.Context, params *proto.CodeActionParams) (any, err
 				},
 				proto.CodeAction{
 					Title:       fmt.Sprintf("Create %s family at the end of file", name),
-					Kind:        &kindQuickFix,
+					Kind:        pt(proto.CodeActionKindQuickFix),
 					Diagnostics: []proto.Diagnostic{d},
 					Data: CodeActionData{
 						Uri:  uri,
@@ -83,7 +89,7 @@ func CodeAction(context *glsp.Context, params *proto.CodeActionParams) (any, err
 				},
 				proto.CodeAction{
 					Title:       fmt.Sprintf("Create new file with %s family", name),
-					Kind:        &kindQuickFix,
+					Kind:        pt(proto.CodeActionKindQuickFix),
 					Diagnostics: []proto.Diagnostic{d},
 					Data: CodeActionData{
 						Uri:  uri,
@@ -92,6 +98,58 @@ func CodeAction(context *glsp.Context, params *proto.CodeActionParams) (any, err
 					},
 				},
 			)
+
+		case NameDuplicateWarning:
+			family := root.Families[data.Surname]
+
+			if family == nil {
+				continue
+			}
+
+			dups := family.Duplicates[data.Name]
+
+			if dups == nil {
+				continue
+			}
+
+			member := family.Members[data.Name]
+
+			if member == nil {
+				continue
+			}
+
+			dups = append(dups, &Duplicate{Member: member})
+
+			for _, dup := range dups {
+				name := dup.Member.GetUniqName()
+
+				if name == "" {
+					continue
+				}
+
+				sources := getClosestSources(dup.Member.Node)
+
+				if sources == nil {
+					continue
+				}
+
+				doc, err := tempDocs.Get(family.Uri)
+
+				if err != nil {
+					return nil, err
+				}
+
+				list = append(list, proto.CodeAction{
+					Title:       fmt.Sprintf("Change to %s child of %s", name, toString(sources, doc)),
+					Kind:        pt(proto.CodeActionKindQuickFix),
+					Diagnostics: []proto.Diagnostic{d},
+					Data: CodeActionData{
+						Uri:  uri,
+						Type: NameDuplicateWarning,
+						Name: name,
+					},
+				})
+			}
 		}
 	}
 
@@ -112,6 +170,11 @@ func CodeActionResolve(ctx *glsp.Context, params *proto.CodeAction) (res *proto.
 	}
 
 	start := params.Diagnostics[0].Range.Start
+	end := params.Diagnostics[0].Range.End
+
+	res = &proto.CodeAction{
+		Edit: &proto.WorkspaceEdit{},
+	}
 
 	switch data.Type {
 	case UnknownFamilyError:
@@ -139,10 +202,6 @@ func CodeActionResolve(ctx *glsp.Context, params *proto.CodeAction) (res *proto.
 			}
 		}
 
-		res = &proto.CodeAction{
-			Edit: &proto.WorkspaceEdit{},
-		}
-
 		if data.Mod == CreateFamilyOnNewFile {
 			newUri, err := renameUri(data.Uri, surname)
 
@@ -162,7 +221,7 @@ func CodeActionResolve(ctx *glsp.Context, params *proto.CodeAction) (res *proto.
 
 			res.Edit.DocumentChanges = []any{
 				createFile,
-				createEdit(newUri, pos, text),
+				createInserText(newUri, pos, text),
 			}
 
 			docDiagnostic.Set(data.Uri, ctx)
@@ -186,13 +245,16 @@ func CodeActionResolve(ctx *glsp.Context, params *proto.CodeAction) (res *proto.
 			return nil, err
 		}
 
-		res.Edit.DocumentChanges = []any{createEdit(data.Uri, *pos, "\n\n"+text)}
+		res.Edit.DocumentChanges = []any{createInserText(data.Uri, *pos, "\n\n"+text)}
+
+	case NameDuplicateWarning:
+		res.Edit.DocumentChanges = []any{createEdit(data.Uri, start, end, data.Name)}
 	}
 
 	return res, nil
 }
 
-func createEdit(uri Uri, pos proto.Position, text string) proto.TextDocumentEdit {
+func createEdit(uri Uri, start proto.Position, end proto.Position, text string) proto.TextDocumentEdit {
 	return proto.TextDocumentEdit{
 		TextDocument: proto.OptionalVersionedTextDocumentIdentifier{
 			TextDocumentIdentifier: proto.TextDocumentIdentifier{URI: uri},
@@ -200,11 +262,15 @@ func createEdit(uri Uri, pos proto.Position, text string) proto.TextDocumentEdit
 		Edits: []any{
 			proto.TextEdit{
 				Range: proto.Range{
-					Start: pos,
-					End:   pos,
+					Start: start,
+					End:   end,
 				},
 				NewText: text,
 			},
 		},
 	}
+}
+
+func createInserText(uri Uri, pos proto.Position, text string) proto.TextDocumentEdit {
+	return createEdit(uri, pos, pos, text)
 }
