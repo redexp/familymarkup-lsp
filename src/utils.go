@@ -1,9 +1,11 @@
 package src
 
 import (
+	"context"
 	"encoding/json"
 	urlParser "net/url"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	familymarkup "github.com/redexp/tree-sitter-familymarkup"
@@ -13,7 +15,13 @@ import (
 	serv "github.com/tliron/glsp/server"
 )
 
+type ParserWorker struct {
+	parser *sitter.Parser
+	busy   bool
+}
+
 var logOnly string
+var parsersPool = make([]*ParserWorker, 0)
 
 func CreateServer(handlers glsp.Handler) {
 	server = serv.NewServer(handlers, "familymarkup", false)
@@ -26,12 +34,39 @@ func createParser() *sitter.Parser {
 	return p
 }
 
-func getParser() *sitter.Parser {
-	if parser == nil {
-		parser = createParser()
+func getParser() *ParserWorker {
+	var parser *ParserWorker
+
+	for _, p := range parsersPool {
+		if !p.busy {
+			return p
+		}
 	}
 
+	parser = &ParserWorker{
+		parser: createParser(),
+		busy:   true,
+	}
+
+	parsersPool = append(parsersPool, parser)
+
 	return parser
+}
+
+func (p *ParserWorker) Parse(text []byte) (tree *sitter.Tree, err error) {
+	p.busy = true
+
+	tree, err = p.parser.ParseCtx(context.Background(), nil, text)
+
+	if len(parsersPool) > 1 {
+		p.parser.Close()
+		index := slices.Index(parsersPool, p)
+		parsersPool = slices.Delete(parsersPool, index, index+1)
+	}
+
+	p.busy = false
+
+	return
 }
 
 func logDebug(msg string, data any) {

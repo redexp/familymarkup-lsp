@@ -24,6 +24,8 @@ func openDoc(uri Uri) (doc *TextDocument, err error) {
 		return
 	}
 
+	waitTreesReady()
+
 	tree, text, err := getTreeText(uri)
 
 	if err != nil {
@@ -36,7 +38,7 @@ func openDoc(uri Uri) (doc *TextDocument, err error) {
 func openDocText(uri Uri, text string, tree *Tree) (doc *TextDocument, err error) {
 	doc = textdocument.NewTextDocument(text)
 	doc.Tree = tree
-	err = doc.SetParser(getParser())
+	err = doc.SetParser(createParser())
 
 	if err != nil {
 		return
@@ -59,6 +61,13 @@ func openDocText(uri Uri, text string, tree *Tree) (doc *TextDocument, err error
 }
 
 func closeDoc(uri Uri) {
+	doc, exist := documents[uri]
+
+	if !exist {
+		return
+	}
+
+	doc.Parser.Close()
 	delete(documents, uri)
 }
 

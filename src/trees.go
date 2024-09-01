@@ -1,7 +1,6 @@
 package src
 
 import (
-	"context"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -11,25 +10,30 @@ import (
 	sitter "github.com/smacker/go-tree-sitter"
 )
 
-type Trees map[Uri]*Tree
-
-var trees Trees = make(Trees)
+var trees sync.Map
+var readingTrees sync.WaitGroup
 var lock sync.Mutex
 
+func waitTreesReady() {
+	readingTrees.Wait()
+}
+
 func setTree(uri Uri, tree *Tree) {
-	lock.Lock()
-	trees[uri] = tree
-	lock.Unlock()
+	trees.Store(uri, tree)
 }
 
 func getTree(uri Uri) *Tree {
-	lock.Lock()
-	defer lock.Unlock()
-	return trees[uri]
+	value, ok := trees.Load(uri)
+
+	if !ok {
+		return nil
+	}
+
+	return value.(*Tree)
 }
 
 func removeTree(uri Uri) {
-	delete(trees, uri)
+	trees.Delete(uri)
 }
 
 func getTreeText(uri Uri) (tree *Tree, text []byte, err error) {
@@ -69,13 +73,11 @@ func getTreeText(uri Uri) (tree *Tree, text []byte, err error) {
 }
 
 func parseTree(text []byte) (*sitter.Tree, error) {
-	return getParser().ParseCtx(context.Background(), nil, text)
+	return getParser().Parse(text)
 }
 
 func readTreesFromDir(root string, cb func(*Tree, []byte, string) error) error {
-	var wg sync.WaitGroup
-
-	err := filepath.Walk(root, func(path string, info fs.FileInfo, err error) error {
+	return filepath.Walk(root, func(path string, info fs.FileInfo, err error) error {
 		if err != nil || info.IsDir() {
 			return nil
 		}
@@ -86,24 +88,21 @@ func readTreesFromDir(root string, cb func(*Tree, []byte, string) error) error {
 			return nil
 		}
 
-		wg.Add(1)
+		readingTrees.Add(1)
 
 		go func() {
-			defer wg.Done()
+			defer readingTrees.Done()
 
-			tree, text, _ := getTreeText(path)
+			tree, text, err := getTreeText(path)
+
+			if err != nil {
+				Debugf("getTreeText(%s) error: %s", path, err.Error())
+				return
+			}
 
 			cb(tree, text, path)
 		}()
 
 		return nil
 	})
-
-	if err != nil {
-		return err
-	}
-
-	wg.Wait()
-
-	return nil
 }

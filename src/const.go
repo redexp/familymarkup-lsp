@@ -14,10 +14,10 @@ type Node = sitter.Node
 type Position = proto.Position
 
 var (
-	parser   *sitter.Parser
 	typesMap textdocument.HighlightLegend
 	server   *serv.Server
 	root     *Root
 )
 
+var workspaceFolders = make([]string, 0)
 var supportDiagnostics = false
