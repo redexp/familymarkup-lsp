@@ -78,10 +78,6 @@ func Initialize(ctx *glsp.Context, params *proto.InitializeParams) (any, error) 
 		for _, folder := range params.WorkspaceFolders {
 			path, err := uriToPath(folder.URI)
 
-			if err != nil {
-				return nil, err
-			}
-
 			err = readTreesFromDir(path, func(tree *Tree, text []byte, path string) error {
 				return root.Update(tree, text, toUri(path))
 			})
@@ -90,13 +86,29 @@ func Initialize(ctx *glsp.Context, params *proto.InitializeParams) (any, error) 
 				return nil, err
 			}
 		}
-
-		root.UpdateUnknownRefs()
 	}
 
 	supportDiagnostics = params.Capabilities.TextDocument != nil && params.Capabilities.TextDocument.PublishDiagnostics != nil
 
 	return res, nil
+}
+
+func Initialized(context *glsp.Context, params *proto.InitializedParams) error {
+	waitTreesReady()
+
+	root.UpdateUnknownRefs()
+
+	return nil
+}
+
+func SetTrace(context *glsp.Context, params *proto.SetTraceParams) error {
+	Debugf("SetTrace: %v", params.Value)
+	return nil
+}
+
+func CancelRequest(context *glsp.Context, params *proto.CancelParams) error {
+	Debugf("CancelRequest: %v", params.ID)
+	return nil
 }
 
 func GetLegend() (*proto.SemanticTokensLegend, textdocument.HighlightLegend, error) {

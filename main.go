@@ -36,6 +36,9 @@ func init() {
 func main() {
 	lsp.CreateServer(&proto.Handler{
 		Initialize:                     lsp.Initialize,
+		Initialized:                    lsp.Initialized,
+		SetTrace:                       lsp.SetTrace,
+		CancelRequest:                  lsp.CancelRequest,
 		TextDocumentSemanticTokensFull: lsp.SemanticTokensFull,
 		TextDocumentDidOpen:            lsp.DocOpen,
 		TextDocumentDidChange:          lsp.DocChange,
