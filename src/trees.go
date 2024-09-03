@@ -12,7 +12,6 @@ import (
 
 var trees sync.Map
 var readingTrees sync.WaitGroup
-var lock sync.Mutex
 
 func waitTreesReady() {
 	readingTrees.Wait()

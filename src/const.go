@@ -19,5 +19,4 @@ var (
 	root     *Root
 )
 
-var workspaceFolders = make([]string, 0)
 var supportDiagnostics = false

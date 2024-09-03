@@ -78,6 +78,10 @@ func Initialize(ctx *glsp.Context, params *proto.InitializeParams) (any, error) 
 		for _, folder := range params.WorkspaceFolders {
 			path, err := uriToPath(folder.URI)
 
+			if err != nil {
+				return nil, err
+			}
+
 			err = readTreesFromDir(path, func(tree *Tree, text []byte, path string) error {
 				return root.Update(tree, text, toUri(path))
 			})
