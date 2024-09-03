@@ -3,6 +3,7 @@ package src
 import (
 	"context"
 	"encoding/json"
+	"iter"
 	urlParser "net/url"
 	"path/filepath"
 	"slices"
@@ -275,4 +276,26 @@ func isNameDef(node *Node) bool {
 
 func pt[T ~string | ~int32](src T) *T {
 	return &src
+}
+
+func queryIter(q *sitter.Query, tree *Tree) iter.Seq2[int, *Node] {
+	c := createCursor(q, tree)
+
+	return func(yield func(int, *Node) bool) {
+		defer c.Close()
+
+		for {
+			match, ok := c.NextMatch()
+
+			if !ok {
+				break
+			}
+
+			for _, cap := range match.Captures {
+				if !yield(int(cap.Index), cap.Node) {
+					return
+				}
+			}
+		}
+	}
 }

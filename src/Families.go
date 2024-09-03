@@ -67,26 +67,26 @@ func createRoot() *Root {
 
 func (root *Root) Update(tree *Tree, text []byte, uri Uri) (err error) {
 	q, err := createQuery(`
-(family_name 
-	(name) @family-name
-)
-
-(name_ref
-	(surname)
-	(name)
-) @name_ref
-
-(sources
-	(name) @sources-name
-)
-
-(relation
-	(targets
-		(name_def
-			(name) @name_def-name
+		(family_name 
+			(name) @family-name
 		)
-	)
-)
+
+		(name_ref
+			(surname)
+			(name)
+		) @name_ref
+
+		(sources
+			(name) @sources-name
+		)
+
+		(relation
+			(targets
+				(name_def
+					(name) @name_def-name
+				)
+			)
+		)
 	`)
 
 	if err != nil {
@@ -95,11 +95,6 @@ func (root *Root) Update(tree *Tree, text []byte, uri Uri) (err error) {
 
 	defer q.Close()
 
-	c := createCursor(q, tree)
-	defer c.Close()
-
-	var family *Family
-
 	addRef := func(member *Member, node *Node) {
 		root.AddMemberRef(member, &Ref{
 			Uri:  uri,
@@ -107,62 +102,54 @@ func (root *Root) Update(tree *Tree, text []byte, uri Uri) (err error) {
 		})
 	}
 
-	for {
-		match, ok := c.NextMatch()
+	var family *Family
 
-		if !ok {
-			break
-		}
+	for index, node := range queryIter(q, tree) {
+		switch index {
+		// new family
+		case 0:
+			family = root.AddFamily(uri, node, text)
 
-		for _, cap := range match.Captures {
-			node := cap.Node
+		// name_ref
+		case 1:
+			root.addRefByNode(uri, node, text)
 
-			switch cap.Index {
-			// new family
-			case 0:
-				family = root.AddFamily(uri, node, text)
+		// sorces -> name
+		case 2:
+			name := node.Content(text)
+			m := family.GetMember(name)
 
-			// name_ref
-			case 1:
-				root.addRefByNode(uri, node, text)
+			if m != nil {
+				addRef(m, node)
+			} else {
+				family.AddMember(node, text)
+			}
 
-			// sorces -> name
-			case 2:
+		// new member or member ref
+		case 3:
+			rel := getClosestNode(node, "relation")
+
+			if rel == nil {
+				continue
+			}
+
+			arrow := rel.ChildByFieldName("arrow")
+
+			if arrow != nil && arrow.Content(text) == "=" {
+				family.AddMember(node, text)
+			} else {
 				name := node.Content(text)
 				m := family.GetMember(name)
 
 				if m != nil {
 					addRef(m, node)
 				} else {
-					family.AddMember(node, text)
-				}
-
-			// new member or member ref
-			case 3:
-				rel := getClosestNode(node, "relation")
-
-				if rel == nil {
-					continue
-				}
-
-				arrow := rel.ChildByFieldName("arrow")
-
-				if arrow != nil && arrow.Content(text) == "=" {
-					family.AddMember(node, text)
-				} else {
-					name := node.Content(text)
-					m := family.GetMember(name)
-
-					if m != nil {
-						addRef(m, node)
-					} else {
-						root.UnknownRefs = append(root.UnknownRefs, &Ref{
-							Uri:     uri,
-							Node:    node,
-							Surname: family.Name,
-							Name:    name,
-						})
-					}
+					root.UnknownRefs = append(root.UnknownRefs, &Ref{
+						Uri:     uri,
+						Node:    node,
+						Surname: family.Name,
+						Name:    name,
+					})
 				}
 			}
 		}

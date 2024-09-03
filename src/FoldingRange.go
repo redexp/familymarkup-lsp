@@ -9,10 +9,10 @@ func FoldingRange(context *glsp.Context, params *proto.FoldingRangeParams) (res 
 	doc, err := openDoc(params.TextDocument.URI)
 
 	q, err := createQuery(`
-(family) @family
+		(family) @family
 
-(relation) @rel
-`)
+		(relation) @rel
+	`)
 
 	if err != nil {
 		return
@@ -20,33 +20,21 @@ func FoldingRange(context *glsp.Context, params *proto.FoldingRangeParams) (res 
 
 	defer q.Close()
 
-	c := createCursor(q, doc.Tree)
-	defer c.Close()
-
 	res = make([]proto.FoldingRange, 0)
 
-	for {
-		match, ok := c.NextMatch()
+	for _, node := range queryIter(q, doc.Tree) {
+		start := node.StartPoint().Row
+		end := node.EndPoint().Row
 
-		if !ok {
-			break
+		if start == end {
+			continue
 		}
 
-		for _, cap := range match.Captures {
-			node := cap.Node
-			start := node.StartPoint().Row
-			end := node.EndPoint().Row
-
-			if start == end {
-				continue
-			}
-
-			res = append(res, proto.FoldingRange{
-				StartLine: start,
-				EndLine:   end,
-				Kind:      pt("region"),
-			})
-		}
+		res = append(res, proto.FoldingRange{
+			StartLine: start,
+			EndLine:   end,
+			Kind:      pt("region"),
+		})
 	}
 
 	return
