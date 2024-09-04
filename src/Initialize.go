@@ -3,6 +3,7 @@ package src
 import (
 	"slices"
 	"strings"
+	"sync"
 
 	"github.com/redexp/textdocument"
 	familymarkup "github.com/redexp/tree-sitter-familymarkup"
@@ -75,6 +76,8 @@ func Initialize(ctx *glsp.Context, params *proto.InitializeParams) (any, error) 
 	}
 
 	if params.WorkspaceFolders != nil {
+		lock := sync.Mutex{}
+
 		for _, folder := range params.WorkspaceFolders {
 			path, err := uriToPath(folder.URI)
 
@@ -83,6 +86,9 @@ func Initialize(ctx *glsp.Context, params *proto.InitializeParams) (any, error) 
 			}
 
 			err = readTreesFromDir(path, func(tree *Tree, text []byte, path string) error {
+				lock.Lock()
+				defer lock.Unlock()
+
 				return root.Update(tree, text, toUri(path))
 			})
 
