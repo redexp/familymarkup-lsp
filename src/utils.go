@@ -133,6 +133,13 @@ func renameUri(uri Uri, name string) (Uri, error) {
 	return toUri(filepath.Join(base, "..", name+filepath.Ext(base))), nil
 }
 
+func isUriName(uri Uri, name string) bool {
+	base := filepath.Base(uri)
+	ext := filepath.Ext(uri)
+
+	return name+ext == base
+}
+
 // "surname-name", [2]*Node
 // "surname-nil", [1]*Node
 // "surname", [2]*Node
@@ -260,6 +267,10 @@ func nodeToRange(uri Uri, node *Node) (res *proto.Range, err error) {
 	}
 
 	return doc.NodeToRange(node)
+}
+
+func isFamilyName(node *Node) bool {
+	return node != nil && node.Type() == "family_name"
 }
 
 func isNameAliases(node *Node) bool {

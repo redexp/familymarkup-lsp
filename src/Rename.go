@@ -12,9 +12,15 @@ func PrepareRename(context *glsp.Context, params *proto.PrepareRenameParams) (re
 		return
 	}
 
-	_, member, _, err := getDefinition(uri, &params.Position)
+	doc, err := tempDoc(uri)
 
-	if err != nil || member == nil {
+	if err != nil {
+		return
+	}
+
+	node, err := doc.GetClosestNodeByPosition(&params.Position)
+
+	if err != nil || node == nil {
 		return
 	}
 
@@ -22,7 +28,17 @@ func PrepareRename(context *glsp.Context, params *proto.PrepareRenameParams) (re
 		DefaultBehavior: true,
 	}
 
-	return
+	if isFamilyName(node.Parent()) {
+		return
+	}
+
+	mem := root.GetMemberByUriNode(uri, node)
+
+	if mem != nil {
+		return
+	}
+
+	return nil, nil
 }
 
 func Rename(context *glsp.Context, params *proto.RenameParams) (res *proto.WorkspaceEdit, err error) {
@@ -30,6 +46,60 @@ func Rename(context *glsp.Context, params *proto.RenameParams) (res *proto.Works
 
 	if err != nil {
 		return
+	}
+
+	doc, err := tempDoc(uri)
+
+	if err != nil {
+		return
+	}
+
+	node, err := doc.GetClosestNodeByPosition(&params.Position)
+
+	if err != nil || node == nil {
+		return
+	}
+
+	res = &proto.WorkspaceEdit{}
+
+	if isFamilyName(node.Parent()) {
+		r, err := doc.NodeToRange(node)
+
+		if err != nil {
+			return nil, err
+		}
+
+		res.DocumentChanges = []any{
+			proto.TextDocumentEdit{
+				TextDocument: proto.OptionalVersionedTextDocumentIdentifier{
+					TextDocumentIdentifier: proto.TextDocumentIdentifier{
+						URI: uri,
+					},
+				},
+				Edits: []any{
+					proto.TextEdit{
+						Range:   *r,
+						NewText: params.NewName,
+					},
+				},
+			},
+		}
+
+		if isUriName(uri, toString(node, doc)) {
+			newUri, err := renameUri(uri, params.NewName)
+
+			if err != nil {
+				return nil, err
+			}
+
+			res.DocumentChanges = append(res.DocumentChanges, proto.RenameFile{
+				Kind:   "rename",
+				OldURI: uri,
+				NewURI: newUri,
+			})
+		}
+
+		return res, nil
 	}
 
 	family, member, _, err := getDefinition(uri, &params.Position)
@@ -73,9 +143,7 @@ func Rename(context *glsp.Context, params *proto.RenameParams) (res *proto.Works
 		})
 	}
 
-	res = &proto.WorkspaceEdit{
-		Changes: changes,
-	}
+	res.Changes = changes
 
 	return
 }
