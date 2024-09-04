@@ -2,8 +2,8 @@ package src
 
 import (
 	"iter"
+	"math"
 	"slices"
-	"strings"
 
 	familymarkup "github.com/redexp/tree-sitter-familymarkup"
 	sitter "github.com/smacker/go-tree-sitter"
@@ -306,43 +306,15 @@ func (root *Root) FindFamily(name string) *Family {
 		return found
 	}
 
-	var foundAlias *Family
+	source := []rune(name)
 
-	for item := range root.FamilyIter() {
-		n, a := compareNameAliases(item.Name, item.Aliases, name)
-
-		if n == 1 || a == 1 {
-			return item
-		}
-
-		if n == 2 {
-			found = item
-		}
-
-		if found == nil && n == 3 {
-			found = item
-		}
-
-		if a == 2 {
-			foundAlias = item
-		}
-
-		if foundAlias == nil && a == 3 {
-			foundAlias = item
+	for key, f := range root.Families {
+		if compareNames(source, []rune(key)) {
+			return f
 		}
 	}
 
-	if found != nil {
-		return found
-	}
-
-	return foundAlias
-}
-
-func (root *Root) HasFamily(name string) bool {
-	_, has := root.Families[name]
-
-	return has
+	return nil
 }
 
 func (root *Root) RemoveFamily(f *Family) {
@@ -530,38 +502,6 @@ func createCursor(q *sitter.Query, tree *sitter.Tree) *sitter.QueryCursor {
 	return c
 }
 
-func compareNameAliases(name string, aliases []string, value string) (uint8, uint8) {
-	a := uint8(0)
-
-	if name == value {
-		return 1, 0
-	}
-
-	for _, alias := range aliases {
-		if alias == value {
-			return 0, 1
-		}
-
-		if strings.HasPrefix(alias, value) {
-			a = 2
-		}
-
-		if a == 0 && strings.Contains(alias, value) {
-			a = 3
-		}
-	}
-
-	if strings.HasPrefix(name, value) {
-		return 2, a
-	}
-
-	if strings.Contains(name, value) {
-		return 3, a
-	}
-
-	return 0, a
-}
-
 func filterRefs(refs []*Ref, uris UriSet) []*Ref {
 	list := make([]*Ref, 0)
 
@@ -607,4 +547,23 @@ func getAliases(nameNode *Node, text []byte) []string {
 	}
 
 	return list
+}
+
+func compareNames(a []rune, b []rune) bool {
+	al := float64(len(a))
+	bl := float64(len(b))
+	max := uint(math.Max(al, bl))
+	min := uint(math.Min(al, bl))
+
+	if max-min > 2 {
+		return false
+	}
+
+	for i := uint(0); i < min; i++ {
+		if a[i] != b[i] {
+			return max-1-i < 2
+		}
+	}
+
+	return true
 }
