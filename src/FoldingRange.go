@@ -6,7 +6,17 @@ import (
 )
 
 func FoldingRange(context *glsp.Context, params *proto.FoldingRangeParams) (res []proto.FoldingRange, err error) {
-	doc, err := openDoc(params.TextDocument.URI)
+	uri, err := normalizeUri(params.TextDocument.URI)
+
+	if err != nil {
+		return
+	}
+
+	tree := getTree(uri)
+
+	if tree == nil {
+		return
+	}
 
 	q, err := createQuery(`
 		(family) @family
@@ -22,7 +32,7 @@ func FoldingRange(context *glsp.Context, params *proto.FoldingRangeParams) (res 
 
 	res = make([]proto.FoldingRange, 0)
 
-	for _, node := range queryIter(q, doc.Tree) {
+	for _, node := range queryIter(q, tree) {
 		start := node.StartPoint().Row
 		end := node.EndPoint().Row
 

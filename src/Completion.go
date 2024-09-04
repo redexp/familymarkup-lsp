@@ -12,7 +12,7 @@ func Completion(context *glsp.Context, params *proto.CompletionParams) (any, err
 		return nil, err
 	}
 
-	doc, err := openDoc(uri)
+	doc, err := tempDoc(uri)
 
 	if err != nil {
 		return nil, err

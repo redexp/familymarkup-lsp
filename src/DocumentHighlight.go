@@ -18,7 +18,7 @@ func DocumentHighlight(context *glsp.Context, params *proto.DocumentHighlightPar
 		return
 	}
 
-	doc, err := openDoc(uri)
+	doc, err := tempDoc(uri)
 
 	if err != nil {
 		return

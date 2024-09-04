@@ -38,7 +38,7 @@ func getDefinition(uri Uri, pos *Position) (family *Family, member *Member, targ
 		logDebug("getDefinition UpdateDirty %s", err)
 	}
 
-	srcDoc, err := openDoc(uri)
+	srcDoc, err := tempDoc(uri)
 
 	if err != nil {
 		return
