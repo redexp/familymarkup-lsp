@@ -401,6 +401,34 @@ func (root *Root) FindMember(surname string, name string) (family *Family, membe
 	return
 }
 
+func (root *Root) AddRef(ref *Ref) {
+	f, mem := root.FindMember(ref.Surname, ref.Name)
+
+	if f != nil && ref.Name == "" {
+		f.Refs = append(f.Refs, ref)
+		return
+	}
+
+	if mem == nil {
+		root.UnknownRefs = append(root.UnknownRefs, ref)
+		return
+	}
+
+	mem.Refs = append(mem.Refs, ref)
+
+	root.AddNodeRef(ref.Uri, nameRefName(ref.Node), mem)
+}
+
+func (root *Root) AddNodeRef(uri Uri, node *Node, mem *Member) {
+	_, exist := root.NodeRefs[uri]
+
+	if !exist {
+		root.NodeRefs[uri] = make(map[*Node]*Member)
+	}
+
+	root.NodeRefs[uri][node] = mem
+}
+
 func (family *Family) GetMember(name string) *Member {
 	return family.Members[name]
 }
@@ -438,6 +466,7 @@ func (family *Family) AddMember(node *Node, text []byte) {
 	}
 
 	family.Members[name] = member
+	family.Root.AddNodeRef(family.Uri, node, member)
 
 	aliasesNode := getAliasesNode(node)
 
@@ -545,33 +574,6 @@ func filterRefs(refs []*Ref, uris UriSet) []*Ref {
 	}
 
 	return list
-}
-
-func (root *Root) AddRef(ref *Ref) {
-	f, mem := root.FindMember(ref.Surname, ref.Name)
-
-	if f != nil && ref.Name == "" {
-		f.Refs = append(f.Refs, ref)
-		return
-	}
-
-	if mem == nil {
-		root.UnknownRefs = append(root.UnknownRefs, ref)
-		return
-	}
-
-	mem.Refs = append(mem.Refs, ref)
-
-	uri := ref.Uri
-	node := nameRefName(ref.Node)
-
-	_, exist := root.NodeRefs[uri]
-
-	if !exist {
-		root.NodeRefs[uri] = make(map[*Node]*Member)
-	}
-
-	root.NodeRefs[uri][node] = mem
 }
 
 func getAliasesNode(node *Node) *Node {
