@@ -63,7 +63,7 @@ func Completion(context *glsp.Context, params *proto.CompletionParams) (any, err
 
 	onlyFamilies := t == "nil-name" || t == "surname"
 
-	for _, family := range root.Families {
+	for family := range root.FamilyIter() {
 		list = append(list, proto.CompletionItem{
 			Kind:  pt(proto.CompletionItemKindVariable),
 			Label: family.Name,

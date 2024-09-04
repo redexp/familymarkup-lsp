@@ -274,6 +274,10 @@ func isNameDef(node *Node) bool {
 	return node != nil && node.Type() == "name_def"
 }
 
+func isNewSurname(node *Node) bool {
+	return node != nil && node.Type() == "new_surname"
+}
+
 func pt[T ~string | ~int32](src T) *T {
 	return &src
 }

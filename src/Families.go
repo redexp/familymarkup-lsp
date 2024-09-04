@@ -1,6 +1,8 @@
 package src
 
 import (
+	"iter"
+	"slices"
 	"strings"
 
 	familymarkup "github.com/redexp/tree-sitter-familymarkup"
@@ -11,6 +13,7 @@ var lang = familymarkup.GetLanguage()
 
 type Root struct {
 	Families    Families
+	Duplicates  Duplicates
 	NodeRefs    NodeRefs
 	UnknownRefs []*Ref
 	DirtyUris   UriSet
@@ -22,6 +25,7 @@ type Family struct {
 	Aliases    []string
 	Members    Members
 	Duplicates Duplicates
+	Refs       Refs
 	Uri        Uri
 	Node       *Node
 	Root       *Root
@@ -32,7 +36,7 @@ type Member struct {
 	Name    string
 	Aliases []string
 	Node    *Node
-	Refs    []*Ref
+	Refs    Refs
 	Family  *Family
 }
 
@@ -44,8 +48,10 @@ type Ref struct {
 }
 
 type Duplicate struct {
+	Family *Family
 	Member *Member
 	Node   *Node
+	Uri    string
 }
 
 type (
@@ -54,11 +60,13 @@ type (
 	NodeRefs   map[Uri]map[*Node]*Member
 	UriSet     map[Uri]bool
 	Duplicates map[string][]*Duplicate
+	Refs       []*Ref
 )
 
 func createRoot() *Root {
 	return &Root{
 		Families:    make(Families),
+		Duplicates:  make(Duplicates),
 		NodeRefs:    make(NodeRefs),
 		UnknownRefs: make([]*Ref, 0),
 		DirtyUris:   make(UriSet),
@@ -80,11 +88,15 @@ func (root *Root) Update(tree *Tree, text []byte, uri Uri) (err error) {
 			(name) @sources-name
 		)
 
-		(relation
-			(targets
-				(name_def
-					(name) @name_def-name
-				)
+		(targets
+			(name_def
+				(name) @name_def-name
+			)
+		)
+
+		(name_def
+			(new_surname
+				(name) @name_def-new_surname
 			)
 		)
 	`)
@@ -94,13 +106,6 @@ func (root *Root) Update(tree *Tree, text []byte, uri Uri) (err error) {
 	}
 
 	defer q.Close()
-
-	addRef := func(member *Member, node *Node) {
-		root.AddMemberRef(member, &Ref{
-			Uri:  uri,
-			Node: node,
-		})
-	}
 
 	var family *Family
 
@@ -112,7 +117,12 @@ func (root *Root) Update(tree *Tree, text []byte, uri Uri) (err error) {
 
 		// name_ref
 		case 1:
-			root.addRefByNode(uri, node, text)
+			root.AddRef(&Ref{
+				Uri:     uri,
+				Node:    node,
+				Surname: node.NamedChild(0).Content(text),
+				Name:    node.NamedChild(1).Content(text),
+			})
 
 		// sorces -> name
 		case 2:
@@ -120,7 +130,12 @@ func (root *Root) Update(tree *Tree, text []byte, uri Uri) (err error) {
 			m := family.GetMember(name)
 
 			if m != nil {
-				addRef(m, node)
+				root.AddRef(&Ref{
+					Uri:     uri,
+					Node:    node,
+					Surname: family.Name,
+					Name:    name,
+				})
 			} else {
 				family.AddMember(node, text)
 			}
@@ -138,20 +153,21 @@ func (root *Root) Update(tree *Tree, text []byte, uri Uri) (err error) {
 			if arrow != nil && arrow.Content(text) == "=" {
 				family.AddMember(node, text)
 			} else {
-				name := node.Content(text)
-				m := family.GetMember(name)
-
-				if m != nil {
-					addRef(m, node)
-				} else {
-					root.UnknownRefs = append(root.UnknownRefs, &Ref{
-						Uri:     uri,
-						Node:    node,
-						Surname: family.Name,
-						Name:    name,
-					})
-				}
+				root.AddRef(&Ref{
+					Uri:     uri,
+					Node:    node,
+					Surname: family.Name,
+					Name:    node.Content(text),
+				})
 			}
+
+		// new_surname
+		case 4:
+			root.AddRef(&Ref{
+				Uri:     uri,
+				Node:    node,
+				Surname: node.Content(text),
+			})
 		}
 	}
 
@@ -169,13 +185,7 @@ func (root *Root) UpdateUnknownRefs() {
 	root.UnknownRefs = make([]*Ref, 0)
 
 	for _, ref := range list {
-		_, m := root.FindMember(ref.Surname, ref.Name)
-
-		if m != nil {
-			root.AddMemberRef(m, ref)
-		} else {
-			root.UnknownRefs = append(root.UnknownRefs, ref)
-		}
+		root.AddRef(ref)
 	}
 }
 
@@ -194,25 +204,43 @@ func (root *Root) UpdateDirty() error {
 		}
 	}
 
-	for id, family := range root.Families {
-		if uris.Has(family.Uri) {
-			for _, member := range family.Members {
-				for _, ref := range member.Refs {
-					if uris.Has(ref.Uri) {
-						continue
-					}
-
-					root.UnknownRefs = append(root.UnknownRefs, ref)
-				}
+	resetRefs := func(refs Refs) {
+		for _, ref := range refs {
+			if uris.Has(ref.Uri) {
+				continue
 			}
 
-			delete(root.Families, id)
+			root.UnknownRefs = append(root.UnknownRefs, ref)
+		}
+	}
+
+	for family := range root.FamilyIter() {
+		if uris.Has(family.Uri) {
+			resetRefs(family.Refs)
+
+			for _, member := range family.Members {
+				resetRefs(member.Refs)
+			}
+
+			root.RemoveFamily(family)
 
 			continue
 		}
 
 		for _, member := range family.Members {
 			member.Refs = filterRefs(member.Refs, uris)
+		}
+	}
+
+	for name, dups := range root.Duplicates {
+		dups = slices.DeleteFunc(dups, func(dup *Duplicate) bool {
+			return uris.Has(dup.Uri) || uris.Has(dup.Family.Uri)
+		})
+
+		if len(dups) == 0 {
+			delete(root.Duplicates, name)
+		} else {
+			root.Duplicates[name] = dups
 		}
 	}
 
@@ -244,14 +272,29 @@ func (root *Root) AddFamily(uri Uri, node *Node, text []byte) *Family {
 		Id:         name,
 		Name:       name,
 		Aliases:    getAliases(node, text),
-		Members:    Members{},
+		Members:    make(Members),
 		Duplicates: make(Duplicates),
+		Refs:       make([]*Ref, 0),
 		Uri:        uri,
 		Node:       node,
 		Root:       root,
 	}
 
-	root.Families[name] = family
+	names := append(family.Aliases, name)
+
+	for _, name := range names {
+		dup, exist := root.Families[name]
+
+		if exist {
+			addDuplicate(root.Duplicates, name, &Duplicate{
+				Family: dup,
+				Node:   node,
+				Uri:    uri,
+			})
+		}
+
+		root.Families[name] = family
+	}
 
 	return family
 }
@@ -265,7 +308,7 @@ func (root *Root) FindFamily(name string) *Family {
 
 	var foundAlias *Family
 
-	for _, item := range root.Families {
+	for item := range root.FamilyIter() {
 		n, a := compareNameAliases(item.Name, item.Aliases, name)
 
 		if n == 1 || a == 1 {
@@ -296,10 +339,44 @@ func (root *Root) FindFamily(name string) *Family {
 	return foundAlias
 }
 
+func (root *Root) HasFamily(name string) bool {
+	_, has := root.Families[name]
+
+	return has
+}
+
+func (root *Root) RemoveFamily(f *Family) {
+	for key, v := range root.Families {
+		if v == f {
+			delete(root.Families, key)
+		}
+	}
+}
+
+func (root *Root) FamilyIter() iter.Seq[*Family] {
+	return func(yield func(*Family) bool) {
+		list := make(map[*Family]bool)
+
+		for _, f := range root.Families {
+			_, exist := list[f]
+
+			if exist {
+				continue
+			}
+
+			list[f] = true
+
+			if !yield(f) {
+				return
+			}
+		}
+	}
+}
+
 func (root *Root) FindFamiliesByUri(uri Uri) []*Family {
 	list := make([]*Family, 0)
 
-	for _, family := range root.Families {
+	for family := range root.FamilyIter() {
 		if family.Uri == uri {
 			list = append(list, family)
 		}
@@ -309,9 +386,13 @@ func (root *Root) FindFamiliesByUri(uri Uri) []*Family {
 }
 
 func (root *Root) FindMember(surname string, name string) (family *Family, member *Member) {
+	if surname == "" {
+		return
+	}
+
 	family = root.FindFamily(surname)
 
-	if family == nil {
+	if family == nil || name == "" {
 		return
 	}
 
@@ -341,7 +422,10 @@ func (family *Family) AddMember(node *Node, text []byte) {
 	mem, exist := family.Members[name]
 
 	if exist {
-		family.addDuplicate(name, mem, node)
+		addDuplicate(family.Duplicates, name, &Duplicate{
+			Member: mem,
+			Node:   node,
+		})
 	}
 
 	member := &Member{
@@ -361,24 +445,24 @@ func (family *Family) AddMember(node *Node, text []byte) {
 		mem, exist = family.Members[alias]
 
 		if exist {
-			family.addDuplicate(alias, mem, aliasesNode.NamedChild(i))
+			addDuplicate(family.Duplicates, alias, &Duplicate{
+				Member: mem,
+				Node:   aliasesNode.NamedChild(i),
+			})
 		}
 
 		family.Members[alias] = member
 	}
 }
 
-func (family *Family) addDuplicate(name string, member *Member, node *Node) {
-	_, exist := family.Duplicates[name]
+func addDuplicate(duplicates Duplicates, name string, dup *Duplicate) {
+	_, exist := duplicates[name]
 
 	if !exist {
-		family.Duplicates[name] = make([]*Duplicate, 0)
+		duplicates[name] = make([]*Duplicate, 0)
 	}
 
-	family.Duplicates[name] = append(family.Duplicates[name], &Duplicate{
-		Member: member,
-		Node:   node,
-	})
+	duplicates[name] = append(duplicates[name], dup)
 }
 
 func (member *Member) GetUniqName() string {
@@ -463,21 +547,14 @@ func filterRefs(refs []*Ref, uris UriSet) []*Ref {
 	return list
 }
 
-func (root *Root) addRefByNode(uri Uri, node *Node, text []byte) {
-	surname := node.NamedChild(0).Content(text)
-	name := node.NamedChild(1).Content(text)
+func (root *Root) AddRef(ref *Ref) {
+	f, mem := root.FindMember(ref.Surname, ref.Name)
 
-	_, m := root.FindMember(surname, name)
+	if f != nil && ref.Name == "" {
+		f.Refs = append(f.Refs, ref)
+		return
+	}
 
-	root.AddMemberRef(m, &Ref{
-		Uri:     uri,
-		Node:    node,
-		Surname: surname,
-		Name:    name,
-	})
-}
-
-func (root *Root) AddMemberRef(mem *Member, ref *Ref) {
 	if mem == nil {
 		root.UnknownRefs = append(root.UnknownRefs, ref)
 		return

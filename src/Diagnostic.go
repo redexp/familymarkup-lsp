@@ -60,6 +60,8 @@ func PublishDiagnostics(ctx *glsp.Context, uri Uri, doc *TextDocument) {
 				node = node.NamedChild(0)
 				message = "Unknown family"
 			}
+		} else if isNewSurname(node.Parent()) {
+			message = "Unknown family"
 		}
 
 		r, err := doc.NodeToRange(node)
@@ -82,7 +84,7 @@ func PublishDiagnostics(ctx *glsp.Context, uri Uri, doc *TextDocument) {
 	tempDocs := make(Docs)
 	tempDocs[uri] = doc
 
-	for _, family := range root.Families {
+	for family := range root.FamilyIter() {
 		for name, dups := range family.Duplicates {
 			member := family.Members[name]
 			dups = append(dups, &Duplicate{Member: member})
