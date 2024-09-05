@@ -300,18 +300,26 @@ func (root *Root) AddFamily(uri Uri, node *Node, text []byte) *Family {
 }
 
 func (root *Root) FindFamily(name string) *Family {
-	found, exist := root.Families[name]
+	family, exist := root.Families[name]
 
 	if exist {
-		return found
+		return family
 	}
 
 	source := []rune(name)
+	min := uint(len(source))
 
 	for key, f := range root.Families {
-		if compareNames(source, []rune(key)) {
-			return f
+		diff := compareNames(source, []rune(key))
+
+		if diff < min {
+			min = diff
+			family = f
 		}
+	}
+
+	if min <= 2 {
+		return family
 	}
 
 	return nil
@@ -549,21 +557,22 @@ func getAliases(nameNode *Node, text []byte) []string {
 	return list
 }
 
-func compareNames(a []rune, b []rune) bool {
+func compareNames(a []rune, b []rune) uint {
 	al := float64(len(a))
 	bl := float64(len(b))
 	max := uint(math.Max(al, bl))
 	min := uint(math.Min(al, bl))
+	diff := uint(max - min)
 
-	if max-min > 2 {
-		return false
+	if diff > 2 {
+		return diff
 	}
 
 	for i := uint(0); i < min; i++ {
 		if a[i] != b[i] {
-			return max-1-i < 2
+			return max - 1 - i
 		}
 	}
 
-	return true
+	return diff
 }
