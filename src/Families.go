@@ -6,7 +6,6 @@ import (
 	"slices"
 
 	familymarkup "github.com/redexp/tree-sitter-familymarkup"
-	sitter "github.com/smacker/go-tree-sitter"
 )
 
 var lang = familymarkup.GetLanguage()
@@ -73,6 +72,8 @@ func createRoot() *Root {
 	}
 }
 
+// root Methods
+
 func (root *Root) Update(tree *Tree, text []byte, uri Uri) (err error) {
 	q, err := createQuery(`
 		(family_name 
@@ -109,7 +110,7 @@ func (root *Root) Update(tree *Tree, text []byte, uri Uri) (err error) {
 
 	var family *Family
 
-	for index, node := range queryIter(q, tree) {
+	for index, node := range queryIter(q, tree.RootNode()) {
 		switch index {
 		// new family
 		case 0:
@@ -337,16 +338,16 @@ func (root *Root) FamilyIter() iter.Seq[*Family] {
 	return func(yield func(*Family) bool) {
 		list := make(map[*Family]bool)
 
-		for _, f := range root.Families {
-			_, exist := list[f]
+		for _, item := range root.Families {
+			_, exist := list[item]
 
 			if exist {
 				continue
 			}
 
-			list[f] = true
+			list[item] = true
 
-			if !yield(f) {
+			if !yield(item) {
 				return
 			}
 		}
@@ -409,10 +410,6 @@ func (root *Root) AddNodeRef(uri Uri, node *Node, mem *Member) {
 	root.NodeRefs[uri][node] = mem
 }
 
-func (family *Family) GetMember(name string) *Member {
-	return family.Members[name]
-}
-
 func (root *Root) GetMemberByUriNode(uri Uri, node *Node) *Member {
 	_, exist := root.NodeRefs[uri]
 
@@ -421,6 +418,12 @@ func (root *Root) GetMemberByUriNode(uri Uri, node *Node) *Member {
 	}
 
 	return root.NodeRefs[uri][node]
+}
+
+// family Methods
+
+func (family *Family) GetMember(name string) *Member {
+	return family.Members[name]
 }
 
 func (family *Family) AddMember(node *Node, text []byte) {
@@ -464,15 +467,27 @@ func (family *Family) AddMember(node *Node, text []byte) {
 	}
 }
 
-func addDuplicate(duplicates Duplicates, name string, dup *Duplicate) {
-	_, exist := duplicates[name]
+func (family *Family) MembersIter() iter.Seq[*Member] {
+	return func(yield func(*Member) bool) {
+		list := make(map[*Member]bool)
 
-	if !exist {
-		duplicates[name] = make([]*Duplicate, 0)
+		for _, item := range family.Members {
+			_, exist := list[item]
+
+			if exist {
+				continue
+			}
+
+			list[item] = true
+
+			if !yield(item) {
+				return
+			}
+		}
 	}
-
-	duplicates[name] = append(duplicates[name], dup)
 }
+
+// member Methods
 
 func (member *Member) GetUniqName() string {
 	family := member.Family
@@ -490,6 +505,8 @@ func (member *Member) GetUniqName() string {
 	return ""
 }
 
+// UriSet Methods
+
 func (uris UriSet) Set(uri Uri) {
 	uris[uri] = true
 }
@@ -500,14 +517,14 @@ func (uris UriSet) Has(uri Uri) bool {
 	return has
 }
 
-func createQuery(pattern string) (*sitter.Query, error) {
-	return sitter.NewQuery([]byte(pattern), lang)
-}
+func addDuplicate(duplicates Duplicates, name string, dup *Duplicate) {
+	_, exist := duplicates[name]
 
-func createCursor(q *sitter.Query, tree *sitter.Tree) *sitter.QueryCursor {
-	c := sitter.NewQueryCursor()
-	c.Exec(q, tree.RootNode())
-	return c
+	if !exist {
+		duplicates[name] = make([]*Duplicate, 0)
+	}
+
+	duplicates[name] = append(duplicates[name], dup)
 }
 
 func filterRefs(refs []*Ref, uris UriSet) []*Ref {
