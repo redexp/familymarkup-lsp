@@ -32,7 +32,7 @@ func FoldingRange(context *glsp.Context, params *proto.FoldingRangeParams) (res 
 
 	res = make([]proto.FoldingRange, 0)
 
-	for _, node := range queryIter(q, tree) {
+	for _, node := range queryIter(q, tree.RootNode()) {
 		start := node.StartPoint().Row
 		end := node.EndPoint().Row
 

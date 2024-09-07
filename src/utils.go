@@ -11,9 +11,7 @@ import (
 
 	familymarkup "github.com/redexp/tree-sitter-familymarkup"
 	sitter "github.com/smacker/go-tree-sitter"
-	"github.com/tliron/glsp"
 	proto "github.com/tliron/glsp/protocol_3_16"
-	serv "github.com/tliron/glsp/server"
 )
 
 type ParserWorker struct {
@@ -23,11 +21,6 @@ type ParserWorker struct {
 
 var logOnly string
 var parsersPool = make([]*ParserWorker, 0)
-
-func CreateServer(handlers glsp.Handler) {
-	server = serv.NewServer(handlers, "familymarkup", false)
-	server.RunStdio()
-}
 
 func createParser() *sitter.Parser {
 	p := sitter.NewParser()
@@ -289,15 +282,30 @@ func isNewSurname(node *Node) bool {
 	return node != nil && node.Type() == "new_surname"
 }
 
+func isNumUnknown(node *Node) bool {
+	return node != nil && node.Type() == "num_unknown"
+}
+
 func pt[T ~string | ~int32](src T) *T {
 	return &src
 }
 
-func queryIter(q *sitter.Query, tree *Tree) iter.Seq2[int, *Node] {
-	c := createCursor(q, tree)
+func createQuery(pattern string) (*sitter.Query, error) {
+	return sitter.NewQuery([]byte(pattern), lang)
+}
 
-	return func(yield func(int, *Node) bool) {
+func createCursor(q *sitter.Query, node *Node) *sitter.QueryCursor {
+	c := sitter.NewQueryCursor()
+	c.Exec(q, node)
+	return c
+}
+
+func queryIter(q *sitter.Query, node *Node) iter.Seq2[uint32, *Node] {
+	c := createCursor(q, node)
+
+	return func(yield func(uint32, *Node) bool) {
 		defer c.Close()
+		defer q.Close()
 
 		for {
 			match, ok := c.NextMatch()
@@ -307,7 +315,7 @@ func queryIter(q *sitter.Query, tree *Tree) iter.Seq2[int, *Node] {
 			}
 
 			for _, cap := range match.Captures {
-				if !yield(int(cap.Index), cap.Node) {
+				if !yield(cap.Index, cap.Node) {
 					return
 				}
 			}
