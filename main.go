@@ -34,7 +34,7 @@ func init() {
 }
 
 func main() {
-	lsp.CreateServer(&proto.Handler{
+	protocolHandlers := &proto.Handler{
 		Initialize:                     lsp.Initialize,
 		Initialized:                    lsp.Initialized,
 		SetTrace:                       lsp.SetTrace,
@@ -55,6 +55,15 @@ func main() {
 		TextDocumentRename:             lsp.Rename,
 		TextDocumentFoldingRange:       lsp.FoldingRange,
 		TextDocumentCodeAction:         lsp.CodeAction,
+		TextDocumentDocumentSymbol:     lsp.Symbol,
 		CodeActionResolve:              lsp.CodeActionResolve,
-	})
+	}
+
+	customHandlers := &lsp.CustomHandlers{
+		TreeFamilies:  lsp.TreeFamilies,
+		TreeRelations: lsp.TreeRelations,
+		TreeMembers:   lsp.TreeMembers,
+	}
+
+	lsp.CreateServer(protocolHandlers, customHandlers)
 }
