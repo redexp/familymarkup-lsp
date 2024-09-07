@@ -125,6 +125,10 @@ func docExist(uri Uri) bool {
 }
 
 func toString(node *Node, doc *TextDocument) string {
+	if node == nil {
+		return ""
+	}
+
 	return node.Content([]byte(doc.Text))
 }
 
