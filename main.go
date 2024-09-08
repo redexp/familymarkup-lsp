@@ -55,8 +55,13 @@ func main() {
 		TextDocumentRename:             lsp.Rename,
 		TextDocumentFoldingRange:       lsp.FoldingRange,
 		TextDocumentCodeAction:         lsp.CodeAction,
-		TextDocumentDocumentSymbol:     lsp.Symbol,
+		TextDocumentDocumentSymbol:     lsp.DocSymbols,
 		CodeActionResolve:              lsp.CodeActionResolve,
+	}
+
+	workspaceHandlers := &lsp.WorkspaceHandler{
+		WorkspaceSymbol:        lsp.AllSymbols,
+		WorkspaceSymbolResolve: lsp.ResolveSymbol,
 	}
 
 	customHandlers := &lsp.CustomHandlers{
@@ -65,5 +70,5 @@ func main() {
 		TreeMembers:   lsp.TreeMembers,
 	}
 
-	lsp.CreateServer(protocolHandlers, customHandlers)
+	lsp.CreateServer(protocolHandlers, workspaceHandlers, customHandlers)
 }

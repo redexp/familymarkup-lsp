@@ -64,6 +64,9 @@ func Initialize(ctx *glsp.Context, params *proto.InitializeParams) (any, error) 
 			DocumentHighlightProvider: true,
 			FoldingRangeProvider:      true,
 			DocumentSymbolProvider:    true,
+			WorkspaceSymbolProvider: WorkspaceSymbolOptions{
+				ResolveProvider: true,
+			},
 			RenameProvider: proto.RenameOptions{
 				PrepareProvider: &proto.True,
 			},
