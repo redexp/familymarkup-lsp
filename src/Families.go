@@ -487,6 +487,20 @@ func (family *Family) MembersIter() iter.Seq[*Member] {
 	}
 }
 
+func (family *Family) NamesIter() iter.Seq[string] {
+	return func(yield func(string) bool) {
+		if !yield(family.Name) {
+			return
+		}
+
+		for _, name := range family.Aliases {
+			if !yield(name) {
+				break
+			}
+		}
+	}
+}
+
 // member Methods
 
 func (member *Member) GetUniqName() string {
@@ -503,6 +517,20 @@ func (member *Member) GetUniqName() string {
 	}
 
 	return ""
+}
+
+func (member *Member) NamesIter() iter.Seq[string] {
+	return func(yield func(string) bool) {
+		if !yield(member.Name) {
+			return
+		}
+
+		for _, name := range member.Aliases {
+			if !yield(name) {
+				break
+			}
+		}
+	}
 }
 
 // UriSet Methods
