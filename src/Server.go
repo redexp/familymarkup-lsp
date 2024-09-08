@@ -29,9 +29,9 @@ func CreateServer(handlers ...glsp.Handler) {
 }
 
 type CustomHandlers struct {
-	TreeFamilies  TreeFamiliesHandler
-	TreeRelations TreeRelationsHandler
-	TreeMembers   TreeMembersHandler
+	TreeFamilies  TreeFamiliesFunc
+	TreeRelations TreeRelationsFunc
+	TreeMembers   TreeMembersFunc
 }
 
 func (req *CustomHandlers) Handle(ctx *glsp.Context) (res any, validMethod bool, validParams bool, err error) {
@@ -67,7 +67,7 @@ func (req *CustomHandlers) Handle(ctx *glsp.Context) (res any, validMethod bool,
 
 const TreeFamiliesMethod = "tree/families"
 
-type TreeFamiliesHandler func(ctx *glsp.Context) ([]*TreeFamily, error)
+type TreeFamiliesFunc func(ctx *glsp.Context) ([]*TreeFamily, error)
 
 type TreeFamily struct {
 	Id      string   `json:"id"`
@@ -79,7 +79,7 @@ type TreeFamily struct {
 
 const TreeRelationsMethod = "tree/relations"
 
-type TreeRelationsHandler func(ctx *glsp.Context, params *TreeRelationsParams) ([]*TreeRelation, error)
+type TreeRelationsFunc func(ctx *glsp.Context, params *TreeRelationsParams) ([]*TreeRelation, error)
 
 type TreeRelationsParams struct {
 	FamilyId string `json:"family_id"`
@@ -95,7 +95,7 @@ type TreeRelation struct {
 
 const TreeMembersMethod = "tree/members"
 
-type TreeMembersHandler func(ctx *glsp.Context, params *TreeMembersParams) ([]*TreeMember, error)
+type TreeMembersFunc func(ctx *glsp.Context, params *TreeMembersParams) ([]*TreeMember, error)
 
 type TreeMembersParams struct {
 	FamilyId   string `json:"family_id"`
