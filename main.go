@@ -64,11 +64,12 @@ func main() {
 		WorkspaceSymbolResolve: lsp.ResolveSymbol,
 	}
 
-	customHandlers := &lsp.CustomHandlers{
+	treeHandlers := &lsp.TreeHandlers{
 		TreeFamilies:  lsp.TreeFamilies,
 		TreeRelations: lsp.TreeRelations,
 		TreeMembers:   lsp.TreeMembers,
+		TreeLocation:  lsp.TreeLocation,
 	}
 
-	lsp.CreateServer(protocolHandlers, workspaceHandlers, customHandlers)
+	lsp.CreateServer(protocolHandlers, workspaceHandlers, treeHandlers)
 }
