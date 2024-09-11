@@ -16,6 +16,7 @@ type Root struct {
 	NodeRefs    NodeRefs
 	UnknownRefs []*Ref
 	DirtyUris   UriSet
+	Listeners   Listeners
 }
 
 type Family struct {
@@ -60,6 +61,7 @@ type (
 	UriSet     map[Uri]bool
 	Duplicates map[string][]*Duplicate
 	Refs       []*Ref
+	Listeners  map[string][]func()
 )
 
 func createRoot() *Root {
@@ -69,6 +71,7 @@ func createRoot() *Root {
 		NodeRefs:    make(NodeRefs),
 		UnknownRefs: make([]*Ref, 0),
 		DirtyUris:   make(UriSet),
+		Listeners:   make(Listeners),
 	}
 }
 
@@ -262,6 +265,7 @@ func (root *Root) UpdateDirty() error {
 	}
 
 	root.UpdateUnknownRefs()
+	root.Trigger(RootOnUpdate)
 
 	return nil
 }
@@ -418,6 +422,30 @@ func (root *Root) GetMemberByUriNode(uri Uri, node *Node) *Member {
 	}
 
 	return root.NodeRefs[uri][node]
+}
+
+func (root *Root) Trigger(event string) {
+	list, exist := root.Listeners[event]
+
+	if !exist {
+		return
+	}
+
+	for _, cb := range list {
+		cb()
+	}
+}
+
+const RootOnUpdate = "update"
+
+func (root *Root) OnUpdate(cb func()) {
+	list, exist := root.Listeners[RootOnUpdate]
+
+	if !exist {
+		list = make([]func(), 0)
+	}
+
+	root.Listeners[RootOnUpdate] = append(list, cb)
 }
 
 // family Methods
