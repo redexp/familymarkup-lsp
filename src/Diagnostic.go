@@ -43,6 +43,21 @@ func PublishDiagnostics(ctx *glsp.Context, uri Uri, doc *TextDocument) {
 
 	list := make([]proto.Diagnostic, 0)
 
+	for node := range getErrorNodesIter(doc.Tree.RootNode()) {
+		r, err := doc.NodeToRange(node)
+
+		if err != nil {
+			logDebug("Diagnostic error: %s", err.Error())
+			return
+		}
+
+		list = append(list, proto.Diagnostic{
+			Severity: pt(proto.DiagnosticSeverityError),
+			Range:    *r,
+			Message:  "Syntax error",
+		})
+	}
+
 	for _, ref := range root.UnknownRefs {
 		if ref.Uri != uri {
 			continue

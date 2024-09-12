@@ -322,3 +322,54 @@ func queryIter(q *sitter.Query, node *Node) iter.Seq2[uint32, *Node] {
 		}
 	}
 }
+
+func getErrorNodesIter(root *Node) iter.Seq[*Node] {
+	return func(yield func(*sitter.Node) bool) {
+		if !root.HasError() {
+			return
+		}
+
+		c := sitter.NewTreeCursor(root)
+		defer c.Close()
+
+		active := true
+		var traverse func()
+
+		traverse = func() {
+			if !active {
+				return
+			}
+
+			node := c.CurrentNode()
+
+			if node.IsError() {
+				active = yield(node)
+				return
+			}
+
+			if !node.HasError() {
+				return
+			}
+
+			if !c.GoToFirstChild() {
+				return
+			}
+
+			for {
+				traverse()
+
+				if !active {
+					return
+				}
+
+				if !c.GoToNextSibling() {
+					break
+				}
+			}
+
+			c.GoToParent()
+		}
+
+		traverse()
+	}
+}
