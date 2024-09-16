@@ -1,24 +1,27 @@
-package src
+package providers
 
 import (
+	"github.com/redexp/familymarkup-lsp/state"
+	. "github.com/redexp/familymarkup-lsp/state"
+	. "github.com/redexp/familymarkup-lsp/utils"
 	"github.com/tliron/glsp"
 	proto "github.com/tliron/glsp/protocol_3_16"
 )
 
 func Completion(context *glsp.Context, params *proto.CompletionParams) (any, error) {
-	uri, err := normalizeUri(params.TextDocument.URI)
+	uri, err := NormalizeUri(params.TextDocument.URI)
 
 	if err != nil {
 		return nil, err
 	}
 
-	doc, err := tempDoc(uri)
+	doc, err := TempDoc(uri)
 
 	if err != nil {
 		return nil, err
 	}
 
-	t, nodes, err := getTypeNode(doc, &params.Position)
+	t, nodes, err := GetTypeNode(doc, &params.Position)
 
 	if err != nil {
 		return nil, err
@@ -33,16 +36,16 @@ func Completion(context *glsp.Context, params *proto.CompletionParams) (any, err
 
 		for _, value := range aliases {
 			list = append(list, proto.CompletionItem{
-				Kind:  pt(proto.CompletionItemKindVariable),
+				Kind:  P(proto.CompletionItemKindVariable),
 				Label: value,
 			})
 		}
 	}
 
-	addMembers := func(family *Family) {
+	addMembers := func(family *state.Family) {
 		for _, member := range family.Members {
 			list = append(list, proto.CompletionItem{
-				Kind:  pt(proto.CompletionItemKindVariable),
+				Kind:  P(proto.CompletionItemKindVariable),
 				Label: member.Name,
 			})
 
@@ -53,7 +56,7 @@ func Completion(context *glsp.Context, params *proto.CompletionParams) (any, err
 	root.UpdateDirty()
 
 	if t == "surname-name" || t == "surname-nil" {
-		family := root.FindFamily(toString(nodes[0], doc))
+		family := root.FindFamily(ToString(nodes[0], doc))
 
 		if family != nil {
 			addMembers(family)
@@ -65,7 +68,7 @@ func Completion(context *glsp.Context, params *proto.CompletionParams) (any, err
 
 	for family := range root.FamilyIter() {
 		list = append(list, proto.CompletionItem{
-			Kind:  pt(proto.CompletionItemKindVariable),
+			Kind:  P(proto.CompletionItemKindVariable),
 			Label: family.Name,
 		})
 

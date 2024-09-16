@@ -1,4 +1,4 @@
-package src
+package providers
 
 import (
 	"encoding/json"
@@ -9,6 +9,10 @@ import (
 	"time"
 
 	"github.com/bep/debounce"
+	"github.com/redexp/familymarkup-lsp/state"
+	. "github.com/redexp/familymarkup-lsp/state"
+	. "github.com/redexp/familymarkup-lsp/types"
+	. "github.com/redexp/familymarkup-lsp/utils"
 	sitter "github.com/smacker/go-tree-sitter"
 	"github.com/tliron/glsp"
 	proto "github.com/tliron/glsp/protocol_3_16"
@@ -67,8 +71,8 @@ func TreeRelations(ctx *glsp.Context, loc *TreeItemLocation) (list []*TreeRelati
 		list = append(list, &TreeRelation{
 			TreeItemPoint: TreeItemPoint(sourcesNode.StartPoint()),
 
-			Label: toString(sourcesNode, doc),
-			Arrow: toString(arrowNode, doc),
+			Label: ToString(sourcesNode, doc),
+			Arrow: ToString(arrowNode, doc),
 		})
 	}
 
@@ -113,7 +117,7 @@ func TreeMembers(ctx *glsp.Context, loc *TreeItemLocation) (list []*TreeMember, 
 	for i := 0; i < count; i++ {
 		node := targets.NamedChild(i)
 
-		if isNameDef(node) {
+		if IsNameDef(node) {
 			mem := root.GetMemberByUriNode(f.Uri, node.ChildByFieldName("name"))
 
 			if mem != nil {
@@ -125,14 +129,14 @@ func TreeMembers(ctx *glsp.Context, loc *TreeItemLocation) (list []*TreeMember, 
 				}
 				continue
 			}
-		} else if isNumUnknown(node) {
+		} else if IsNumUnknown(node) {
 			node = node.NamedChild(1)
 		}
 
 		list[i] = &TreeMember{
 			TreeItemPoint: TreeItemPoint(node.StartPoint()),
 
-			Name: toString(node, doc),
+			Name: ToString(node, doc),
 		}
 	}
 
@@ -140,7 +144,7 @@ func TreeMembers(ctx *glsp.Context, loc *TreeItemLocation) (list []*TreeMember, 
 }
 
 func TreeLocation(ctx *glsp.Context, params *TreeLocationParams) (pos *proto.Position, err error) {
-	doc, err := tempDoc(params.URI)
+	doc, err := TempDoc(params.URI)
 
 	if err != nil {
 		return
@@ -156,8 +160,8 @@ func TreeReload() {
 	treeContext.Notify("tree/reload", nil)
 }
 
-func getFamilyDoc(loc *TreeItemLocation) (f *Family, doc *TextDocument, err error) {
-	doc, err = tempDoc(loc.URI)
+func getFamilyDoc(loc *TreeItemLocation) (f *state.Family, doc *TextDocument, err error) {
+	doc, err = TempDoc(loc.URI)
 
 	if err != nil {
 		return
@@ -183,8 +187,8 @@ func getFamilyDoc(loc *TreeItemLocation) (f *Family, doc *TextDocument, err erro
 	return
 }
 
-func getRelationsIter(family *Family) (iter.Seq2[uint32, *Node], error) {
-	q, err := createQuery(`
+func getRelationsIter(family *state.Family) (iter.Seq2[uint32, *Node], error) {
+	q, err := CreateQuery(`
 		(relation) @rel
 	`)
 
@@ -192,7 +196,7 @@ func getRelationsIter(family *Family) (iter.Seq2[uint32, *Node], error) {
 		return nil, err
 	}
 
-	return queryIter(q, getClosestNode(family.Node, "family")), nil
+	return QueryIter(q, GetClosestNode(family.Node, "family")), nil
 }
 
 // TreeHandler

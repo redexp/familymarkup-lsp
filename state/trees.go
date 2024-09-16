@@ -1,4 +1,4 @@
-package src
+package state
 
 import (
 	"io/fs"
@@ -7,21 +7,23 @@ import (
 	"strings"
 	"sync"
 
+	. "github.com/redexp/familymarkup-lsp/types"
+	. "github.com/redexp/familymarkup-lsp/utils"
 	sitter "github.com/smacker/go-tree-sitter"
 )
 
 var trees sync.Map
 var readingTrees sync.WaitGroup
 
-func waitTreesReady() {
+func WaitTreesReady() {
 	readingTrees.Wait()
 }
 
-func setTree(uri Uri, tree *Tree) {
+func SetTree(uri Uri, tree *Tree) {
 	trees.Store(uri, tree)
 }
 
-func getTree(uri Uri) *Tree {
+func GetTree(uri Uri) *Tree {
 	value, ok := trees.Load(uri)
 
 	if !ok {
@@ -31,18 +33,18 @@ func getTree(uri Uri) *Tree {
 	return value.(*Tree)
 }
 
-func removeTree(uri Uri) {
+func RemoveTree(uri Uri) {
 	trees.Delete(uri)
 }
 
-func getTreeText(uri Uri) (tree *Tree, text []byte, err error) {
-	uri, err = normalizeUri(uri)
+func GetTreeText(uri Uri) (tree *Tree, text []byte, err error) {
+	uri, err = NormalizeUri(uri)
 
 	if err != nil {
 		return
 	}
 
-	path, err := uriToPath(uri)
+	path, err := UriToPath(uri)
 
 	if err != nil {
 		return
@@ -54,28 +56,28 @@ func getTreeText(uri Uri) (tree *Tree, text []byte, err error) {
 		return
 	}
 
-	tree = getTree(uri)
+	tree = GetTree(uri)
 
 	if tree != nil {
 		return
 	}
 
-	tree, err = parseTree(text)
+	tree, err = ParseTree(text)
 
 	if err != nil {
 		return
 	}
 
-	setTree(uri, tree)
+	SetTree(uri, tree)
 
 	return
 }
 
-func parseTree(text []byte) (*sitter.Tree, error) {
-	return getParser().Parse(text)
+func ParseTree(text []byte) (*sitter.Tree, error) {
+	return GetParser().Parse(text)
 }
 
-func readTreesFromDir(root string, cb func(*Tree, []byte, string) error) error {
+func ReadTreesFromDir(root string, cb func(*Tree, []byte, string) error) error {
 	return filepath.Walk(root, func(path string, info fs.FileInfo, err error) error {
 		if err != nil || info.IsDir() {
 			return nil
@@ -92,10 +94,9 @@ func readTreesFromDir(root string, cb func(*Tree, []byte, string) error) error {
 		go func() {
 			defer readingTrees.Done()
 
-			tree, text, err := getTreeText(path)
+			tree, text, err := GetTreeText(path)
 
 			if err != nil {
-				Debugf("getTreeText(%s) error: %s", path, err.Error())
 				return
 			}
 

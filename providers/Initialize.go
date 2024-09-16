@@ -1,10 +1,14 @@
-package src
+package providers
 
 import (
 	"slices"
 	"strings"
 	"sync"
 
+	"github.com/redexp/familymarkup-lsp/state"
+	. "github.com/redexp/familymarkup-lsp/state"
+	. "github.com/redexp/familymarkup-lsp/types"
+	. "github.com/redexp/familymarkup-lsp/utils"
 	"github.com/redexp/textdocument"
 	familymarkup "github.com/redexp/tree-sitter-familymarkup"
 	"github.com/tliron/glsp"
@@ -12,7 +16,7 @@ import (
 )
 
 func Initialize(ctx *glsp.Context, params *proto.InitializeParams) (any, error) {
-	root = createRoot()
+	root = state.CreateRoot()
 
 	legend, types, err := GetLegend()
 
@@ -25,7 +29,7 @@ func Initialize(ctx *glsp.Context, params *proto.InitializeParams) (any, error) 
 	fileFilters := proto.FileOperationRegistrationOptions{
 		Filters: []proto.FileOperationFilter{
 			{
-				Scheme: pt("file"),
+				Scheme: P("file"),
 				Pattern: proto.FileOperationPattern{
 					Glob: "**/*.{fm,fml,family}",
 				},
@@ -83,17 +87,17 @@ func Initialize(ctx *glsp.Context, params *proto.InitializeParams) (any, error) 
 		lock := sync.Mutex{}
 
 		for _, folder := range params.WorkspaceFolders {
-			path, err := uriToPath(folder.URI)
+			path, err := UriToPath(folder.URI)
 
 			if err != nil {
 				return nil, err
 			}
 
-			err = readTreesFromDir(path, func(tree *Tree, text []byte, path string) error {
+			err = ReadTreesFromDir(path, func(tree *Tree, text []byte, path string) error {
 				lock.Lock()
 				defer lock.Unlock()
 
-				return root.Update(tree, text, toUri(path))
+				return root.Update(tree, text, ToUri(path))
 			})
 
 			if err != nil {
@@ -108,7 +112,7 @@ func Initialize(ctx *glsp.Context, params *proto.InitializeParams) (any, error) 
 }
 
 func Initialized(context *glsp.Context, params *proto.InitializedParams) error {
-	waitTreesReady()
+	WaitTreesReady()
 
 	root.UpdateUnknownRefs()
 

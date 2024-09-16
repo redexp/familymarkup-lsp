@@ -1,18 +1,21 @@
-package src
+package providers
 
 import (
+	"github.com/redexp/familymarkup-lsp/state"
+	. "github.com/redexp/familymarkup-lsp/state"
+	. "github.com/redexp/familymarkup-lsp/utils"
 	"github.com/tliron/glsp"
 	proto "github.com/tliron/glsp/protocol_3_16"
 )
 
 func PrepareRename(context *glsp.Context, params *proto.PrepareRenameParams) (res any, err error) {
-	uri, err := normalizeUri(params.TextDocument.URI)
+	uri, err := NormalizeUri(params.TextDocument.URI)
 
 	if err != nil {
 		return
 	}
 
-	doc, err := tempDoc(uri)
+	doc, err := TempDoc(uri)
 
 	if err != nil {
 		return
@@ -28,7 +31,7 @@ func PrepareRename(context *glsp.Context, params *proto.PrepareRenameParams) (re
 		DefaultBehavior: true,
 	}
 
-	if isFamilyName(node.Parent()) {
+	if IsFamilyName(node.Parent()) {
 		return
 	}
 
@@ -42,13 +45,13 @@ func PrepareRename(context *glsp.Context, params *proto.PrepareRenameParams) (re
 }
 
 func Rename(context *glsp.Context, params *proto.RenameParams) (res *proto.WorkspaceEdit, err error) {
-	uri, err := normalizeUri(params.TextDocument.URI)
+	uri, err := NormalizeUri(params.TextDocument.URI)
 
 	if err != nil {
 		return
 	}
 
-	doc, err := tempDoc(uri)
+	doc, err := TempDoc(uri)
 
 	if err != nil {
 		return
@@ -62,7 +65,7 @@ func Rename(context *glsp.Context, params *proto.RenameParams) (res *proto.Works
 
 	res = &proto.WorkspaceEdit{}
 
-	if isFamilyName(node.Parent()) {
+	if IsFamilyName(node.Parent()) {
 		r, err := doc.NodeToRange(node)
 
 		if err != nil {
@@ -85,8 +88,8 @@ func Rename(context *glsp.Context, params *proto.RenameParams) (res *proto.Works
 			},
 		}
 
-		if isUriName(uri, toString(node, doc)) {
-			newUri, err := renameUri(uri, params.NewName)
+		if IsUriName(uri, ToString(node, doc)) {
+			newUri, err := RenameUri(uri, params.NewName)
 
 			if err != nil {
 				return nil, err
@@ -108,7 +111,7 @@ func Rename(context *glsp.Context, params *proto.RenameParams) (res *proto.Works
 		return
 	}
 
-	refs := append(member.Refs, &Ref{
+	refs := append(member.Refs, &state.Ref{
 		Uri:  family.Uri,
 		Node: member.Node,
 	})
@@ -129,7 +132,7 @@ func Rename(context *glsp.Context, params *proto.RenameParams) (res *proto.Works
 			edits = make([]proto.TextEdit, 0)
 		}
 
-		node := nameRefName(ref.Node)
+		node := NameRefName(ref.Node)
 
 		r, err := doc.NodeToRange(node)
 

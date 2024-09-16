@@ -1,4 +1,4 @@
-package src
+package providers
 
 import (
 	"github.com/tliron/glsp"

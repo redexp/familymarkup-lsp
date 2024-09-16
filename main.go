@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	lsp "github.com/redexp/familymarkup-lsp/src"
+	lsp "github.com/redexp/familymarkup-lsp/providers"
 	"github.com/spf13/pflag"
 	"github.com/tliron/commonlog"
 	_ "github.com/tliron/commonlog/simple"

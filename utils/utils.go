@@ -1,17 +1,16 @@
-package src
+package utils
 
 import (
 	"context"
-	"encoding/json"
 	"iter"
 	urlParser "net/url"
 	"path/filepath"
 	"slices"
 	"strings"
 
+	. "github.com/redexp/familymarkup-lsp/types"
 	familymarkup "github.com/redexp/tree-sitter-familymarkup"
 	sitter "github.com/smacker/go-tree-sitter"
-	proto "github.com/tliron/glsp/protocol_3_16"
 )
 
 type ParserWorker struct {
@@ -21,14 +20,15 @@ type ParserWorker struct {
 
 var logOnly string
 var parsersPool = make([]*ParserWorker, 0)
+var lang = familymarkup.GetLanguage()
 
-func createParser() *sitter.Parser {
+func CreateParser() *sitter.Parser {
 	p := sitter.NewParser()
 	p.SetLanguage(familymarkup.GetLanguage())
 	return p
 }
 
-func getParser() *ParserWorker {
+func GetParser() *ParserWorker {
 	var parser *ParserWorker
 
 	for _, p := range parsersPool {
@@ -38,7 +38,7 @@ func getParser() *ParserWorker {
 	}
 
 	parser = &ParserWorker{
-		parser: createParser(),
+		parser: CreateParser(),
 		busy:   true,
 	}
 
@@ -63,28 +63,7 @@ func (p *ParserWorker) Parse(text []byte) (tree *sitter.Tree, err error) {
 	return
 }
 
-func logDebug(msg string, data any) {
-	if logOnly != "" && !strings.HasPrefix(msg, logOnly) {
-		return
-	}
-
-	if server == nil || server.Log.GetMaxLevel() < 2 {
-		return
-	}
-
-	str, _ := json.MarshalIndent(data, "", "  ")
-	server.Log.Debugf(msg, str)
-}
-
-func Debugf(msg string, args ...any) {
-	server.Log.Debugf(msg, args...)
-}
-
-func LogOnly(prefix string) {
-	logOnly = prefix
-}
-
-func uriToPath(uri Uri) (string, error) {
+func UriToPath(uri Uri) (string, error) {
 	if strings.HasPrefix(uri, "/") {
 		return uri, nil
 	}
@@ -98,7 +77,7 @@ func uriToPath(uri Uri) (string, error) {
 	return url.Path, nil
 }
 
-func toUri(path string) Uri {
+func ToUri(path string) Uri {
 	if strings.HasPrefix(path, "/") {
 		path = "file://" + path
 	}
@@ -106,27 +85,27 @@ func toUri(path string) Uri {
 	return path
 }
 
-func normalizeUri(uri Uri) (Uri, error) {
-	path, err := uriToPath(uri)
+func NormalizeUri(uri Uri) (Uri, error) {
+	path, err := UriToPath(uri)
 
 	if err != nil {
 		return "", err
 	}
 
-	return toUri(path), nil
+	return ToUri(path), nil
 }
 
-func renameUri(uri Uri, name string) (Uri, error) {
-	base, err := uriToPath(uri)
+func RenameUri(uri Uri, name string) (Uri, error) {
+	base, err := UriToPath(uri)
 
 	if err != nil {
 		return "", err
 	}
 
-	return toUri(filepath.Join(base, "..", name+filepath.Ext(base))), nil
+	return ToUri(filepath.Join(base, "..", name+filepath.Ext(base))), nil
 }
 
-func isUriName(uri Uri, name string) bool {
+func IsUriName(uri Uri, name string) bool {
 	base := filepath.Base(uri)
 	ext := filepath.Ext(uri)
 
@@ -140,7 +119,7 @@ func isUriName(uri Uri, name string) bool {
 // "name", [1]*Node
 // "nil-name", [1]*Node
 // "nil", [0]*Node
-func getTypeNode(doc *TextDocument, pos *Position) (t string, nodes []*Node, err error) {
+func GetTypeNode(doc *TextDocument, pos *Position) (t string, nodes []*Node, err error) {
 	prev, target, next, err := doc.GetClosestHighlightCaptureByPosition(pos)
 
 	if err != nil {
@@ -208,19 +187,19 @@ func getTypeNode(doc *TextDocument, pos *Position) (t string, nodes []*Node, err
 	return "nil", []*Node{}, nil
 }
 
-func getClosestNode(node *Node, parentType string, fields ...string) *Node {
+func GetClosestNode(node *Node, parentType string, fields ...string) *Node {
 	for node != nil && node.Type() != parentType {
 		node = node.Parent()
 	}
 
 	if node != nil && len(fields) > 0 {
-		return getNodeByFields(node, fields...)
+		return GetNodeByFields(node, fields...)
 	}
 
 	return node
 }
 
-func getNodeByFields(node *Node, fields ...string) *Node {
+func GetNodeByFields(node *Node, fields ...string) *Node {
 	if node == nil {
 		return nil
 	}
@@ -236,72 +215,62 @@ func getNodeByFields(node *Node, fields ...string) *Node {
 	return node
 }
 
-func getClosestFamilyName(node *Node) *Node {
-	return getNodeByFields(getClosestNode(node, "family"), "name", "name")
+func GetClosestFamilyName(node *Node) *Node {
+	return GetNodeByFields(GetClosestNode(node, "family"), "name", "name")
 }
 
-func getClosestSources(node *Node) *Node {
-	return getClosestNode(node, "relation", "sources")
+func GetClosestSources(node *Node) *Node {
+	return GetClosestNode(node, "relation", "sources")
 }
 
-func nameRefName(node *Node) *Node {
-	if isNameRef(node) {
+func NameRefName(node *Node) *Node {
+	if IsNameRef(node) {
 		return node.NamedChild(1)
 	}
 
 	return node
 }
 
-func nodeToRange(uri Uri, node *Node) (res *proto.Range, err error) {
-	doc, err := tempDoc(uri)
-
-	if err != nil {
-		return
-	}
-
-	return doc.NodeToRange(node)
-}
-
-func isFamilyName(node *Node) bool {
+func IsFamilyName(node *Node) bool {
 	return node != nil && node.Type() == "family_name"
 }
 
-func isNameAliases(node *Node) bool {
+func IsNameAliases(node *Node) bool {
 	return node != nil && node.Type() == "name_aliases"
 }
 
-func isNameRef(node *Node) bool {
+func IsNameRef(node *Node) bool {
 	return node != nil && node.Type() == "name_ref"
 }
 
-func isNameDef(node *Node) bool {
+func IsNameDef(node *Node) bool {
 	return node != nil && node.Type() == "name_def"
 }
 
-func isNewSurname(node *Node) bool {
+func IsNewSurname(node *Node) bool {
 	return node != nil && node.Type() == "new_surname"
 }
 
-func isNumUnknown(node *Node) bool {
+func IsNumUnknown(node *Node) bool {
 	return node != nil && node.Type() == "num_unknown"
 }
 
-func pt[T ~string | ~int32](src T) *T {
+func P[T ~string | ~int32](src T) *T {
 	return &src
 }
 
-func createQuery(pattern string) (*sitter.Query, error) {
+func CreateQuery(pattern string) (*sitter.Query, error) {
 	return sitter.NewQuery([]byte(pattern), lang)
 }
 
-func createCursor(q *sitter.Query, node *Node) *sitter.QueryCursor {
+func CreateCursor(q *sitter.Query, node *Node) *sitter.QueryCursor {
 	c := sitter.NewQueryCursor()
 	c.Exec(q, node)
 	return c
 }
 
-func queryIter(q *sitter.Query, node *Node) iter.Seq2[uint32, *Node] {
-	c := createCursor(q, node)
+func QueryIter(q *sitter.Query, node *Node) iter.Seq2[uint32, *Node] {
+	c := CreateCursor(q, node)
 
 	return func(yield func(uint32, *Node) bool) {
 		defer c.Close()
@@ -323,7 +292,7 @@ func queryIter(q *sitter.Query, node *Node) iter.Seq2[uint32, *Node] {
 	}
 }
 
-func getErrorNodesIter(root *Node) iter.Seq[*Node] {
+func GetErrorNodesIter(root *Node) iter.Seq[*Node] {
 	return func(yield func(*sitter.Node) bool) {
 		if !root.HasError() {
 			return

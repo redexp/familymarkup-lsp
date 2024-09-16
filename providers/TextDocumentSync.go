@@ -1,6 +1,9 @@
-package src
+package providers
 
 import (
+	. "github.com/redexp/familymarkup-lsp/state"
+	. "github.com/redexp/familymarkup-lsp/types"
+	. "github.com/redexp/familymarkup-lsp/utils"
 	"github.com/tliron/glsp"
 	proto "github.com/tliron/glsp/protocol_3_16"
 )
@@ -8,13 +11,13 @@ import (
 var docDiagnostic = createDocDebouncer()
 
 func DocOpen(context *glsp.Context, params *proto.DidOpenTextDocumentParams) (err error) {
-	uri, err := normalizeUri(params.TextDocument.URI)
+	uri, err := NormalizeUri(params.TextDocument.URI)
 
 	if err != nil {
 		return
 	}
 
-	doc, err := openDocText(uri, params.TextDocument.Text, nil)
+	doc, err := OpenDocText(uri, params.TextDocument.Text, nil)
 
 	if err != nil {
 		return
@@ -28,25 +31,25 @@ func DocOpen(context *glsp.Context, params *proto.DidOpenTextDocumentParams) (er
 }
 
 func DocClose(context *glsp.Context, params *proto.DidCloseTextDocumentParams) error {
-	uri, err := normalizeUri(params.TextDocument.URI)
+	uri, err := NormalizeUri(params.TextDocument.URI)
 
 	if err != nil {
 		return err
 	}
 
-	closeDoc(uri)
+	CloseDoc(uri)
 
 	return nil
 }
 
 func DocChange(ctx *glsp.Context, params *proto.DidChangeTextDocumentParams) error {
-	uri, err := normalizeUri(params.TextDocument.URI)
+	uri, err := NormalizeUri(params.TextDocument.URI)
 
 	if err != nil {
 		return err
 	}
 
-	doc, err := openDoc(uri)
+	doc, err := OpenDoc(uri)
 
 	if err != nil {
 		return err
@@ -63,7 +66,7 @@ func DocChange(ctx *glsp.Context, params *proto.DidChangeTextDocumentParams) err
 			err = doc.Change(&change)
 		}
 
-		setTree(uri, doc.Tree)
+		SetTree(uri, doc.Tree)
 
 		if err != nil {
 			return err
@@ -89,7 +92,7 @@ func DocCreate(ctx *glsp.Context, params *proto.CreateFilesParams) error {
 
 func DocRename(ctx *glsp.Context, params *proto.RenameFilesParams) error {
 	for _, file := range params.Files {
-		err := removeDoc(file.OldURI)
+		err := RemoveDoc(file.OldURI)
 
 		if err != nil {
 			return err
@@ -109,7 +112,7 @@ func DocRename(ctx *glsp.Context, params *proto.RenameFilesParams) error {
 
 func DocDelete(ctx *glsp.Context, params *proto.DeleteFilesParams) error {
 	for _, file := range params.Files {
-		err := removeDoc(file.URI)
+		err := RemoveDoc(file.URI)
 
 		if err != nil {
 			return err
@@ -129,7 +132,7 @@ func DocDelete(ctx *glsp.Context, params *proto.DeleteFilesParams) error {
 
 func setDirtyUri(ctx *glsp.Context, uris ...Uri) error {
 	for _, uri := range uris {
-		uri, err := normalizeUri(uri)
+		uri, err := NormalizeUri(uri)
 
 		if err != nil {
 			return err
@@ -143,7 +146,7 @@ func setDirtyUri(ctx *glsp.Context, uris ...Uri) error {
 }
 
 func diagnosticOpenDocs(ctx *glsp.Context) {
-	for uri := range documents {
+	for uri := range GetOpenDocsIter() {
 		docDiagnostic.Set(uri, ctx)
 	}
 }

@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	h "github.com/redexp/familymarkup-lsp/src"
+	h "github.com/redexp/familymarkup-lsp/providers"
 	"github.com/redexp/textdocument"
 	familymarkup "github.com/redexp/tree-sitter-familymarkup"
 	sitter "github.com/smacker/go-tree-sitter"

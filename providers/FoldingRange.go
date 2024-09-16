@@ -1,24 +1,26 @@
-package src
+package providers
 
 import (
+	. "github.com/redexp/familymarkup-lsp/state"
+	. "github.com/redexp/familymarkup-lsp/utils"
 	"github.com/tliron/glsp"
 	proto "github.com/tliron/glsp/protocol_3_16"
 )
 
 func FoldingRange(context *glsp.Context, params *proto.FoldingRangeParams) (res []proto.FoldingRange, err error) {
-	uri, err := normalizeUri(params.TextDocument.URI)
+	uri, err := NormalizeUri(params.TextDocument.URI)
 
 	if err != nil {
 		return
 	}
 
-	tree := getTree(uri)
+	tree := GetTree(uri)
 
 	if tree == nil {
 		return
 	}
 
-	q, err := createQuery(`
+	q, err := CreateQuery(`
 		(family) @family
 
 		(relation) @rel
@@ -32,7 +34,7 @@ func FoldingRange(context *glsp.Context, params *proto.FoldingRangeParams) (res 
 
 	res = make([]proto.FoldingRange, 0)
 
-	for _, node := range queryIter(q, tree.RootNode()) {
+	for _, node := range QueryIter(q, tree.RootNode()) {
 		start := node.StartPoint().Row
 		end := node.EndPoint().Row
 
@@ -43,7 +45,7 @@ func FoldingRange(context *glsp.Context, params *proto.FoldingRangeParams) (res 
 		res = append(res, proto.FoldingRange{
 			StartLine: start,
 			EndLine:   end,
-			Kind:      pt("region"),
+			Kind:      P("region"),
 		})
 	}
 

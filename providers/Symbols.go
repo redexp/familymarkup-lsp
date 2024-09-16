@@ -1,4 +1,4 @@
-package src
+package providers
 
 import (
 	"encoding/json"
@@ -6,21 +6,24 @@ import (
 	"strings"
 	"unicode"
 
+	. "github.com/redexp/familymarkup-lsp/state"
+	. "github.com/redexp/familymarkup-lsp/types"
+	. "github.com/redexp/familymarkup-lsp/utils"
 	"github.com/tliron/glsp"
 	proto "github.com/tliron/glsp/protocol_3_16"
 )
 
 func DocSymbols(ctx *glsp.Context, params *proto.DocumentSymbolParams) (res any, err error) {
-	uri, err := normalizeUri(params.TextDocument.URI)
+	uri, err := NormalizeUri(params.TextDocument.URI)
 
 	if err != nil {
 		return
 	}
 
-	waitTreesReady()
+	WaitTreesReady()
 	root.UpdateDirty()
 
-	doc, err := tempDoc(uri)
+	doc, err := TempDoc(uri)
 
 	if err != nil {
 		return
@@ -33,7 +36,7 @@ func DocSymbols(ctx *glsp.Context, params *proto.DocumentSymbolParams) (res any,
 			continue
 		}
 
-		r, err := doc.NodeToRange(getClosestNode(f.Node, "family"))
+		r, err := doc.NodeToRange(GetClosestNode(f.Node, "family"))
 
 		if err != nil {
 			return nil, err
@@ -63,7 +66,7 @@ func DocSymbols(ctx *glsp.Context, params *proto.DocumentSymbolParams) (res any,
 			symbol.Children = append(symbol.Children, proto.DocumentSymbol{
 				Kind:           proto.SymbolKindConstant,
 				Name:           mem.Name,
-				Detail:         pt(fmt.Sprintf("%s %s", f.Name, mem.Name)),
+				Detail:         P(fmt.Sprintf("%s %s", f.Name, mem.Name)),
 				Range:          *r,
 				SelectionRange: *r,
 			})
@@ -173,7 +176,7 @@ func ResolveSymbol(ctx *glsp.Context, symbol *WorkspaceSymbol) (res *WorkspaceSy
 			return nil, nil, fmt.Errorf("family not found")
 		}
 
-		doc, err := tempDoc(f.Uri)
+		doc, err := TempDoc(f.Uri)
 
 		if err != nil {
 			return nil, nil, err

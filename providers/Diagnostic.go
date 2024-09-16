@@ -1,10 +1,14 @@
-package src
+package providers
 
 import (
 	"fmt"
 	"time"
 
 	"github.com/bep/debounce"
+	"github.com/redexp/familymarkup-lsp/state"
+	. "github.com/redexp/familymarkup-lsp/state"
+	. "github.com/redexp/familymarkup-lsp/types"
+	. "github.com/redexp/familymarkup-lsp/utils"
 	"github.com/tliron/glsp"
 	proto "github.com/tliron/glsp/protocol_3_16"
 )
@@ -33,26 +37,26 @@ func PublishDiagnostics(ctx *glsp.Context, uri Uri, doc *TextDocument) {
 	var err error
 
 	if doc == nil {
-		doc, err = tempDoc(uri)
+		doc, err = TempDoc(uri)
 
 		if err != nil {
-			logDebug("Diagnostic open doc error: %s", err.Error())
+			LogDebug("Diagnostic open doc error: %s", err.Error())
 			return
 		}
 	}
 
 	list := make([]proto.Diagnostic, 0)
 
-	for node := range getErrorNodesIter(doc.Tree.RootNode()) {
+	for node := range GetErrorNodesIter(doc.Tree.RootNode()) {
 		r, err := doc.NodeToRange(node)
 
 		if err != nil {
-			logDebug("Diagnostic error: %s", err.Error())
+			LogDebug("Diagnostic error: %s", err.Error())
 			return
 		}
 
 		list = append(list, proto.Diagnostic{
-			Severity: pt(proto.DiagnosticSeverityError),
+			Severity: P(proto.DiagnosticSeverityError),
 			Range:    *r,
 			Message:  "Syntax error",
 		})
@@ -66,7 +70,7 @@ func PublishDiagnostics(ctx *glsp.Context, uri Uri, doc *TextDocument) {
 		node := ref.Node
 		message := "Unknown person"
 
-		if isNameRef(node) {
+		if IsNameRef(node) {
 			f := root.FindFamily(ref.Surname)
 
 			if f != nil {
@@ -75,19 +79,19 @@ func PublishDiagnostics(ctx *glsp.Context, uri Uri, doc *TextDocument) {
 				node = node.NamedChild(0)
 				message = "Unknown family"
 			}
-		} else if isNewSurname(node.Parent()) {
+		} else if IsNewSurname(node.Parent()) {
 			message = "Unknown family"
 		}
 
 		r, err := doc.NodeToRange(node)
 
 		if err != nil {
-			logDebug("Diagnostic error: %s", err.Error())
+			LogDebug("Diagnostic error: %s", err.Error())
 			continue
 		}
 
 		list = append(list, proto.Diagnostic{
-			Severity: pt(proto.DiagnosticSeverityError),
+			Severity: P(proto.DiagnosticSeverityError),
 			Range:    *r,
 			Message:  message,
 			Data: DiagnosticData{
@@ -102,7 +106,7 @@ func PublishDiagnostics(ctx *glsp.Context, uri Uri, doc *TextDocument) {
 	for family := range root.FamilyIter() {
 		for name, dups := range family.Duplicates {
 			member := family.Members[name]
-			dups = append(dups, &Duplicate{Member: member})
+			dups = append(dups, &state.Duplicate{Member: member})
 			count := len(dups)
 
 			var locations []proto.DiagnosticRelatedInformation
@@ -112,10 +116,10 @@ func PublishDiagnostics(ctx *glsp.Context, uri Uri, doc *TextDocument) {
 					continue
 				}
 
-				r, err := doc.NodeToRange(nameRefName(ref.Node))
+				r, err := doc.NodeToRange(NameRefName(ref.Node))
 
 				if err != nil {
-					logDebug("Diagnostic error: %s", err.Error())
+					LogDebug("Diagnostic error: %s", err.Error())
 					continue
 				}
 
@@ -123,7 +127,7 @@ func PublishDiagnostics(ctx *glsp.Context, uri Uri, doc *TextDocument) {
 					d, err := tempDocs.Get(family.Uri)
 
 					if err != nil {
-						logDebug("Diagnostic error: %s", err.Error())
+						LogDebug("Diagnostic error: %s", err.Error())
 						continue
 					}
 
@@ -133,24 +137,24 @@ func PublishDiagnostics(ctx *glsp.Context, uri Uri, doc *TextDocument) {
 						rr, err := d.NodeToRange(node)
 
 						if err != nil {
-							logDebug("Diagnostic error: %s", err.Error())
+							LogDebug("Diagnostic error: %s", err.Error())
 							continue
 						}
 
-						sources := getClosestSources(node)
+						sources := GetClosestSources(node)
 
 						locations[i] = proto.DiagnosticRelatedInformation{
 							Location: proto.Location{
 								URI:   family.Uri,
 								Range: *rr,
 							},
-							Message: fmt.Sprintf("Child of %s", toString(sources, d)),
+							Message: fmt.Sprintf("Child of %s", ToString(sources, d)),
 						}
 					}
 				}
 
 				list = append(list, proto.Diagnostic{
-					Severity:           pt(proto.DiagnosticSeverityWarning),
+					Severity:           P(proto.DiagnosticSeverityWarning),
 					Range:              *r,
 					Message:            fmt.Sprintf("An unobvious name. There are %d persons with the name %s. Add uniq name alias to one of them", count, name),
 					RelatedInformation: locations,
@@ -191,7 +195,7 @@ func (dd *DocDebouncer) Flush() {
 	for uri, ctx := range dd.Docs {
 		delete(dd.Docs, uri)
 
-		if !docExist(uri) {
+		if !DocExist(uri) {
 			continue
 		}
 

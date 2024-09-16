@@ -1,6 +1,8 @@
-package src
+package providers
 
 import (
+	. "github.com/redexp/familymarkup-lsp/state"
+	. "github.com/redexp/familymarkup-lsp/utils"
 	familymarkup "github.com/redexp/tree-sitter-familymarkup"
 	sitter "github.com/smacker/go-tree-sitter"
 	"github.com/tliron/glsp"
@@ -8,13 +10,13 @@ import (
 )
 
 func SemanticTokensFull(ctx *glsp.Context, params *proto.SemanticTokensParams) (res *proto.SemanticTokens, err error) {
-	uri, err := normalizeUri(params.TextDocument.URI)
+	uri, err := NormalizeUri(params.TextDocument.URI)
 
 	if err != nil {
 		return
 	}
 
-	doc, err := openDoc(uri)
+	doc, err := OpenDoc(uri)
 
 	if err != nil {
 		return

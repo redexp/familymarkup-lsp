@@ -1,15 +1,17 @@
-package src
+package providers
 
 import (
 	"fmt"
 	"strings"
 
+	. "github.com/redexp/familymarkup-lsp/state"
+	. "github.com/redexp/familymarkup-lsp/utils"
 	"github.com/tliron/glsp"
 	proto "github.com/tliron/glsp/protocol_3_16"
 )
 
 func Hover(context *glsp.Context, params *proto.HoverParams) (h *proto.Hover, err error) {
-	uri, err := normalizeUri(params.TextDocument.URI)
+	uri, err := NormalizeUri(params.TextDocument.URI)
 
 	if err != nil {
 		return
@@ -42,17 +44,17 @@ func Hover(context *glsp.Context, params *proto.HoverParams) (h *proto.Hover, er
 	}
 
 	if m != nil {
-		sources := getClosestSources(m.Node)
-		doc, err := tempDoc(f.Uri)
+		sources := GetClosestSources(m.Node)
+		doc, err := TempDoc(f.Uri)
 
 		if err != nil {
 			return nil, err
 		}
 
-		message += " child of " + toString(sources, doc)
+		message += " child of " + ToString(sources, doc)
 	}
 
-	doc, err := tempDoc(uri)
+	doc, err := TempDoc(uri)
 
 	if err != nil {
 		return
@@ -64,7 +66,7 @@ func Hover(context *glsp.Context, params *proto.HoverParams) (h *proto.Hover, er
 		return
 	}
 
-	if isNameRef(target.Parent()) {
+	if IsNameRef(target.Parent()) {
 		target = target.Parent()
 	}
 

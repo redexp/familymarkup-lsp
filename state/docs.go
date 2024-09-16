@@ -1,8 +1,11 @@
-package src
+package state
 
 import (
+	"iter"
 	"os"
 
+	. "github.com/redexp/familymarkup-lsp/types"
+	. "github.com/redexp/familymarkup-lsp/utils"
 	"github.com/redexp/textdocument"
 	familymarkup "github.com/redexp/tree-sitter-familymarkup"
 )
@@ -11,8 +14,8 @@ type Docs map[Uri]*TextDocument
 
 var documents Docs = make(Docs)
 
-func openDoc(uri Uri) (doc *TextDocument, err error) {
-	uri, err = normalizeUri(uri)
+func OpenDoc(uri Uri) (doc *TextDocument, err error) {
+	uri, err = NormalizeUri(uri)
 
 	if err != nil {
 		return
@@ -24,21 +27,21 @@ func openDoc(uri Uri) (doc *TextDocument, err error) {
 		return
 	}
 
-	waitTreesReady()
+	WaitTreesReady()
 
-	tree, text, err := getTreeText(uri)
+	tree, text, err := GetTreeText(uri)
 
 	if err != nil {
 		return
 	}
 
-	return openDocText(uri, string(text), tree)
+	return OpenDocText(uri, string(text), tree)
 }
 
-func openDocText(uri Uri, text string, tree *Tree) (doc *TextDocument, err error) {
+func OpenDocText(uri Uri, text string, tree *Tree) (doc *TextDocument, err error) {
 	doc = textdocument.NewTextDocument(text)
 	doc.Tree = tree
-	err = doc.SetParser(createParser())
+	err = doc.SetParser(CreateParser())
 
 	if err != nil {
 		return
@@ -55,12 +58,22 @@ func openDocText(uri Uri, text string, tree *Tree) (doc *TextDocument, err error
 	})
 
 	documents[uri] = doc
-	setTree(uri, doc.Tree)
+	SetTree(uri, doc.Tree)
 
 	return
 }
 
-func closeDoc(uri Uri) {
+func GetOpenDocsIter() iter.Seq2[Uri, *TextDocument] {
+	return func(yield func(Uri, *TextDocument) bool) {
+		for uri, doc := range documents {
+			if !yield(uri, doc) {
+				break
+			}
+		}
+	}
+}
+
+func CloseDoc(uri Uri) {
 	doc, exist := documents[uri]
 
 	if !exist {
@@ -71,21 +84,21 @@ func closeDoc(uri Uri) {
 	delete(documents, uri)
 }
 
-func removeDoc(uri Uri) error {
-	uri, err := normalizeUri(uri)
+func RemoveDoc(uri Uri) error {
+	uri, err := NormalizeUri(uri)
 
 	if err != nil {
 		return err
 	}
 
-	closeDoc(uri)
-	removeTree(uri)
+	CloseDoc(uri)
+	RemoveTree(uri)
 
 	return nil
 }
 
-func tempDoc(uri Uri) (doc *TextDocument, err error) {
-	uri, err = normalizeUri(uri)
+func TempDoc(uri Uri) (doc *TextDocument, err error) {
+	uri, err = NormalizeUri(uri)
 
 	if err != nil {
 		return
@@ -97,7 +110,7 @@ func tempDoc(uri Uri) (doc *TextDocument, err error) {
 		return
 	}
 
-	tree, text, err := getTreeText(uri)
+	tree, text, err := GetTreeText(uri)
 
 	if err != nil {
 		return
@@ -109,8 +122,8 @@ func tempDoc(uri Uri) (doc *TextDocument, err error) {
 	return
 }
 
-func docExist(uri Uri) bool {
-	path, err := uriToPath(uri)
+func DocExist(uri Uri) bool {
+	path, err := UriToPath(uri)
 
 	if err != nil {
 		return false
@@ -124,7 +137,7 @@ func docExist(uri Uri) bool {
 	return !info.IsDir()
 }
 
-func toString(node *Node, doc *TextDocument) string {
+func ToString(node *Node, doc *TextDocument) string {
 	if node == nil {
 		return ""
 	}
@@ -139,7 +152,7 @@ func (docs Docs) Get(uri Uri) (doc *TextDocument, err error) {
 		return
 	}
 
-	doc, err = tempDoc(uri)
+	doc, err = TempDoc(uri)
 
 	if err != nil {
 		return

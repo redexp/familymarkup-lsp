@@ -1,9 +1,12 @@
-package src
+package providers
 
 import (
 	"fmt"
 
 	"github.com/mitchellh/mapstructure"
+	. "github.com/redexp/familymarkup-lsp/state"
+	. "github.com/redexp/familymarkup-lsp/types"
+	. "github.com/redexp/familymarkup-lsp/utils"
 	"github.com/tliron/glsp"
 	proto "github.com/tliron/glsp/protocol_3_16"
 )
@@ -26,7 +29,7 @@ func CodeAction(context *glsp.Context, params *proto.CodeActionParams) (any, err
 		return nil, nil
 	}
 
-	uri, err := normalizeUri(params.TextDocument.URI)
+	uri, err := NormalizeUri(params.TextDocument.URI)
 
 	if err != nil {
 		return nil, err
@@ -61,15 +64,15 @@ func CodeAction(context *glsp.Context, params *proto.CodeActionParams) (any, err
 				return nil, err
 			}
 
-			name := toString(node, doc)
+			name := ToString(node, doc)
 
-			family := getClosestFamilyName(node)
+			family := GetClosestFamilyName(node)
 
 			list = append(
 				list,
 				proto.CodeAction{
-					Title:       fmt.Sprintf("Create %s family after %s", name, toString(family, doc)),
-					Kind:        pt(proto.CodeActionKindQuickFix),
+					Title:       fmt.Sprintf("Create %s family after %s", name, ToString(family, doc)),
+					Kind:        P(proto.CodeActionKindQuickFix),
 					Diagnostics: []proto.Diagnostic{d},
 					Data: CodeActionData{
 						Uri:  uri,
@@ -79,7 +82,7 @@ func CodeAction(context *glsp.Context, params *proto.CodeActionParams) (any, err
 				},
 				proto.CodeAction{
 					Title:       fmt.Sprintf("Create %s family at the end of file", name),
-					Kind:        pt(proto.CodeActionKindQuickFix),
+					Kind:        P(proto.CodeActionKindQuickFix),
 					Diagnostics: []proto.Diagnostic{d},
 					Data: CodeActionData{
 						Uri:  uri,
@@ -89,7 +92,7 @@ func CodeAction(context *glsp.Context, params *proto.CodeActionParams) (any, err
 				},
 				proto.CodeAction{
 					Title:       fmt.Sprintf("Create new file with %s family", name),
-					Kind:        pt(proto.CodeActionKindQuickFix),
+					Kind:        P(proto.CodeActionKindQuickFix),
 					Diagnostics: []proto.Diagnostic{d},
 					Data: CodeActionData{
 						Uri:  uri,
@@ -127,7 +130,7 @@ func CodeAction(context *glsp.Context, params *proto.CodeActionParams) (any, err
 					continue
 				}
 
-				sources := getClosestSources(dup.Member.Node)
+				sources := GetClosestSources(dup.Member.Node)
 
 				if sources == nil {
 					continue
@@ -140,8 +143,8 @@ func CodeAction(context *glsp.Context, params *proto.CodeActionParams) (any, err
 				}
 
 				list = append(list, proto.CodeAction{
-					Title:       fmt.Sprintf("Change to %s child of %s", name, toString(sources, doc)),
-					Kind:        pt(proto.CodeActionKindQuickFix),
+					Title:       fmt.Sprintf("Change to %s child of %s", name, ToString(sources, doc)),
+					Kind:        P(proto.CodeActionKindQuickFix),
 					Diagnostics: []proto.Diagnostic{d},
 					Data: CodeActionData{
 						Uri:  uri,
@@ -178,7 +181,7 @@ func CodeActionResolve(ctx *glsp.Context, params *proto.CodeAction) (res *proto.
 
 	switch data.Type {
 	case UnknownFamilyError:
-		doc, err := tempDoc(data.Uri)
+		doc, err := TempDoc(data.Uri)
 
 		if err != nil {
 			return nil, err
@@ -190,7 +193,7 @@ func CodeActionResolve(ctx *glsp.Context, params *proto.CodeAction) (res *proto.
 			return nil, err
 		}
 
-		surname := toString(node, doc)
+		surname := ToString(node, doc)
 
 		text := fmt.Sprintf("%s\n\n", surname)
 
@@ -198,12 +201,12 @@ func CodeActionResolve(ctx *glsp.Context, params *proto.CodeAction) (res *proto.
 			next := node.NextSibling()
 
 			if next != nil && next.Type() == "name" {
-				text = fmt.Sprintf("%s? + ? =\n1. %s", text, toString(next, doc))
+				text = fmt.Sprintf("%s? + ? =\n1. %s", text, ToString(next, doc))
 			}
 		}
 
 		if data.Mod == CreateFamilyOnNewFile {
-			newUri, err := renameUri(data.Uri, surname)
+			newUri, err := RenameUri(data.Uri, surname)
 
 			if err != nil {
 				return nil, err
@@ -233,7 +236,7 @@ func CodeActionResolve(ctx *glsp.Context, params *proto.CodeAction) (res *proto.
 
 		switch data.Mod {
 		case CreateFamilyAfterCurrentFamily:
-			root = getClosestNode(node, "family")
+			root = GetClosestNode(node, "family")
 
 		case CreateFamilyAtTheEndOfFile:
 			root = doc.Tree.RootNode()

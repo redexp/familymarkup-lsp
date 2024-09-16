@@ -1,12 +1,14 @@
-package src
+package providers
 
 import (
+	. "github.com/redexp/familymarkup-lsp/state"
+	. "github.com/redexp/familymarkup-lsp/utils"
 	"github.com/tliron/glsp"
 	proto "github.com/tliron/glsp/protocol_3_16"
 )
 
 func DocumentHighlight(context *glsp.Context, params *proto.DocumentHighlightParams) (res []proto.DocumentHighlight, err error) {
-	uri, err := normalizeUri(params.TextDocument.URI)
+	uri, err := NormalizeUri(params.TextDocument.URI)
 
 	if err != nil {
 		return
@@ -18,7 +20,7 @@ func DocumentHighlight(context *glsp.Context, params *proto.DocumentHighlightPar
 		return
 	}
 
-	doc, err := tempDoc(uri)
+	doc, err := TempDoc(uri)
 
 	if err != nil {
 		return
@@ -35,7 +37,7 @@ func DocumentHighlight(context *glsp.Context, params *proto.DocumentHighlightPar
 
 		res = append(res, proto.DocumentHighlight{
 			Range: *r,
-			Kind:  pt(proto.DocumentHighlightKindRead),
+			Kind:  P(proto.DocumentHighlightKindRead),
 		})
 	}
 
@@ -52,7 +54,7 @@ func DocumentHighlight(context *glsp.Context, params *proto.DocumentHighlightPar
 
 		res = append(res, proto.DocumentHighlight{
 			Range: *r,
-			Kind:  pt(proto.DocumentHighlightKindRead),
+			Kind:  P(proto.DocumentHighlightKindRead),
 		})
 	}
 

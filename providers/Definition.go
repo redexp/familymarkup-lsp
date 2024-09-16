@@ -1,13 +1,17 @@
-package src
+package providers
 
 import (
+	"github.com/redexp/familymarkup-lsp/state"
+	. "github.com/redexp/familymarkup-lsp/state"
+	. "github.com/redexp/familymarkup-lsp/types"
+	. "github.com/redexp/familymarkup-lsp/utils"
 	"github.com/redexp/textdocument"
 	"github.com/tliron/glsp"
 	proto "github.com/tliron/glsp/protocol_3_16"
 )
 
 func Definition(context *glsp.Context, params *proto.DefinitionParams) (res any, err error) {
-	uri, err := normalizeUri(params.TextDocument.URI)
+	uri, err := NormalizeUri(params.TextDocument.URI)
 
 	if err != nil {
 		return
@@ -19,7 +23,9 @@ func Definition(context *glsp.Context, params *proto.DefinitionParams) (res any,
 		return
 	}
 
-	r, err := nodeToRange(family.Uri, target)
+	doc, err := TempDoc(family.Uri)
+
+	r, err := doc.NodeToRange(target)
 
 	if err != nil {
 		return
@@ -31,14 +37,14 @@ func Definition(context *glsp.Context, params *proto.DefinitionParams) (res any,
 	}, nil
 }
 
-func getDefinition(uri Uri, pos *Position) (family *Family, member *Member, target *Node, err error) {
+func getDefinition(uri Uri, pos *Position) (family *state.Family, member *state.Member, target *Node, err error) {
 	err = root.UpdateDirty()
 
 	if err != nil {
-		logDebug("getDefinition UpdateDirty %s", err)
+		LogDebug("getDefinition UpdateDirty %s", err)
 	}
 
-	srcDoc, err := tempDoc(uri)
+	srcDoc, err := TempDoc(uri)
 
 	if err != nil {
 		return
@@ -56,7 +62,7 @@ func getDefinition(uri Uri, pos *Position) (family *Family, member *Member, targ
 		return member.Family, member, member.Node, nil
 	}
 
-	t, nodes, err := getTypeNode(srcDoc, pos)
+	t, nodes, err := GetTypeNode(srcDoc, pos)
 
 	if err != nil {
 		return
@@ -64,7 +70,7 @@ func getDefinition(uri Uri, pos *Position) (family *Family, member *Member, targ
 
 	if t == "surname" || t == "surname-name" {
 		root.UpdateDirty()
-		family = root.FindFamily(toString(nodes[0], srcDoc))
+		family = root.FindFamily(ToString(nodes[0], srcDoc))
 
 		if family == nil {
 			return
@@ -73,7 +79,7 @@ func getDefinition(uri Uri, pos *Position) (family *Family, member *Member, targ
 		target = family.Node
 
 		if t == "surname-name" {
-			member = family.GetMember(toString(nodes[1], srcDoc))
+			member = family.GetMember(ToString(nodes[1], srcDoc))
 
 			if member == nil {
 				return
@@ -89,7 +95,7 @@ func getDefinition(uri Uri, pos *Position) (family *Family, member *Member, targ
 			return
 		}
 
-		familyNode := getClosestFamilyName(nodes[0])
+		familyNode := GetClosestFamilyName(nodes[0])
 
 		if familyNode == nil {
 			return
@@ -109,7 +115,7 @@ func getDefinition(uri Uri, pos *Position) (family *Family, member *Member, targ
 			return
 		}
 
-		member = family.GetMember(toString(nodes[0], srcDoc))
+		member = family.GetMember(ToString(nodes[0], srcDoc))
 
 		if member == nil {
 			return

@@ -1,22 +1,25 @@
-package src
+package state
 
 import (
 	"iter"
 	"math"
 	"slices"
 
+	. "github.com/redexp/familymarkup-lsp/types"
+	. "github.com/redexp/familymarkup-lsp/utils"
 	familymarkup "github.com/redexp/tree-sitter-familymarkup"
 )
 
 var lang = familymarkup.GetLanguage()
 
 type Root struct {
-	Families    Families
-	Duplicates  Duplicates
-	NodeRefs    NodeRefs
-	UnknownRefs []*Ref
-	DirtyUris   UriSet
-	Listeners   Listeners
+	Families      Families
+	Duplicates    Duplicates
+	NodeRefs      NodeRefs
+	UnknownRefs   []*Ref
+	MarkdownFiles []*MarkdownFile
+	DirtyUris     UriSet
+	Listeners     Listeners
 }
 
 type Family struct {
@@ -54,6 +57,11 @@ type Duplicate struct {
 	Uri    string
 }
 
+type MarkdownFile struct {
+	Uri      Uri
+	UriParts []string
+}
+
 type (
 	Families   map[string]*Family
 	Members    map[string]*Member
@@ -64,21 +72,22 @@ type (
 	Listeners  map[string][]func()
 )
 
-func createRoot() *Root {
+func CreateRoot() *Root {
 	return &Root{
-		Families:    make(Families),
-		Duplicates:  make(Duplicates),
-		NodeRefs:    make(NodeRefs),
-		UnknownRefs: make([]*Ref, 0),
-		DirtyUris:   make(UriSet),
-		Listeners:   make(Listeners),
+		Families:      make(Families),
+		Duplicates:    make(Duplicates),
+		NodeRefs:      make(NodeRefs),
+		UnknownRefs:   make([]*Ref, 0),
+		MarkdownFiles: make([]*MarkdownFile, 0),
+		DirtyUris:     make(UriSet),
+		Listeners:     make(Listeners),
 	}
 }
 
 // root Methods
 
 func (root *Root) Update(tree *Tree, text []byte, uri Uri) (err error) {
-	q, err := createQuery(`
+	q, err := CreateQuery(`
 		(family_name 
 			(name) @family-name
 		)
@@ -113,7 +122,7 @@ func (root *Root) Update(tree *Tree, text []byte, uri Uri) (err error) {
 
 	var family *Family
 
-	for index, node := range queryIter(q, tree.RootNode()) {
+	for index, node := range QueryIter(q, tree.RootNode()) {
 		switch index {
 		// new family
 		case 0:
@@ -146,7 +155,7 @@ func (root *Root) Update(tree *Tree, text []byte, uri Uri) (err error) {
 
 		// new member or member ref
 		case 3:
-			rel := getClosestNode(node, "relation")
+			rel := GetClosestNode(node, "relation")
 
 			if rel == nil {
 				continue
@@ -251,7 +260,7 @@ func (root *Root) UpdateDirty() error {
 	tempDocs := make(Docs)
 
 	for uri := range uris {
-		if !docExist(uri) {
+		if !DocExist(uri) {
 			continue
 		}
 
@@ -401,7 +410,7 @@ func (root *Root) AddRef(ref *Ref) {
 
 	mem.Refs = append(mem.Refs, ref)
 
-	root.AddNodeRef(ref.Uri, nameRefName(ref.Node), mem)
+	root.AddNodeRef(ref.Uri, NameRefName(ref.Node), mem)
 }
 
 func (root *Root) AddNodeRef(uri Uri, node *Node, mem *Member) {
@@ -600,13 +609,13 @@ func filterRefs(refs []*Ref, uris UriSet) []*Ref {
 func getAliasesNode(node *Node) *Node {
 	next := node.NextNamedSibling()
 
-	if isNameAliases(next) {
+	if IsNameAliases(next) {
 		return next
 	}
 
 	parent := node.Parent()
 
-	if isNameDef(parent) {
+	if IsNameDef(parent) {
 		return parent.ChildByFieldName("aliases")
 	}
 
