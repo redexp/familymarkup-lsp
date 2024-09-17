@@ -7,10 +7,7 @@ import (
 
 	. "github.com/redexp/familymarkup-lsp/types"
 	. "github.com/redexp/familymarkup-lsp/utils"
-	familymarkup "github.com/redexp/tree-sitter-familymarkup"
 )
-
-var lang = familymarkup.GetLanguage()
 
 type Root struct {
 	Families      Families
@@ -20,27 +17,6 @@ type Root struct {
 	MarkdownFiles []*MarkdownFile
 	DirtyUris     UriSet
 	Listeners     Listeners
-}
-
-type Family struct {
-	Id         string
-	Name       string
-	Aliases    []string
-	Members    Members
-	Duplicates Duplicates
-	Refs       Refs
-	Uri        Uri
-	Node       *Node
-	Root       *Root
-}
-
-type Member struct {
-	Id      string
-	Name    string
-	Aliases []string
-	Node    *Node
-	Refs    Refs
-	Family  *Family
 }
 
 type Ref struct {
@@ -66,7 +42,6 @@ type (
 	Families   map[string]*Family
 	Members    map[string]*Member
 	NodeRefs   map[Uri]map[*Node]*Member
-	UriSet     map[Uri]bool
 	Duplicates map[string][]*Duplicate
 	Refs       []*Ref
 	Listeners  map[string][]func()
@@ -83,8 +58,6 @@ func CreateRoot() *Root {
 		Listeners:     make(Listeners),
 	}
 }
-
-// root Methods
 
 func (root *Root) Update(tree *Tree, text []byte, uri Uri) (err error) {
 	q, err := CreateQuery(`
@@ -455,131 +428,6 @@ func (root *Root) OnUpdate(cb func()) {
 	}
 
 	root.Listeners[RootOnUpdate] = append(list, cb)
-}
-
-// family Methods
-
-func (family *Family) GetMember(name string) *Member {
-	return family.Members[name]
-}
-
-func (family *Family) AddMember(node *Node, text []byte) {
-	name := node.Content(text)
-	aliases := getAliases(node, text)
-
-	mem, exist := family.Members[name]
-
-	if exist {
-		addDuplicate(family.Duplicates, name, &Duplicate{
-			Member: mem,
-			Node:   node,
-		})
-	}
-
-	member := &Member{
-		Id:      name,
-		Name:    name,
-		Aliases: aliases,
-		Node:    node,
-		Refs:    make([]*Ref, 0),
-		Family:  family,
-	}
-
-	family.Members[name] = member
-	family.Root.AddNodeRef(family.Uri, node, member)
-
-	aliasesNode := getAliasesNode(node)
-
-	for i, alias := range aliases {
-		mem, exist = family.Members[alias]
-
-		if exist {
-			addDuplicate(family.Duplicates, alias, &Duplicate{
-				Member: mem,
-				Node:   aliasesNode.NamedChild(i),
-			})
-		}
-
-		family.Members[alias] = member
-	}
-}
-
-func (family *Family) MembersIter() iter.Seq[*Member] {
-	return func(yield func(*Member) bool) {
-		list := make(map[*Member]bool)
-
-		for _, item := range family.Members {
-			_, exist := list[item]
-
-			if exist {
-				continue
-			}
-
-			list[item] = true
-
-			if !yield(item) {
-				return
-			}
-		}
-	}
-}
-
-func (family *Family) NamesIter() iter.Seq[string] {
-	return func(yield func(string) bool) {
-		if !yield(family.Name) {
-			return
-		}
-
-		for _, name := range family.Aliases {
-			if !yield(name) {
-				break
-			}
-		}
-	}
-}
-
-// member Methods
-
-func (member *Member) GetUniqName() string {
-	family := member.Family
-	names := []string{member.Name}
-	names = append(names, member.Aliases...)
-
-	for _, name := range names {
-		_, exist := family.Duplicates[name]
-
-		if !exist {
-			return name
-		}
-	}
-
-	return ""
-}
-
-func (member *Member) NamesIter() iter.Seq[string] {
-	return func(yield func(string) bool) {
-		if !yield(member.Name) {
-			return
-		}
-
-		for _, name := range member.Aliases {
-			if !yield(name) {
-				break
-			}
-		}
-	}
-}
-
-// UriSet Methods
-
-func (uris UriSet) Set(uri Uri) {
-	uris[uri] = true
-}
-
-func (uris UriSet) Has(uri Uri) bool {
-	_, has := uris[uri]
-
-	return has
 }
 
 func addDuplicate(duplicates Duplicates, name string, dup *Duplicate) {
