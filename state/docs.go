@@ -27,8 +27,6 @@ func OpenDoc(uri Uri) (doc *TextDocument, err error) {
 		return
 	}
 
-	WaitTreesReady()
-
 	tree, text, err := GetTreeText(uri)
 
 	if err != nil {
