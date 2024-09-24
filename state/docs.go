@@ -39,10 +39,11 @@ func OpenDoc(uri Uri) (doc *TextDocument, err error) {
 func OpenDocText(uri Uri, text string, tree *Tree) (doc *TextDocument, err error) {
 	doc = textdocument.NewTextDocument(text)
 	doc.Tree = tree
-	err = doc.SetParser(CreateParser())
+	doc.Parser = CreateParser()
 
-	if err != nil {
-		return
+	if tree == nil {
+		doc.UpdateTree(nil)
+		SetTree(uri, doc.Tree)
 	}
 
 	q, err := familymarkup.GetHighlightQuery()
@@ -51,12 +52,13 @@ func OpenDocText(uri Uri, text string, tree *Tree) (doc *TextDocument, err error
 		return
 	}
 
+	doc.HighlightCapturesDirty = true
+
 	doc.SetHighlightQuery(q, &textdocument.Ignore{
 		Missing: true,
 	})
 
 	documents[uri] = doc
-	SetTree(uri, doc.Tree)
 
 	return
 }
