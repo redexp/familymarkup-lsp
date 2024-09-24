@@ -17,15 +17,11 @@ func DocOpen(context *glsp.Context, params *proto.DidOpenTextDocumentParams) (er
 		return
 	}
 
-	RootReady()
-
-	doc, err := OpenDocText(uri, params.TextDocument.Text, nil)
+	doc, err := OpenDocText(uri, params.TextDocument.Text, GetTree(uri))
 
 	if err != nil {
 		return
 	}
-
-	root.DirtyUris.Set(uri)
 
 	PublishDiagnostics(context, uri, doc)
 
@@ -50,8 +46,6 @@ func DocChange(ctx *glsp.Context, params *proto.DidChangeTextDocumentParams) err
 	if err != nil {
 		return err
 	}
-
-	RootReady()
 
 	doc, err := OpenDoc(uri)
 

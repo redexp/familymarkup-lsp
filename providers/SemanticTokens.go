@@ -16,8 +16,6 @@ func SemanticTokensFull(ctx *glsp.Context, params *proto.SemanticTokensParams) (
 		return
 	}
 
-	RootReady()
-
 	doc, err := OpenDoc(uri)
 
 	if err != nil {
