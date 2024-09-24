@@ -22,6 +22,10 @@ var logOnly string
 var parsersPool = make([]*ParserWorker, 0)
 var lang = familymarkup.GetLanguage()
 
+var FamilyExt = []string{"fm", "fml", "family"}
+var MarkdownExt = []string{"md", "mdx"}
+var AllExt = slices.Concat(FamilyExt, MarkdownExt)
+
 func CreateParser() *sitter.Parser {
 	p := sitter.NewParser()
 	p.SetLanguage(familymarkup.GetLanguage())
@@ -110,6 +114,18 @@ func IsUriName(uri Uri, name string) bool {
 	ext := filepath.Ext(uri)
 
 	return name+ext == base
+}
+
+func Ext(path string) string {
+	return strings.ToLower(strings.TrimLeft(filepath.Ext(path), "."))
+}
+
+func IsFamilyUri(uri Uri) bool {
+	return slices.Contains(FamilyExt, Ext(uri))
+}
+
+func IsMarkdownUri(uri Uri) bool {
+	return slices.Contains(MarkdownExt, Ext(uri))
 }
 
 // "surname-name", [2]*Node
