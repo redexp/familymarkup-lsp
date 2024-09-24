@@ -5,7 +5,6 @@ import (
 	"math"
 	"path/filepath"
 	"slices"
-	"strings"
 
 	. "github.com/redexp/familymarkup-lsp/types"
 	. "github.com/redexp/familymarkup-lsp/utils"
@@ -92,7 +91,7 @@ func WalkFiles(uri Uri, extensions []string, cb func(Uri, string) error) (err er
 			return nil
 		}
 
-		ext := strings.ToLower(strings.TrimLeft(filepath.Ext(info.Name()), "."))
+		ext := Ext(info.Name())
 
 		if !slices.Contains(extensions, ext) {
 			return nil
