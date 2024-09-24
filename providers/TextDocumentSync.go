@@ -17,6 +17,8 @@ func DocOpen(context *glsp.Context, params *proto.DidOpenTextDocumentParams) (er
 		return
 	}
 
+	RootReady()
+
 	doc, err := OpenDocText(uri, params.TextDocument.Text, nil)
 
 	if err != nil {
@@ -49,6 +51,8 @@ func DocChange(ctx *glsp.Context, params *proto.DidChangeTextDocumentParams) err
 		return err
 	}
 
+	RootReady()
+
 	doc, err := OpenDoc(uri)
 
 	if err != nil {
@@ -73,12 +77,12 @@ func DocChange(ctx *glsp.Context, params *proto.DidChangeTextDocumentParams) err
 		}
 	}
 
-	return setDirtyUri(ctx, uri)
+	return setDirtyUri(ctx, uri, FileChange)
 }
 
 func DocCreate(ctx *glsp.Context, params *proto.CreateFilesParams) error {
 	for _, file := range params.Files {
-		err := setDirtyUri(ctx, file.URI)
+		err := setDirtyUri(ctx, file.URI, FileCreate)
 
 		if err != nil {
 			return err
@@ -98,7 +102,13 @@ func DocRename(ctx *glsp.Context, params *proto.RenameFilesParams) error {
 			return err
 		}
 
-		err = setDirtyUri(ctx, file.OldURI, file.NewURI)
+		err = setDirtyUri(ctx, file.OldURI, FileDelete)
+
+		if err != nil {
+			return err
+		}
+
+		err = setDirtyUri(ctx, file.NewURI, FileCreate)
 
 		if err != nil {
 			return err
@@ -118,7 +128,7 @@ func DocDelete(ctx *glsp.Context, params *proto.DeleteFilesParams) error {
 			return err
 		}
 
-		err = setDirtyUri(ctx, file.URI)
+		err = setDirtyUri(ctx, file.URI, FileDelete)
 
 		if err != nil {
 			return err
@@ -130,15 +140,15 @@ func DocDelete(ctx *glsp.Context, params *proto.DeleteFilesParams) error {
 	return nil
 }
 
-func setDirtyUri(ctx *glsp.Context, uris ...Uri) error {
-	for _, uri := range uris {
-		uri, err := NormalizeUri(uri)
+func setDirtyUri(ctx *glsp.Context, uri Uri, state uint8) error {
+	uri, err := NormalizeUri(uri)
 
-		if err != nil {
-			return err
-		}
+	if err != nil {
+		return err
+	}
 
-		root.DirtyUris.Set(uri)
+	if IsFamilyUri(uri) || IsMarkdownUri(uri) {
+		root.DirtyUris.SetState(uri, state)
 		docDiagnostic.Set(uri, ctx)
 	}
 

@@ -20,7 +20,7 @@ func DocSymbols(ctx *glsp.Context, params *proto.DocumentSymbolParams) (res any,
 		return
 	}
 
-	WaitTreesReady()
+	RootReady()
 	root.UpdateDirty()
 
 	doc, err := TempDoc(uri)
