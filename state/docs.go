@@ -122,7 +122,7 @@ func TempDoc(uri Uri) (doc *TextDocument, err error) {
 	return
 }
 
-func DocExist(uri Uri) bool {
+func UriFileExist(uri Uri) bool {
 	path, err := UriToPath(uri)
 
 	if err != nil {
