@@ -18,11 +18,6 @@ type Duplicate struct {
 	Uri    string
 }
 
-type MarkdownFile struct {
-	Uri      Uri
-	UriParts []string
-}
-
 type (
 	Families   map[string]*Family
 	Members    map[string]*Member
