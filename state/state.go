@@ -3,31 +3,107 @@ package state
 import (
 	"iter"
 	"slices"
+	"strings"
 
 	. "github.com/redexp/familymarkup-lsp/types"
 	. "github.com/redexp/familymarkup-lsp/utils"
 )
 
 type Root struct {
-	Families      Families
-	Duplicates    Duplicates
-	NodeRefs      NodeRefs
-	UnknownRefs   []*Ref
-	MarkdownFiles []*MarkdownFile
-	DirtyUris     UriSet
-	Listeners     Listeners
+	Folders      UriSet
+	Families     Families
+	Duplicates   Duplicates
+	NodeRefs     NodeRefs
+	UnknownRefs  []*Ref
+	UnknownFiles []*File
+	DirtyUris    UriSet
+	Listeners    Listeners
+	Log          func(string, ...any)
 }
 
-func CreateRoot() *Root {
+func CreateRoot(logger func(string, ...any)) *Root {
 	return &Root{
-		Families:      make(Families),
-		Duplicates:    make(Duplicates),
-		NodeRefs:      make(NodeRefs),
-		UnknownRefs:   make([]*Ref, 0),
-		MarkdownFiles: make([]*MarkdownFile, 0),
-		DirtyUris:     make(UriSet),
-		Listeners:     make(Listeners),
+		Folders:      make(UriSet),
+		Families:     make(Families),
+		Duplicates:   make(Duplicates),
+		NodeRefs:     make(NodeRefs),
+		UnknownRefs:  make([]*Ref, 0),
+		UnknownFiles: make([]*File, 0),
+		DirtyUris:    make(UriSet),
+		Listeners:    make(Listeners),
+		Log:          logger,
 	}
+}
+
+func (root *Root) SetFolders(folders []Uri) (err error) {
+	root.Folders = make(UriSet)
+
+	for _, uri := range folders {
+		uri, err = NormalizeUri(uri)
+
+		if err != nil {
+			return
+		}
+
+		root.Folders.Set(uri)
+	}
+
+	type TextTree struct {
+		Text []byte
+		Tree *Tree
+		Uri  Uri
+		MD   bool
+	}
+
+	textTrees := make(chan TextTree, 3)
+
+	go func() {
+		for uri := range root.Folders {
+			WalkFiles(uri, AllExt, func(uri Uri, ext string) error {
+				if slices.Contains(MarkdownExt, ext) {
+					textTrees <- TextTree{
+						Uri: uri,
+						MD:  true,
+					}
+					return nil
+				}
+
+				tree, text, err := GetTreeText(uri)
+
+				if err != nil {
+					return err
+				}
+
+				textTrees <- TextTree{
+					Text: text,
+					Tree: tree,
+					Uri:  uri,
+				}
+
+				return nil
+			})
+		}
+
+		close(textTrees)
+	}()
+
+	for item := range textTrees {
+		if item.MD {
+			root.AddUnknownFile(item.Uri)
+			continue
+		}
+
+		err = root.Update(item.Tree, item.Text, item.Uri)
+
+		if err != nil {
+			return
+		}
+	}
+
+	root.UpdateUnknownRefs()
+	root.UpdateUnknownFiles()
+
+	return
 }
 
 func (root *Root) Update(tree *Tree, text []byte, uri Uri) (err error) {
@@ -146,6 +222,61 @@ func (root *Root) UpdateUnknownRefs() {
 	}
 }
 
+func (root *Root) UpdateUnknownFiles() {
+	files := root.UnknownFiles
+
+	if len(files) == 0 {
+		return
+	}
+
+	found := make(map[*File]bool)
+
+	tree := &FileTree{
+		Children: make(FilesTree),
+	}
+
+	for _, file := range files {
+		item := tree
+		var family *Family
+		var member *Member
+
+		for _, name := range file.Path {
+			next, exist := item.Children[name]
+
+			if exist {
+				item = next
+				continue
+			}
+
+			item.Children[name] = &FileTree{
+				Name:     name,
+				File:     file,
+				Children: make(FilesTree),
+			}
+
+			item = item.Children[name]
+
+			if family == nil {
+				family = root.FindFamily(name)
+			} else {
+				member = family.GetMember(name)
+
+				if member != nil {
+					member.InfoUri = file.Uri
+					found[file] = true
+					break
+				}
+			}
+		}
+	}
+
+	root.UnknownFiles = slices.DeleteFunc(files, func(file *File) bool {
+		_, exist := found[file]
+
+		return exist
+	})
+}
+
 func (root *Root) UpdateDirty() error {
 	if len(root.DirtyUris) == 0 {
 		return nil
@@ -154,6 +285,39 @@ func (root *Root) UpdateDirty() error {
 	uris := root.DirtyUris
 	root.DirtyUris = UriSet{}
 	root.UnknownRefs = filterRefs(root.UnknownRefs, uris)
+
+	for uri, state := range uris {
+		if !IsMarkdownUri(uri) {
+			continue
+		}
+
+		uris.Remove(uri)
+
+		fileIndex := slices.IndexFunc(root.UnknownFiles, func(file *File) bool {
+			return file.Uri == uri
+		})
+
+		deleted := state == FileDelete
+
+		if fileIndex > -1 {
+			if deleted {
+				root.UnknownFiles = slices.Delete(root.UnknownFiles, fileIndex, fileIndex+1)
+			}
+
+			continue
+		}
+
+		if deleted {
+			for mem := range root.MembersIter() {
+				if mem.InfoUri == uri {
+					mem.InfoUri = ""
+					break
+				}
+			}
+		} else {
+			root.AddUnknownFile(uri)
+		}
+	}
 
 	for uri := range root.NodeRefs {
 		if uris.Has(uri) {
@@ -175,8 +339,12 @@ func (root *Root) UpdateDirty() error {
 		if uris.Has(family.Uri) {
 			resetRefs(family.Refs)
 
-			for _, member := range family.Members {
+			for member := range family.MembersIter() {
 				resetRefs(member.Refs)
+
+				if member.InfoUri != "" {
+					root.AddUnknownFile(member.InfoUri)
+				}
 			}
 
 			root.RemoveFamily(family)
@@ -184,7 +352,7 @@ func (root *Root) UpdateDirty() error {
 			continue
 		}
 
-		for _, member := range family.Members {
+		for member := range family.MembersIter() {
 			member.Refs = filterRefs(member.Refs, uris)
 		}
 	}
@@ -203,8 +371,8 @@ func (root *Root) UpdateDirty() error {
 
 	tempDocs := make(Docs)
 
-	for uri := range uris {
-		if !DocExist(uri) {
+	for uri, state := range uris {
+		if state == FileDelete {
 			continue
 		}
 
@@ -218,6 +386,7 @@ func (root *Root) UpdateDirty() error {
 	}
 
 	root.UpdateUnknownRefs()
+	root.UpdateUnknownFiles()
 	root.Trigger(RootOnUpdate)
 
 	return nil
@@ -311,6 +480,18 @@ func (root *Root) FamilyIter() iter.Seq[*Family] {
 	}
 }
 
+func (root *Root) MembersIter() iter.Seq[*Member] {
+	return func(yield func(*Member) bool) {
+		for f := range root.FamilyIter() {
+			for mem := range f.MembersIter() {
+				if !yield(mem) {
+					return
+				}
+			}
+		}
+	}
+}
+
 func (root *Root) FindFamiliesByUri(uri Uri) []*Family {
 	list := make([]*Family, 0)
 
@@ -375,6 +556,28 @@ func (root *Root) GetMemberByUriNode(uri Uri, node *Node) *Member {
 	}
 
 	return root.NodeRefs[uri][node]
+}
+
+func (root *Root) FindFolder(uri Uri) Uri {
+	for folder := range root.Folders {
+		if strings.HasPrefix(uri, folder) {
+			return folder
+		}
+	}
+
+	return ""
+}
+
+func (root *Root) AddUnknownFile(uri Uri) error {
+	file, err := CreateFile(uri, root.FindFolder(uri))
+
+	if err != nil {
+		return err
+	}
+
+	root.UnknownFiles = append(root.UnknownFiles, file)
+
+	return nil
 }
 
 func (root *Root) Trigger(event string) {

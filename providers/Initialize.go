@@ -1,13 +1,11 @@
 package providers
 
 import (
+	"fmt"
 	"slices"
 	"strings"
-	"sync"
 
-	"github.com/redexp/familymarkup-lsp/state"
 	. "github.com/redexp/familymarkup-lsp/state"
-	. "github.com/redexp/familymarkup-lsp/types"
 	. "github.com/redexp/familymarkup-lsp/utils"
 	"github.com/redexp/textdocument"
 	familymarkup "github.com/redexp/tree-sitter-familymarkup"
@@ -16,7 +14,7 @@ import (
 )
 
 func Initialize(ctx *glsp.Context, params *proto.InitializeParams) (any, error) {
-	root = state.CreateRoot()
+	root = CreateRoot(Debugf)
 
 	legend, types, err := GetLegend()
 
@@ -31,7 +29,7 @@ func Initialize(ctx *glsp.Context, params *proto.InitializeParams) (any, error) 
 			{
 				Scheme: P("file"),
 				Pattern: proto.FileOperationPattern{
-					Glob: "**/*.{fm,fml,family}",
+					Glob: fmt.Sprintf("**/*.{%s}", strings.Join(AllExt, ",")),
 				},
 			},
 		},
@@ -63,8 +61,9 @@ func Initialize(ctx *glsp.Context, params *proto.InitializeParams) (any, error) 
 				},
 			},
 			DefinitionProvider:        true,
-			HoverProvider:             true,
 			ReferencesProvider:        true,
+			TypeDefinitionProvider:    true,
+			HoverProvider:             true,
 			DocumentHighlightProvider: true,
 			FoldingRangeProvider:      true,
 			DocumentSymbolProvider:    true,
@@ -84,25 +83,16 @@ func Initialize(ctx *glsp.Context, params *proto.InitializeParams) (any, error) 
 	}
 
 	if params.WorkspaceFolders != nil {
-		lock := sync.Mutex{}
+		folders := make([]string, len(params.WorkspaceFolders))
 
-		for _, folder := range params.WorkspaceFolders {
-			path, err := UriToPath(folder.URI)
+		for i, folder := range params.WorkspaceFolders {
+			folders[i] = folder.URI
+		}
 
-			if err != nil {
-				return nil, err
-			}
+		err = root.SetFolders(folders)
 
-			err = ReadTreesFromDir(path, func(tree *Tree, text []byte, path string) error {
-				lock.Lock()
-				defer lock.Unlock()
-
-				return root.Update(tree, text, ToUri(path))
-			})
-
-			if err != nil {
-				return nil, err
-			}
+		if err != nil {
+			return nil, err
 		}
 	}
 
@@ -112,10 +102,6 @@ func Initialize(ctx *glsp.Context, params *proto.InitializeParams) (any, error) 
 }
 
 func Initialized(context *glsp.Context, params *proto.InitializedParams) error {
-	WaitTreesReady()
-
-	root.UpdateUnknownRefs()
-
 	return nil
 }
 

@@ -12,6 +12,7 @@ type Member struct {
 	Aliases []string
 	Node    *Node
 	Refs    Refs
+	InfoUri Uri
 	Family  *Family
 }
 

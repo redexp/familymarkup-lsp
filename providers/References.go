@@ -2,19 +2,12 @@ package providers
 
 import (
 	. "github.com/redexp/familymarkup-lsp/state"
-	. "github.com/redexp/familymarkup-lsp/utils"
 	"github.com/tliron/glsp"
 	proto "github.com/tliron/glsp/protocol_3_16"
 )
 
 func References(context *glsp.Context, params *proto.ReferenceParams) (res []proto.Location, err error) {
-	uri, err := NormalizeUri(params.TextDocument.URI)
-
-	if err != nil {
-		return
-	}
-
-	family, member, target, err := getDefinition(uri, &params.Position)
+	family, member, target, err := getDefinition(params.TextDocument.URI, &params.Position)
 
 	if err != nil || member == nil {
 		return
@@ -42,24 +35,42 @@ func References(context *glsp.Context, params *proto.ReferenceParams) (res []pro
 		}
 	}
 
-	if params.Context.IncludeDeclaration {
-		doc, err := tempDocs.Get(uri)
+	if !params.Context.IncludeDeclaration {
+		return
+	}
 
-		if err != nil {
-			return nil, err
-		}
-
-		r, err := doc.NodeToRange(target)
-
-		if err != nil {
-			return nil, err
-		}
-
+	if member.InfoUri != "" {
 		res = append(res, proto.Location{
-			URI:   family.Uri,
-			Range: *r,
+			URI: member.InfoUri,
+			Range: proto.Range{
+				Start: proto.Position{
+					Line:      0,
+					Character: 0,
+				},
+				End: proto.Position{
+					Line:      0,
+					Character: 0,
+				},
+			},
 		})
 	}
+
+	doc, err := tempDocs.Get(family.Uri)
+
+	if err != nil {
+		return
+	}
+
+	r, err := doc.NodeToRange(target)
+
+	if err != nil {
+		return
+	}
+
+	res = append(res, proto.Location{
+		URI:   family.Uri,
+		Range: *r,
+	})
 
 	return
 }
