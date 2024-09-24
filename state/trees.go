@@ -1,10 +1,7 @@
 package state
 
 import (
-	"io/fs"
 	"os"
-	"path/filepath"
-	"strings"
 	"sync"
 
 	. "github.com/redexp/familymarkup-lsp/types"
@@ -13,11 +10,6 @@ import (
 )
 
 var trees sync.Map
-var readingTrees sync.WaitGroup
-
-func WaitTreesReady() {
-	readingTrees.Wait()
-}
 
 func SetTree(uri Uri, tree *Tree) {
 	trees.Store(uri, tree)
@@ -75,34 +67,4 @@ func GetTreeText(uri Uri) (tree *Tree, text []byte, err error) {
 
 func ParseTree(text []byte) (*sitter.Tree, error) {
 	return GetParser().Parse(text)
-}
-
-func ReadTreesFromDir(root string, cb func(*Tree, []byte, string) error) error {
-	return filepath.Walk(root, func(path string, info fs.FileInfo, err error) error {
-		if err != nil || info.IsDir() {
-			return nil
-		}
-
-		ext := strings.ToLower(filepath.Ext(info.Name()))
-
-		if ext != ".fm" && ext != ".family" {
-			return nil
-		}
-
-		readingTrees.Add(1)
-
-		go func() {
-			defer readingTrees.Done()
-
-			tree, text, err := GetTreeText(path)
-
-			if err != nil {
-				return
-			}
-
-			cb(tree, text, path)
-		}()
-
-		return nil
-	})
 }
