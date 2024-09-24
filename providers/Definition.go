@@ -1,7 +1,6 @@
 package providers
 
 import (
-	"github.com/redexp/familymarkup-lsp/state"
 	. "github.com/redexp/familymarkup-lsp/state"
 	. "github.com/redexp/familymarkup-lsp/types"
 	. "github.com/redexp/familymarkup-lsp/utils"
@@ -11,19 +10,17 @@ import (
 )
 
 func Definition(context *glsp.Context, params *proto.DefinitionParams) (res any, err error) {
-	uri, err := NormalizeUri(params.TextDocument.URI)
-
-	if err != nil {
-		return
-	}
-
-	family, _, target, err := getDefinition(uri, &params.Position)
+	family, _, target, err := getDefinition(params.TextDocument.URI, &params.Position)
 
 	if err != nil || target == nil {
 		return
 	}
 
 	doc, err := TempDoc(family.Uri)
+
+	if err != nil {
+		return
+	}
 
 	r, err := doc.NodeToRange(target)
 
@@ -37,7 +34,13 @@ func Definition(context *glsp.Context, params *proto.DefinitionParams) (res any,
 	}, nil
 }
 
-func getDefinition(uri Uri, pos *Position) (family *state.Family, member *state.Member, target *Node, err error) {
+func getDefinition(uri Uri, pos *Position) (family *Family, member *Member, target *Node, err error) {
+	uri, err = NormalizeUri(uri)
+
+	if err != nil {
+		return
+	}
+
 	err = root.UpdateDirty()
 
 	if err != nil {

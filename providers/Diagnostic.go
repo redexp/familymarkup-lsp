@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/bep/debounce"
-	"github.com/redexp/familymarkup-lsp/state"
 	. "github.com/redexp/familymarkup-lsp/state"
 	. "github.com/redexp/familymarkup-lsp/types"
 	. "github.com/redexp/familymarkup-lsp/utils"
@@ -106,7 +105,7 @@ func PublishDiagnostics(ctx *glsp.Context, uri Uri, doc *TextDocument) {
 	for family := range root.FamilyIter() {
 		for name, dups := range family.Duplicates {
 			member := family.Members[name]
-			dups = append(dups, &state.Duplicate{Member: member})
+			dups = append(dups, &Duplicate{Member: member})
 			count := len(dups)
 
 			var locations []proto.DiagnosticRelatedInformation
@@ -195,7 +194,7 @@ func (dd *DocDebouncer) Flush() {
 	for uri, ctx := range dd.Docs {
 		delete(dd.Docs, uri)
 
-		if !DocExist(uri) {
+		if !IsFamilyUri(uri) || !UriFileExist(uri) {
 			continue
 		}
 

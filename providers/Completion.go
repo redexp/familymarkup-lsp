@@ -1,7 +1,6 @@
 package providers
 
 import (
-	"github.com/redexp/familymarkup-lsp/state"
 	. "github.com/redexp/familymarkup-lsp/state"
 	. "github.com/redexp/familymarkup-lsp/utils"
 	"github.com/tliron/glsp"
@@ -42,7 +41,7 @@ func Completion(context *glsp.Context, params *proto.CompletionParams) (any, err
 		}
 	}
 
-	addMembers := func(family *state.Family) {
+	addMembers := func(family *Family) {
 		for _, member := range family.Members {
 			list = append(list, proto.CompletionItem{
 				Kind:  P(proto.CompletionItemKindVariable),

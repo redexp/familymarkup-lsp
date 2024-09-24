@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/bep/debounce"
-	"github.com/redexp/familymarkup-lsp/state"
 	. "github.com/redexp/familymarkup-lsp/state"
 	. "github.com/redexp/familymarkup-lsp/types"
 	. "github.com/redexp/familymarkup-lsp/utils"
@@ -160,7 +159,7 @@ func TreeReload() {
 	treeContext.Notify("tree/reload", nil)
 }
 
-func getFamilyDoc(loc *TreeItemLocation) (f *state.Family, doc *TextDocument, err error) {
+func getFamilyDoc(loc *TreeItemLocation) (f *Family, doc *TextDocument, err error) {
 	doc, err = TempDoc(loc.URI)
 
 	if err != nil {
@@ -187,7 +186,7 @@ func getFamilyDoc(loc *TreeItemLocation) (f *state.Family, doc *TextDocument, er
 	return
 }
 
-func getRelationsIter(family *state.Family) (iter.Seq2[uint32, *Node], error) {
+func getRelationsIter(family *Family) (iter.Seq2[uint32, *Node], error) {
 	q, err := CreateQuery(`
 		(relation) @rel
 	`)

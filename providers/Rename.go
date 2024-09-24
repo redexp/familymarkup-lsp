@@ -1,7 +1,6 @@
 package providers
 
 import (
-	"github.com/redexp/familymarkup-lsp/state"
 	. "github.com/redexp/familymarkup-lsp/state"
 	. "github.com/redexp/familymarkup-lsp/utils"
 	"github.com/tliron/glsp"
@@ -111,7 +110,7 @@ func Rename(context *glsp.Context, params *proto.RenameParams) (res *proto.Works
 		return
 	}
 
-	refs := append(member.Refs, &state.Ref{
+	refs := append(member.Refs, &Ref{
 		Uri:  family.Uri,
 		Node: member.Node,
 	})
