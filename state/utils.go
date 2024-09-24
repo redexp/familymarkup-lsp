@@ -1,7 +1,11 @@
 package state
 
 import (
+	"io/fs"
 	"math"
+	"path/filepath"
+	"slices"
+	"strings"
 
 	. "github.com/redexp/familymarkup-lsp/types"
 	. "github.com/redexp/familymarkup-lsp/utils"
@@ -18,17 +22,9 @@ func addDuplicate(duplicates Duplicates, name string, dup *Duplicate) {
 }
 
 func filterRefs(refs []*Ref, uris UriSet) []*Ref {
-	list := make([]*Ref, 0)
-
-	for _, ref := range refs {
-		if uris.Has(ref.Uri) {
-			continue
-		}
-
-		list = append(list, ref)
-	}
-
-	return list
+	return slices.DeleteFunc(refs, func(ref *Ref) bool {
+		return uris.Has(ref.Uri)
+	})
 }
 
 func getAliasesNode(node *Node) *Node {
@@ -82,4 +78,26 @@ func compareNames(a []rune, b []rune) uint {
 	}
 
 	return diff
+}
+
+func WalkFiles(uri Uri, extensions []string, cb func(Uri, string) error) (err error) {
+	rootPath, err := UriToPath(uri)
+
+	if err != nil {
+		return
+	}
+
+	return filepath.Walk(rootPath, func(path string, info fs.FileInfo, err error) error {
+		if err != nil || info.IsDir() {
+			return nil
+		}
+
+		ext := strings.ToLower(strings.TrimLeft(filepath.Ext(info.Name()), "."))
+
+		if !slices.Contains(extensions, ext) {
+			return nil
+		}
+
+		return cb(ToUri(path), ext)
+	})
 }
