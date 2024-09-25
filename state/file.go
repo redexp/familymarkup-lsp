@@ -14,6 +14,8 @@ type File struct {
 	Path []string
 }
 
+type Files map[Uri]*File
+
 type FilesTree map[string]*FileTree
 
 type FileTree struct {

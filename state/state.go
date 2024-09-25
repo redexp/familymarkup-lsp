@@ -15,7 +15,7 @@ type Root struct {
 	Duplicates   Duplicates
 	NodeRefs     NodeRefs
 	UnknownRefs  []*Ref
-	UnknownFiles []*File
+	UnknownFiles Files
 	DirtyUris    UriSet
 	Listeners    Listeners
 	Log          func(string, ...any)
@@ -28,7 +28,7 @@ func CreateRoot(logger func(string, ...any)) *Root {
 		Duplicates:   make(Duplicates),
 		NodeRefs:     make(NodeRefs),
 		UnknownRefs:  make([]*Ref, 0),
-		UnknownFiles: make([]*File, 0),
+		UnknownFiles: make(Files),
 		DirtyUris:    make(UriSet),
 		Listeners:    make(Listeners),
 		Log:          logger,
@@ -229,13 +229,11 @@ func (root *Root) UpdateUnknownFiles() {
 		return
 	}
 
-	found := make(map[*File]bool)
-
 	tree := &FileTree{
 		Children: make(FilesTree),
 	}
 
-	for _, file := range files {
+	for uri, file := range files {
 		item := tree
 		var family *Family
 		var member *Member
@@ -244,13 +242,15 @@ func (root *Root) UpdateUnknownFiles() {
 			next, exist := item.Children[name]
 
 			if exist {
+				if next.Family != nil {
+					family = next.Family
+				}
+
 				item = next
 				continue
 			}
 
 			item.Children[name] = &FileTree{
-				Name:     name,
-				File:     file,
 				Children: make(FilesTree),
 			}
 
@@ -258,23 +258,18 @@ func (root *Root) UpdateUnknownFiles() {
 
 			if family == nil {
 				family = root.FindFamily(name)
+				item.Family = family
 			} else {
 				member = family.GetMember(name)
 
 				if member != nil {
 					member.InfoUri = file.Uri
-					found[file] = true
+					delete(root.UnknownFiles, uri)
 					break
 				}
 			}
 		}
 	}
-
-	root.UnknownFiles = slices.DeleteFunc(files, func(file *File) bool {
-		_, exist := found[file]
-
-		return exist
-	})
 }
 
 func (root *Root) UpdateDirty() error {
@@ -293,15 +288,13 @@ func (root *Root) UpdateDirty() error {
 
 		uris.Remove(uri)
 
-		fileIndex := slices.IndexFunc(root.UnknownFiles, func(file *File) bool {
-			return file.Uri == uri
-		})
+		_, exist := root.UnknownFiles[uri]
 
 		deleted := state == FileDelete
 
-		if fileIndex > -1 {
+		if exist {
 			if deleted {
-				root.UnknownFiles = slices.Delete(root.UnknownFiles, fileIndex, fileIndex+1)
+				delete(root.UnknownFiles, uri)
 			}
 
 			continue
@@ -593,7 +586,7 @@ func (root *Root) AddUnknownFile(uri Uri) error {
 		return err
 	}
 
-	root.UnknownFiles = append(root.UnknownFiles, file)
+	root.UnknownFiles[uri] = file
 
 	return nil
 }
