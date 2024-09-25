@@ -453,28 +453,46 @@ func (root *Root) FindFamily(name string) *Family {
 }
 
 func (root *Root) RemoveFamily(f *Family) {
-	for key, v := range root.Families {
-		if v == f {
-			delete(root.Families, key)
+	for name, v := range root.Families {
+		if v != f {
+			continue
+		}
+
+		delete(root.Families, name)
+
+		dups, exist := root.Duplicates[name]
+
+		if !exist {
+			continue
+		}
+
+		dups = slices.DeleteFunc(dups, func(d *Duplicate) bool {
+			return d.Family == f
+		})
+
+		if len(dups) == 0 {
+			delete(root.Duplicates, name)
+		} else {
+			root.Duplicates[name] = dups
 		}
 	}
 }
 
 func (root *Root) FamilyIter() iter.Seq[*Family] {
 	return func(yield func(*Family) bool) {
-		list := make(map[*Family]bool)
+		check := createIterCheck(yield)
 
 		for _, item := range root.Families {
-			_, exist := list[item]
-
-			if exist {
-				continue
-			}
-
-			list[item] = true
-
-			if !yield(item) {
+			if check(item) {
 				return
+			}
+		}
+
+		for _, dups := range root.Duplicates {
+			for _, dup := range dups {
+				if check(dup.Family) {
+					return
+				}
 			}
 		}
 	}
