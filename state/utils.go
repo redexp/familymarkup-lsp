@@ -100,3 +100,23 @@ func WalkFiles(uri Uri, extensions []string, cb func(Uri, string) error) (err er
 		return cb(ToUri(path), ext)
 	})
 }
+
+func createIterCheck[T Family | Member](yield func(*T) bool) func(*T) bool {
+	list := make(map[*T]bool)
+
+	return func(item *T) bool {
+		if item == nil {
+			return false
+		}
+
+		_, exist := list[item]
+
+		if exist {
+			return false
+		}
+
+		list[item] = true
+
+		return !yield(item)
+	}
+}

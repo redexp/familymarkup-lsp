@@ -65,19 +65,19 @@ func (family *Family) AddMember(node *Node, text []byte) {
 
 func (family *Family) MembersIter() iter.Seq[*Member] {
 	return func(yield func(*Member) bool) {
-		list := make(map[*Member]bool)
+		check := createIterCheck(yield)
 
 		for _, item := range family.Members {
-			_, exist := list[item]
-
-			if exist {
-				continue
-			}
-
-			list[item] = true
-
-			if !yield(item) {
+			if check(item) {
 				return
+			}
+		}
+
+		for _, dups := range family.Duplicates {
+			for _, dup := range dups {
+				if check(dup.Member) {
+					return
+				}
 			}
 		}
 	}
