@@ -68,7 +68,17 @@ func TestSemanticTokensFull(t *testing.T) {
 }
 
 func TestXxx(t *testing.T) {
-	text := "Fam\n\nNam + ? =\n1. Name\n2\n"
+	text := `
+Fam
+
+Name + ?
+1. Nam
+
+Fam2
+
+Name + ? =
+1. Nam
+	`
 	p := sitter.NewParser()
 	p.SetLanguage(familymarkup.GetLanguage())
 
