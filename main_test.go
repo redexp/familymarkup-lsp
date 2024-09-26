@@ -68,61 +68,12 @@ func TestSemanticTokensFull(t *testing.T) {
 }
 
 func TestXxx(t *testing.T) {
-	text := "Fam\n\nNam + Nas" // 3 _ 1 _ 3
+	text := "Fam\n\nNam + ? =\n1. Name\n2\n"
 	p := sitter.NewParser()
 	p.SetLanguage(familymarkup.GetLanguage())
 
 	doc := textdocument.NewTextDocument(text)
 	doc.SetParser(p)
 
-	check := func() error {
-		root := doc.Tree.RootNode()
-		fmt.Println(doc.Text)
-		fmt.Println(root.String())
-		caps, err := h.GetCaptures(root)
-
-		if err != nil {
-			return err
-		}
-
-		for i, cap := range caps {
-			node := cap.Node
-			fmt.Printf("%d %s %v\n", i, node.String(), node.Range())
-		}
-
-		return nil
-	}
-
-	err := check()
-
-	if err != nil {
-		t.Error(err)
-		return
-	}
-
-	err = doc.Change(&textdocument.ChangeEvent{
-		Range: &proto.Range{
-			Start: proto.Position{
-				Line:      2,
-				Character: 9,
-			},
-			End: proto.Position{
-				Line:      2,
-				Character: 9,
-			},
-		},
-		Text: "d",
-	})
-
-	if err != nil {
-		t.Error(err)
-		return
-	}
-
-	err = check()
-
-	if err != nil {
-		t.Error(err)
-		return
-	}
+	fmt.Println(doc.Tree.RootNode().String())
 }
