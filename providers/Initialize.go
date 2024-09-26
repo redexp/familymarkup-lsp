@@ -112,12 +112,10 @@ func Initialized(ctx *glsp.Context, params *proto.InitializedParams) error {
 }
 
 func SetTrace(context *glsp.Context, params *proto.SetTraceParams) error {
-	Debugf("SetTrace: %v", params.Value)
 	return nil
 }
 
 func CancelRequest(context *glsp.Context, params *proto.CancelParams) error {
-	Debugf("CancelRequest: %v", params.ID)
 	return nil
 }
 
