@@ -27,27 +27,36 @@ func Completion(context *glsp.Context, params *proto.CompletionParams) (any, err
 	}
 
 	list := make([]proto.CompletionItem, 0)
+	hash := make(map[string]bool)
+
+	add := func(name string) {
+		_, exist := hash[name]
+
+		if exist {
+			return
+		}
+
+		list = append(list, proto.CompletionItem{
+			Kind:  P(proto.CompletionItemKindVariable),
+			Label: name,
+		})
+
+		hash[name] = true
+	}
 
 	addAliases := func(aliases []string) {
 		if aliases == nil {
 			return
 		}
 
-		for _, value := range aliases {
-			list = append(list, proto.CompletionItem{
-				Kind:  P(proto.CompletionItemKindVariable),
-				Label: value,
-			})
+		for _, alias := range aliases {
+			add(alias)
 		}
 	}
 
 	addMembers := func(family *Family) {
-		for _, member := range family.Members {
-			list = append(list, proto.CompletionItem{
-				Kind:  P(proto.CompletionItemKindVariable),
-				Label: member.Name,
-			})
-
+		for member := range family.MembersIter() {
+			add(member.Name)
 			addAliases(member.Aliases)
 		}
 	}
@@ -66,11 +75,7 @@ func Completion(context *glsp.Context, params *proto.CompletionParams) (any, err
 	onlyFamilies := t == "nil-name" || t == "surname"
 
 	for family := range root.FamilyIter() {
-		list = append(list, proto.CompletionItem{
-			Kind:  P(proto.CompletionItemKindVariable),
-			Label: family.Name,
-		})
-
+		add(family.Name)
 		addAliases(family.Aliases)
 
 		if onlyFamilies {
