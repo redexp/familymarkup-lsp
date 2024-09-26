@@ -51,7 +51,7 @@ func Hover(context *glsp.Context, params *proto.HoverParams) (h *proto.Hover, er
 			return nil, err
 		}
 
-		message += " child of " + ToString(sources, doc)
+		message += " - " + L("child_of_source", ToString(sources, doc))
 	}
 
 	doc, err := TempDoc(uri)

@@ -71,7 +71,7 @@ func CodeAction(context *glsp.Context, params *proto.CodeActionParams) (any, err
 			list = append(
 				list,
 				proto.CodeAction{
-					Title:       fmt.Sprintf("Create %s family after %s", name, ToString(family, doc)),
+					Title:       L("create_family_after", name, ToString(family, doc)),
 					Kind:        P(proto.CodeActionKindQuickFix),
 					Diagnostics: []proto.Diagnostic{d},
 					Data: CodeActionData{
@@ -81,7 +81,7 @@ func CodeAction(context *glsp.Context, params *proto.CodeActionParams) (any, err
 					},
 				},
 				proto.CodeAction{
-					Title:       fmt.Sprintf("Create %s family at the end of file", name),
+					Title:       L("create_family_at_end", name),
 					Kind:        P(proto.CodeActionKindQuickFix),
 					Diagnostics: []proto.Diagnostic{d},
 					Data: CodeActionData{
@@ -91,7 +91,7 @@ func CodeAction(context *glsp.Context, params *proto.CodeActionParams) (any, err
 					},
 				},
 				proto.CodeAction{
-					Title:       fmt.Sprintf("Create new file with %s family", name),
+					Title:       L("create_family_file", name),
 					Kind:        P(proto.CodeActionKindQuickFix),
 					Diagnostics: []proto.Diagnostic{d},
 					Data: CodeActionData{
@@ -143,7 +143,7 @@ func CodeAction(context *glsp.Context, params *proto.CodeActionParams) (any, err
 				}
 
 				list = append(list, proto.CodeAction{
-					Title:       fmt.Sprintf("Change to %s child of %s", name, ToString(sources, doc)),
+					Title:       L("change_name_from_source", name, ToString(sources, doc)),
 					Kind:        P(proto.CodeActionKindQuickFix),
 					Diagnostics: []proto.Diagnostic{d},
 					Data: CodeActionData{

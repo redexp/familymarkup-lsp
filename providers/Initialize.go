@@ -16,6 +16,12 @@ import (
 func Initialize(ctx *glsp.Context, params *proto.InitializeParams) (any, error) {
 	root = CreateRoot(Debugf)
 
+	options, err := GetClientConfiguration(params.InitializationOptions)
+
+	if err == nil {
+		SetLocale(options.Locale)
+	}
+
 	legend, types, err := GetLegend()
 
 	if err != nil {
@@ -101,7 +107,7 @@ func Initialize(ctx *glsp.Context, params *proto.InitializeParams) (any, error) 
 	return res, nil
 }
 
-func Initialized(context *glsp.Context, params *proto.InitializedParams) error {
+func Initialized(ctx *glsp.Context, params *proto.InitializedParams) error {
 	return nil
 }
 

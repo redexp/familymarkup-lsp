@@ -1,7 +1,6 @@
 package providers
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/bep/debounce"
@@ -57,7 +56,7 @@ func PublishDiagnostics(ctx *glsp.Context, uri Uri, doc *TextDocument) {
 		list = append(list, proto.Diagnostic{
 			Severity: P(proto.DiagnosticSeverityError),
 			Range:    *r,
-			Message:  "Syntax error",
+			Message:  L("syntax_error"),
 		})
 	}
 
@@ -67,7 +66,7 @@ func PublishDiagnostics(ctx *glsp.Context, uri Uri, doc *TextDocument) {
 		}
 
 		node := ref.Node
-		message := "Unknown person"
+		message := L("unknown_person")
 
 		if IsNameRef(node) {
 			f := root.FindFamily(ref.Surname)
@@ -76,10 +75,10 @@ func PublishDiagnostics(ctx *glsp.Context, uri Uri, doc *TextDocument) {
 				node = node.NamedChild(1)
 			} else {
 				node = node.NamedChild(0)
-				message = "Unknown family"
+				message = L("unknown_family")
 			}
 		} else if IsNewSurname(node.Parent()) {
-			message = "Unknown family"
+			message = L("unknown_family")
 		}
 
 		r, err := doc.NodeToRange(node)
@@ -147,7 +146,7 @@ func PublishDiagnostics(ctx *glsp.Context, uri Uri, doc *TextDocument) {
 								URI:   family.Uri,
 								Range: *rr,
 							},
-							Message: fmt.Sprintf("Child of %s", ToString(sources, d)),
+							Message: L("child_of_source", ToString(sources, d)),
 						}
 					}
 				}
@@ -155,7 +154,7 @@ func PublishDiagnostics(ctx *glsp.Context, uri Uri, doc *TextDocument) {
 				list = append(list, proto.Diagnostic{
 					Severity:           P(proto.DiagnosticSeverityWarning),
 					Range:              *r,
-					Message:            fmt.Sprintf("An unobvious name. There are %d persons with the name %s. Add uniq name alias to one of them", count, name),
+					Message:            L("duplicate_count_of_name", count, name),
 					RelatedInformation: locations,
 					Data: DiagnosticData{
 						Type:    NameDuplicateWarning,

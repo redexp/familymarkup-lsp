@@ -72,5 +72,9 @@ func main() {
 		TreeLocation:  lsp.TreeLocation,
 	}
 
-	lsp.CreateServer(protocolHandlers, workspaceHandlers, treeHandlers)
+	configHandlers := &lsp.ConfigurationHandlers{
+		Change: lsp.ConfigurationChange,
+	}
+
+	lsp.CreateServer(protocolHandlers, workspaceHandlers, treeHandlers, configHandlers)
 }
