@@ -143,6 +143,10 @@ func (root *Root) Update(tree *Tree, text []byte, uri Uri) (err error) {
 	var family *Family
 
 	for index, node := range QueryIter(q, tree.RootNode()) {
+		if node.IsMissing() {
+			continue
+		}
+
 		switch index {
 		// new family
 		case 0:
