@@ -51,7 +51,7 @@ func GetParser() *ParserWorker {
 	return parser
 }
 
-func (p *ParserWorker) Parse(text []byte) (tree *sitter.Tree, err error) {
+func (p *ParserWorker) Parse(text []byte) (tree *Tree, err error) {
 	p.busy = true
 
 	tree, err = p.parser.ParseCtx(context.Background(), nil, text)
@@ -142,7 +142,7 @@ func GetTypeNode(doc *TextDocument, pos *Position) (t string, nodes []*Node, err
 		return
 	}
 
-	caps := []*sitter.QueryCapture{prev, target, next}
+	caps := []*QueryCapture{prev, target, next}
 	nodes = make([]*Node, 3)
 	line := pos.Line
 
@@ -309,7 +309,7 @@ func QueryIter(q *sitter.Query, node *Node) iter.Seq2[uint32, *Node] {
 }
 
 func GetErrorNodesIter(root *Node) iter.Seq[*Node] {
-	return func(yield func(*sitter.Node) bool) {
+	return func(yield func(*Node) bool) {
 		if !root.HasError() {
 			return
 		}

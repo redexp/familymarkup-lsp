@@ -7,7 +7,6 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/tliron/commonlog"
 	_ "github.com/tliron/commonlog/simple"
-	proto "github.com/tliron/glsp/protocol_3_16"
 )
 
 func init() {
@@ -34,47 +33,12 @@ func init() {
 }
 
 func main() {
-	protocolHandlers := &proto.Handler{
-		Initialize:                     lsp.Initialize,
-		Initialized:                    lsp.Initialized,
-		SetTrace:                       lsp.SetTrace,
-		CancelRequest:                  lsp.CancelRequest,
-		TextDocumentSemanticTokensFull: lsp.SemanticTokensFull,
-		TextDocumentDidOpen:            lsp.DocOpen,
-		TextDocumentDidChange:          lsp.DocChange,
-		TextDocumentDidClose:           lsp.DocClose,
-		WorkspaceDidCreateFiles:        lsp.DocCreate,
-		WorkspaceDidRenameFiles:        lsp.DocRename,
-		WorkspaceDidDeleteFiles:        lsp.DocDelete,
-		TextDocumentCompletion:         lsp.Completion,
-		TextDocumentDefinition:         lsp.Definition,
-		TextDocumentReferences:         lsp.References,
-		TextDocumentTypeDefinition:     lsp.TypeDefinition,
-		TextDocumentHover:              lsp.Hover,
-		TextDocumentDocumentHighlight:  lsp.DocumentHighlight,
-		TextDocumentPrepareRename:      lsp.PrepareRename,
-		TextDocumentRename:             lsp.Rename,
-		TextDocumentFoldingRange:       lsp.FoldingRange,
-		TextDocumentCodeAction:         lsp.CodeAction,
-		TextDocumentDocumentSymbol:     lsp.DocSymbols,
-		CodeActionResolve:              lsp.CodeActionResolve,
-	}
+	server := lsp.CreateServer(
+		lsp.NewProtocolHandlers(),
+		lsp.NewWorkspaceHandlers(),
+		lsp.NewTreeHandlers(),
+		lsp.NewConfigurationHandlers(),
+	)
 
-	workspaceHandlers := &lsp.WorkspaceHandler{
-		WorkspaceSymbol:        lsp.AllSymbols,
-		WorkspaceSymbolResolve: lsp.ResolveSymbol,
-	}
-
-	treeHandlers := &lsp.TreeHandlers{
-		TreeFamilies:  lsp.TreeFamilies,
-		TreeRelations: lsp.TreeRelations,
-		TreeMembers:   lsp.TreeMembers,
-		TreeLocation:  lsp.TreeLocation,
-	}
-
-	configHandlers := &lsp.ConfigurationHandlers{
-		Change: lsp.ConfigurationChange,
-	}
-
-	lsp.CreateServer(protocolHandlers, workspaceHandlers, treeHandlers, configHandlers)
+	server.RunStdio()
 }

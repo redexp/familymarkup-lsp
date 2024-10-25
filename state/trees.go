@@ -6,7 +6,6 @@ import (
 
 	. "github.com/redexp/familymarkup-lsp/types"
 	. "github.com/redexp/familymarkup-lsp/utils"
-	sitter "github.com/smacker/go-tree-sitter"
 )
 
 var trees sync.Map
@@ -65,6 +64,6 @@ func GetTreeText(uri Uri) (tree *Tree, text []byte, err error) {
 	return
 }
 
-func ParseTree(text []byte) (*sitter.Tree, error) {
+func ParseTree(text []byte) (*Tree, error) {
 	return GetParser().Parse(text)
 }

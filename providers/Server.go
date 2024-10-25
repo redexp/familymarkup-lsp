@@ -21,7 +21,7 @@ func (req *RequestHandler) Handle(ctx *glsp.Context) (res any, validMethod bool,
 	return
 }
 
-func CreateServer(handlers ...glsp.Handler) {
+func CreateServer(handlers ...glsp.Handler) *serv.Server {
 	server = serv.NewServer(&RequestHandler{Handlers: handlers}, "familymarkup", false)
-	server.RunStdio()
+	return server
 }

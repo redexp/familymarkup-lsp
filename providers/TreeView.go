@@ -12,7 +12,6 @@ import (
 	. "github.com/redexp/familymarkup-lsp/state"
 	. "github.com/redexp/familymarkup-lsp/types"
 	. "github.com/redexp/familymarkup-lsp/utils"
-	sitter "github.com/smacker/go-tree-sitter"
 	"github.com/tliron/glsp"
 	proto "github.com/tliron/glsp/protocol_3_16"
 )
@@ -149,7 +148,7 @@ func TreeLocation(ctx *glsp.Context, params *TreeLocationParams) (pos *proto.Pos
 		return
 	}
 
-	return doc.PointToPosition(sitter.Point{
+	return doc.PointToPosition(Point{
 		Row:    params.Row,
 		Column: params.Column,
 	})

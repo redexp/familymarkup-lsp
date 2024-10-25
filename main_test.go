@@ -1,15 +1,11 @@
 package main_test
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
 
 	h "github.com/redexp/familymarkup-lsp/providers"
-	"github.com/redexp/textdocument"
-	familymarkup "github.com/redexp/tree-sitter-familymarkup"
-	sitter "github.com/smacker/go-tree-sitter"
 	proto "github.com/tliron/glsp/protocol_3_16"
 )
 
@@ -65,25 +61,4 @@ func TestSemanticTokensFull(t *testing.T) {
 	if err == nil {
 		t.Errorf("should return error")
 	}
-}
-
-func TestXxx(t *testing.T) {
-	text := `
-Fam
-
-Name + ?
-1. Nam
-
-Fam2
-
-Name + ? =
-1. Nam
-	`
-	p := sitter.NewParser()
-	p.SetLanguage(familymarkup.GetLanguage())
-
-	doc := textdocument.NewTextDocument(text)
-	doc.SetParser(p)
-
-	fmt.Println(doc.Tree.RootNode().String())
 }
