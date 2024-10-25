@@ -5,11 +5,10 @@ import (
 	. "github.com/redexp/familymarkup-lsp/types"
 	. "github.com/redexp/familymarkup-lsp/utils"
 	"github.com/redexp/textdocument"
-	"github.com/tliron/glsp"
 	proto "github.com/tliron/glsp/protocol_3_16"
 )
 
-func Definition(context *glsp.Context, params *proto.DefinitionParams) (res any, err error) {
+func Definition(ctx *Ctx, params *proto.DefinitionParams) (res any, err error) {
 	family, _, target, err := getDefinition(params.TextDocument.URI, &params.Position)
 
 	if err != nil || target == nil {

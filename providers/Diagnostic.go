@@ -7,12 +7,11 @@ import (
 	. "github.com/redexp/familymarkup-lsp/state"
 	. "github.com/redexp/familymarkup-lsp/types"
 	. "github.com/redexp/familymarkup-lsp/utils"
-	"github.com/tliron/glsp"
 	proto "github.com/tliron/glsp/protocol_3_16"
 )
 
 type DocDebouncer struct {
-	Docs     map[Uri]*glsp.Context
+	Docs     map[Uri]*Ctx
 	Debounce func(func())
 }
 
@@ -27,7 +26,7 @@ type DiagnosticData struct {
 	Name    string `json:"name"`
 }
 
-func PublishDiagnostics(ctx *glsp.Context, uri Uri, doc *TextDocument) {
+func PublishDiagnostics(ctx *Ctx, uri Uri, doc *TextDocument) {
 	if !supportDiagnostics {
 		return
 	}
@@ -175,12 +174,12 @@ func PublishDiagnostics(ctx *glsp.Context, uri Uri, doc *TextDocument) {
 
 func createDocDebouncer() *DocDebouncer {
 	return &DocDebouncer{
-		Docs:     make(map[string]*glsp.Context),
+		Docs:     make(map[string]*Ctx),
 		Debounce: debounce.New(200 * time.Millisecond),
 	}
 }
 
-func (dd *DocDebouncer) Set(uri Uri, ctx *glsp.Context) {
+func (dd *DocDebouncer) Set(uri Uri, ctx *Ctx) {
 	dd.Docs[uri] = ctx
 	dd.Debounce(func() {
 		dd.Flush()

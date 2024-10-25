@@ -9,11 +9,10 @@ import (
 	. "github.com/redexp/familymarkup-lsp/state"
 	. "github.com/redexp/familymarkup-lsp/types"
 	. "github.com/redexp/familymarkup-lsp/utils"
-	"github.com/tliron/glsp"
 	proto "github.com/tliron/glsp/protocol_3_16"
 )
 
-func DocSymbols(ctx *glsp.Context, params *proto.DocumentSymbolParams) (res any, err error) {
+func DocSymbols(ctx *Ctx, params *proto.DocumentSymbolParams) (res any, err error) {
 	uri, err := NormalizeUri(params.TextDocument.URI)
 
 	if err != nil {
@@ -77,7 +76,7 @@ func DocSymbols(ctx *glsp.Context, params *proto.DocumentSymbolParams) (res any,
 	return list, nil
 }
 
-func AllSymbols(ctx *glsp.Context, params *proto.WorkspaceSymbolParams) (list []WorkspaceSymbol, err error) {
+func AllSymbols(ctx *Ctx, params *proto.WorkspaceSymbolParams) (list []WorkspaceSymbol, err error) {
 	parts := splitQuery(params.Query)
 	count := len(parts)
 	empty := count == 0
@@ -159,7 +158,7 @@ func AllSymbols(ctx *glsp.Context, params *proto.WorkspaceSymbolParams) (list []
 	return
 }
 
-func ResolveSymbol(ctx *glsp.Context, symbol *WorkspaceSymbol) (res *WorkspaceSymbolLocation, err error) {
+func ResolveSymbol(ctx *Ctx, symbol *WorkspaceSymbol) (res *WorkspaceSymbolLocation, err error) {
 	res = &WorkspaceSymbolLocation{
 		SymbolInformation: proto.SymbolInformation{
 			Kind:          symbol.Kind,
@@ -297,7 +296,7 @@ type WorkspaceHandler struct {
 	WorkspaceSymbolResolve WorkspaceSymbolResolveFunc
 }
 
-func (req *WorkspaceHandler) Handle(ctx *glsp.Context) (res any, validMethod bool, validParams bool, err error) {
+func (req *WorkspaceHandler) Handle(ctx *Ctx) (res any, validMethod bool, validParams bool, err error) {
 	switch ctx.Method {
 	case proto.MethodWorkspaceSymbol:
 		validMethod = true
@@ -321,8 +320,8 @@ func (req *WorkspaceHandler) Handle(ctx *glsp.Context) (res any, validMethod boo
 	return
 }
 
-type WorkspaceSymbolFunc func(ctx *glsp.Context, params *proto.WorkspaceSymbolParams) ([]WorkspaceSymbol, error)
+type WorkspaceSymbolFunc func(ctx *Ctx, params *proto.WorkspaceSymbolParams) ([]WorkspaceSymbol, error)
 
 const MethodWorkspaceSymbolResolve = "workspaceSymbol/resolve"
 
-type WorkspaceSymbolResolveFunc func(ctx *glsp.Context, symbol *WorkspaceSymbol) (*WorkspaceSymbolLocation, error)
+type WorkspaceSymbolResolveFunc func(ctx *Ctx, symbol *WorkspaceSymbol) (*WorkspaceSymbolLocation, error)

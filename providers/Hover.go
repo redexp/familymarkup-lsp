@@ -6,11 +6,10 @@ import (
 
 	. "github.com/redexp/familymarkup-lsp/state"
 	. "github.com/redexp/familymarkup-lsp/utils"
-	"github.com/tliron/glsp"
 	proto "github.com/tliron/glsp/protocol_3_16"
 )
 
-func Hover(context *glsp.Context, params *proto.HoverParams) (h *proto.Hover, err error) {
+func Hover(ctx *Ctx, params *proto.HoverParams) (h *proto.Hover, err error) {
 	uri, err := NormalizeUri(params.TextDocument.URI)
 
 	if err != nil {

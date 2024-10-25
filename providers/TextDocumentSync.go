@@ -4,13 +4,12 @@ import (
 	. "github.com/redexp/familymarkup-lsp/state"
 	. "github.com/redexp/familymarkup-lsp/types"
 	. "github.com/redexp/familymarkup-lsp/utils"
-	"github.com/tliron/glsp"
 	proto "github.com/tliron/glsp/protocol_3_16"
 )
 
 var docDiagnostic = createDocDebouncer()
 
-func DocOpen(context *glsp.Context, params *proto.DidOpenTextDocumentParams) (err error) {
+func DocOpen(ctx *Ctx, params *proto.DidOpenTextDocumentParams) (err error) {
 	uri, err := NormalizeUri(params.TextDocument.URI)
 
 	if err != nil {
@@ -23,12 +22,12 @@ func DocOpen(context *glsp.Context, params *proto.DidOpenTextDocumentParams) (er
 		return
 	}
 
-	PublishDiagnostics(context, uri, doc)
+	PublishDiagnostics(ctx, uri, doc)
 
 	return
 }
 
-func DocClose(context *glsp.Context, params *proto.DidCloseTextDocumentParams) error {
+func DocClose(ctx *Ctx, params *proto.DidCloseTextDocumentParams) error {
 	uri, err := NormalizeUri(params.TextDocument.URI)
 
 	if err != nil {
@@ -40,7 +39,7 @@ func DocClose(context *glsp.Context, params *proto.DidCloseTextDocumentParams) e
 	return nil
 }
 
-func DocChange(ctx *glsp.Context, params *proto.DidChangeTextDocumentParams) error {
+func DocChange(ctx *Ctx, params *proto.DidChangeTextDocumentParams) error {
 	uri, err := NormalizeUri(params.TextDocument.URI)
 
 	if err != nil {
@@ -74,7 +73,7 @@ func DocChange(ctx *glsp.Context, params *proto.DidChangeTextDocumentParams) err
 	return setDirtyUri(ctx, uri, FileChange)
 }
 
-func DocCreate(ctx *glsp.Context, params *proto.CreateFilesParams) error {
+func DocCreate(ctx *Ctx, params *proto.CreateFilesParams) error {
 	for _, file := range params.Files {
 		err := setDirtyUri(ctx, file.URI, FileCreate)
 
@@ -88,7 +87,7 @@ func DocCreate(ctx *glsp.Context, params *proto.CreateFilesParams) error {
 	return nil
 }
 
-func DocRename(ctx *glsp.Context, params *proto.RenameFilesParams) error {
+func DocRename(ctx *Ctx, params *proto.RenameFilesParams) error {
 	for _, file := range params.Files {
 		err := RemoveDoc(file.OldURI)
 
@@ -114,7 +113,7 @@ func DocRename(ctx *glsp.Context, params *proto.RenameFilesParams) error {
 	return nil
 }
 
-func DocDelete(ctx *glsp.Context, params *proto.DeleteFilesParams) error {
+func DocDelete(ctx *Ctx, params *proto.DeleteFilesParams) error {
 	for _, file := range params.Files {
 		err := RemoveDoc(file.URI)
 
@@ -134,7 +133,7 @@ func DocDelete(ctx *glsp.Context, params *proto.DeleteFilesParams) error {
 	return nil
 }
 
-func setDirtyUri(ctx *glsp.Context, uri Uri, state uint8) error {
+func setDirtyUri(ctx *Ctx, uri Uri, state uint8) error {
 	uri, err := NormalizeUri(uri)
 
 	if err != nil {
@@ -149,7 +148,7 @@ func setDirtyUri(ctx *glsp.Context, uri Uri, state uint8) error {
 	return nil
 }
 
-func diagnosticOpenDocs(ctx *glsp.Context) {
+func diagnosticOpenDocs(ctx *Ctx) {
 	for uri := range GetOpenDocsIter() {
 		docDiagnostic.Set(uri, ctx)
 	}

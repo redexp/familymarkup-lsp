@@ -3,11 +3,10 @@ package providers
 import (
 	. "github.com/redexp/familymarkup-lsp/state"
 	. "github.com/redexp/familymarkup-lsp/utils"
-	"github.com/tliron/glsp"
 	proto "github.com/tliron/glsp/protocol_3_16"
 )
 
-func FoldingRange(context *glsp.Context, params *proto.FoldingRangeParams) (res []proto.FoldingRange, err error) {
+func FoldingRange(ctx *Ctx, params *proto.FoldingRangeParams) (res []proto.FoldingRange, err error) {
 	uri, err := NormalizeUri(params.TextDocument.URI)
 
 	if err != nil {

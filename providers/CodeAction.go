@@ -7,7 +7,6 @@ import (
 	. "github.com/redexp/familymarkup-lsp/state"
 	. "github.com/redexp/familymarkup-lsp/types"
 	. "github.com/redexp/familymarkup-lsp/utils"
-	"github.com/tliron/glsp"
 	proto "github.com/tliron/glsp/protocol_3_16"
 )
 
@@ -24,7 +23,7 @@ const (
 	CreateFamilyOnNewFile
 )
 
-func CodeAction(context *glsp.Context, params *proto.CodeActionParams) (any, error) {
+func CodeAction(ctx *Ctx, params *proto.CodeActionParams) (any, error) {
 	if len(params.Context.Diagnostics) == 0 {
 		return nil, nil
 	}
@@ -159,7 +158,7 @@ func CodeAction(context *glsp.Context, params *proto.CodeActionParams) (any, err
 	return list, nil
 }
 
-func CodeActionResolve(ctx *glsp.Context, params *proto.CodeAction) (res *proto.CodeAction, err error) {
+func CodeActionResolve(ctx *Ctx, params *proto.CodeAction) (res *proto.CodeAction, err error) {
 	if len(params.Diagnostics) == 0 || params.Data == nil {
 		return
 	}

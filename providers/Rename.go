@@ -3,11 +3,10 @@ package providers
 import (
 	. "github.com/redexp/familymarkup-lsp/state"
 	. "github.com/redexp/familymarkup-lsp/utils"
-	"github.com/tliron/glsp"
 	proto "github.com/tliron/glsp/protocol_3_16"
 )
 
-func PrepareRename(context *glsp.Context, params *proto.PrepareRenameParams) (res any, err error) {
+func PrepareRename(ctx *Ctx, params *proto.PrepareRenameParams) (res any, err error) {
 	uri, err := NormalizeUri(params.TextDocument.URI)
 
 	if err != nil {
@@ -43,7 +42,7 @@ func PrepareRename(context *glsp.Context, params *proto.PrepareRenameParams) (re
 	return nil, nil
 }
 
-func Rename(context *glsp.Context, params *proto.RenameParams) (res *proto.WorkspaceEdit, err error) {
+func Rename(ctx *Ctx, params *proto.RenameParams) (res *proto.WorkspaceEdit, err error) {
 	uri, err := NormalizeUri(params.TextDocument.URI)
 
 	if err != nil {

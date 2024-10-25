@@ -4,10 +4,9 @@ import (
 	"encoding/json"
 
 	"github.com/mitchellh/mapstructure"
-	"github.com/tliron/glsp"
 )
 
-func ConfigurationChange(ctx *glsp.Context, config *ClientConfiguration) (err error) {
+func ConfigurationChange(ctx *Ctx, config *ClientConfiguration) (err error) {
 	if config.Locale != "" {
 		err = SetLocale(config.Locale)
 
@@ -35,7 +34,7 @@ type ConfigurationHandlers struct {
 	Change ConfigChangeFunc
 }
 
-func (req *ConfigurationHandlers) Handle(ctx *glsp.Context) (res any, validMethod bool, validParams bool, err error) {
+func (req *ConfigurationHandlers) Handle(ctx *Ctx) (res any, validMethod bool, validParams bool, err error) {
 	switch ctx.Method {
 	case ConfigChangeMethod:
 		validMethod = true
@@ -52,4 +51,4 @@ func (req *ConfigurationHandlers) Handle(ctx *glsp.Context) (res any, validMetho
 
 const ConfigChangeMethod = "config/change"
 
-type ConfigChangeFunc func(*glsp.Context, *ClientConfiguration) error
+type ConfigChangeFunc func(*Ctx, *ClientConfiguration) error

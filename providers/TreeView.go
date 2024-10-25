@@ -12,14 +12,13 @@ import (
 	. "github.com/redexp/familymarkup-lsp/state"
 	. "github.com/redexp/familymarkup-lsp/types"
 	. "github.com/redexp/familymarkup-lsp/utils"
-	"github.com/tliron/glsp"
 	proto "github.com/tliron/glsp/protocol_3_16"
 )
 
-var treeContext *glsp.Context
+var treeContext *Ctx
 var treeReloadDebouncer = debounce.New(2 * time.Second)
 
-func TreeFamilies(ctx *glsp.Context) ([]*TreeFamily, error) {
+func TreeFamilies(ctx *Ctx) ([]*TreeFamily, error) {
 	list := make([]*TreeFamily, 0)
 
 	for f := range root.FamilyIter() {
@@ -47,7 +46,7 @@ func TreeFamilies(ctx *glsp.Context) ([]*TreeFamily, error) {
 	return list, nil
 }
 
-func TreeRelations(ctx *glsp.Context, loc *TreeItemLocation) (list []*TreeRelation, err error) {
+func TreeRelations(ctx *Ctx, loc *TreeItemLocation) (list []*TreeRelation, err error) {
 	f, doc, err := getFamilyDoc(loc)
 
 	if err != nil {
@@ -77,7 +76,7 @@ func TreeRelations(ctx *glsp.Context, loc *TreeItemLocation) (list []*TreeRelati
 	return
 }
 
-func TreeMembers(ctx *glsp.Context, loc *TreeItemLocation) (list []*TreeMember, err error) {
+func TreeMembers(ctx *Ctx, loc *TreeItemLocation) (list []*TreeMember, err error) {
 	f, doc, err := getFamilyDoc(loc)
 
 	if err != nil {
@@ -141,7 +140,7 @@ func TreeMembers(ctx *glsp.Context, loc *TreeItemLocation) (list []*TreeMember, 
 	return
 }
 
-func TreeLocation(ctx *glsp.Context, params *TreeLocationParams) (pos *proto.Position, err error) {
+func TreeLocation(ctx *Ctx, params *TreeLocationParams) (pos *proto.Position, err error) {
 	doc, err := TempDoc(params.URI)
 
 	if err != nil {
@@ -206,7 +205,7 @@ type TreeHandlers struct {
 	TreeLocation  TreeLocationFunc
 }
 
-func (req *TreeHandlers) Handle(ctx *glsp.Context) (res any, validMethod bool, validParams bool, err error) {
+func (req *TreeHandlers) Handle(ctx *Ctx) (res any, validMethod bool, validParams bool, err error) {
 	switch ctx.Method {
 	case TreeFamiliesMethod:
 		validMethod = true
@@ -253,7 +252,7 @@ type TreeItemPoint struct {
 
 const TreeFamiliesMethod = "tree/families"
 
-type TreeFamiliesFunc func(ctx *glsp.Context) ([]*TreeFamily, error)
+type TreeFamiliesFunc func(ctx *Ctx) ([]*TreeFamily, error)
 
 type TreeFamily struct {
 	TreeItemPoint
@@ -267,7 +266,7 @@ type TreeFamily struct {
 
 const TreeRelationsMethod = "tree/relations"
 
-type TreeRelationsFunc func(ctx *glsp.Context, loc *TreeItemLocation) ([]*TreeRelation, error)
+type TreeRelationsFunc func(ctx *Ctx, loc *TreeItemLocation) ([]*TreeRelation, error)
 
 type TreeItemLocation struct {
 	URI        Uri    `json:"uri"`
@@ -286,7 +285,7 @@ type TreeRelation struct {
 
 const TreeMembersMethod = "tree/members"
 
-type TreeMembersFunc func(ctx *glsp.Context, loc *TreeItemLocation) ([]*TreeMember, error)
+type TreeMembersFunc func(ctx *Ctx, loc *TreeItemLocation) ([]*TreeMember, error)
 
 type TreeMember struct {
 	TreeItemPoint
@@ -299,7 +298,7 @@ type TreeMember struct {
 
 const TreeLocationMethod = "tree/location"
 
-type TreeLocationFunc func(ctx *glsp.Context, params *TreeLocationParams) (*proto.Position, error)
+type TreeLocationFunc func(ctx *Ctx, params *TreeLocationParams) (*proto.Position, error)
 
 type TreeLocationParams struct {
 	TreeItemPoint

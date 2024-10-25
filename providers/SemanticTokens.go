@@ -5,11 +5,10 @@ import (
 	. "github.com/redexp/familymarkup-lsp/types"
 	. "github.com/redexp/familymarkup-lsp/utils"
 	familymarkup "github.com/redexp/tree-sitter-familymarkup"
-	"github.com/tliron/glsp"
 	proto "github.com/tliron/glsp/protocol_3_16"
 )
 
-func SemanticTokensFull(ctx *glsp.Context, params *proto.SemanticTokensParams) (res *proto.SemanticTokens, err error) {
+func SemanticTokensFull(ctx *Ctx, params *proto.SemanticTokensParams) (res *proto.SemanticTokens, err error) {
 	uri, err := NormalizeUri(params.TextDocument.URI)
 
 	if err != nil {

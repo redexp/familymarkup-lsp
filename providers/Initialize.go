@@ -9,11 +9,10 @@ import (
 	. "github.com/redexp/familymarkup-lsp/utils"
 	"github.com/redexp/textdocument"
 	familymarkup "github.com/redexp/tree-sitter-familymarkup"
-	"github.com/tliron/glsp"
 	proto "github.com/tliron/glsp/protocol_3_16"
 )
 
-func Initialize(ctx *glsp.Context, params *proto.InitializeParams) (any, error) {
+func Initialize(ctx *Ctx, params *proto.InitializeParams) (any, error) {
 	root = CreateRoot(Debugf)
 
 	options, err := GetClientConfiguration(params.InitializationOptions)
@@ -107,15 +106,15 @@ func Initialize(ctx *glsp.Context, params *proto.InitializeParams) (any, error) 
 	return res, nil
 }
 
-func Initialized(ctx *glsp.Context, params *proto.InitializedParams) error {
+func Initialized(ctx *Ctx, params *proto.InitializedParams) error {
 	return nil
 }
 
-func SetTrace(context *glsp.Context, params *proto.SetTraceParams) error {
+func SetTrace(ctx *Ctx, params *proto.SetTraceParams) error {
 	return nil
 }
 
-func CancelRequest(context *glsp.Context, params *proto.CancelParams) error {
+func CancelRequest(ctx *Ctx, params *proto.CancelParams) error {
 	return nil
 }
 

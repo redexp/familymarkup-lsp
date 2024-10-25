@@ -1,11 +1,10 @@
 package providers
 
 import (
-	"github.com/tliron/glsp"
 	proto "github.com/tliron/glsp/protocol_3_16"
 )
 
-func TypeDefinition(context *glsp.Context, params *proto.TypeDefinitionParams) (res any, err error) {
+func TypeDefinition(ctx *Ctx, params *proto.TypeDefinitionParams) (res any, err error) {
 	_, mem, _, err := getDefinition(params.TextDocument.URI, &params.Position)
 
 	if err != nil || mem == nil || mem.InfoUri == "" {
