@@ -7,7 +7,7 @@
 - [x] SemanticTokens
   - [x] For full document
   - [ ] For range of document
-  - [ ] Delta
+  - [x] Delta
 - [x] Completion
 - [x] Definition
 - [x] References
