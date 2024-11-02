@@ -1,15 +1,71 @@
 package providers
 
 import (
+	"sync"
+
 	. "github.com/redexp/familymarkup-lsp/state"
-	. "github.com/redexp/familymarkup-lsp/types"
 	. "github.com/redexp/familymarkup-lsp/utils"
-	familymarkup "github.com/redexp/tree-sitter-familymarkup"
 	proto "github.com/tliron/glsp/protocol_3_16"
 )
 
+type Tokens []proto.UInteger
+
+var tokensMap = make(map[string]Tokens)
+
 func SemanticTokensFull(ctx *Ctx, params *proto.SemanticTokensParams) (res *proto.SemanticTokens, err error) {
-	uri, err := NormalizeUri(params.TextDocument.URI)
+	Debugf("full")
+
+	tokens, uri, err := getTokens(params.TextDocument.URI)
+
+	if err != nil {
+		return
+	}
+
+	tokensMap[uri] = tokens
+
+	res = &proto.SemanticTokens{
+		Data: tokens,
+	}
+
+	return
+}
+
+func SemanticTokensDelta(ctx *Ctx, params *proto.SemanticTokensDeltaParams) (res any, err error) {
+	Debugf("delta")
+
+	tokens, uri, err := getTokens(params.TextDocument.URI)
+
+	if err != nil {
+		return
+	}
+
+	prevTokens, exist := tokensMap[uri]
+
+	tokensMap[uri] = tokens
+
+	if !exist {
+		res = proto.SemanticTokens{
+			Data: tokens,
+		}
+
+		return
+	}
+
+	start, delCount, data := getTokensDelta(prevTokens, tokens)
+
+	Debugf("delta start: %d, del: %d, data: len(%d)", start, delCount, len(data))
+
+	res = proto.SemanticTokensEdit{
+		Start:       start,
+		DeleteCount: delCount,
+		Data:        data,
+	}
+
+	return
+}
+
+func getTokens(docUri string) (tokens Tokens, uri string, err error) {
+	uri, err = NormalizeUri(docUri)
 
 	if err != nil {
 		return
@@ -21,35 +77,93 @@ func SemanticTokensFull(ctx *Ctx, params *proto.SemanticTokensParams) (res *prot
 		return
 	}
 
-	tokens, err := doc.ConvertHighlightCaptures(typesMap)
+	tokens, err = doc.ConvertHighlightCaptures(typesMap)
 
-	if err != nil {
-		return
-	}
-
-	res = &proto.SemanticTokens{
-		Data: tokens,
-	}
-
-	return res, nil
+	return
 }
 
-func GetCaptures(root *Node) ([]*QueryCapture, error) {
-	caps, err := familymarkup.GetHighlightCaptures(root)
-
-	if err != nil {
-		return nil, err
+func min(a, b uint32) uint32 {
+	if a <= b {
+		return a
 	}
 
-	list := []*QueryCapture{}
+	return b
+}
 
-	for _, cap := range caps {
-		if cap.Node.IsMissing() {
-			continue
+func getTokensDelta(prevTokens, tokens Tokens) (st, delCount uint32, insert Tokens) {
+	prevLen := uint32(len(prevTokens))
+	curLen := uint32(len(tokens))
+	count := min(prevLen, curLen)
+
+	if prevLen == 0 {
+		return 0, 0, tokens
+	}
+
+	if curLen == 0 {
+		return 0, prevLen, tokens
+	}
+
+	var wg sync.WaitGroup
+
+	wg.Add(2)
+
+	start := int32(-1)
+	prevEnd := int32(-1)
+	curEnd := int32(-1)
+
+	go func() {
+		defer wg.Done()
+
+		for i := uint32(0); i < count; i++ {
+			if prevTokens[i] != tokens[i] {
+				start = int32(i)
+				return
+			}
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+
+		for i := uint32(1); i <= count; i++ {
+			if prevTokens[prevLen-i] != tokens[curLen-i] {
+				prevEnd = int32(prevLen - i)
+				curEnd = int32(curLen - i)
+				return
+			}
 		}
 
-		list = append(list, cap)
+		prevEnd = int32(prevLen - count - 1)
+		curEnd = int32(curLen - count - 1)
+	}()
+
+	wg.Wait()
+
+	if start < 0 {
+		if prevLen > curLen {
+			st = count
+			delCount = uint32(prevLen - curLen)
+		} else if prevLen < curLen {
+			st = count
+			insert = tokens[st:]
+		} else {
+			return 0, prevLen, tokens
+		}
+	} else {
+		st = uint32(start)
+
+		if prevEnd >= start {
+			delCount = uint32(prevEnd - start + 1)
+		}
+
+		if curEnd >= start {
+			insert = tokens[start : curEnd+1]
+		}
 	}
 
-	return list, nil
+	if insert == nil {
+		insert = Tokens{}
+	}
+
+	return
 }

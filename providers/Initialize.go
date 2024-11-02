@@ -50,7 +50,9 @@ func Initialize(ctx *Ctx, params *proto.InitializeParams) (any, error) {
 				Change:    &syncType,
 			},
 			SemanticTokensProvider: proto.SemanticTokensOptions{
-				Full:   true,
+				Full: proto.SemanticDelta{
+					Delta: &proto.True,
+				},
 				Range:  false,
 				Legend: *legend,
 			},
