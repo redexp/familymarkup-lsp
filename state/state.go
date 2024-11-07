@@ -10,6 +10,7 @@ import (
 )
 
 type Root struct {
+	SurnameFirst bool
 	Folders      UriSet
 	Families     Families
 	Duplicates   Duplicates
@@ -23,6 +24,7 @@ type Root struct {
 
 func CreateRoot(logger func(string, ...any)) *Root {
 	return &Root{
+		SurnameFirst: true,
 		Folders:      make(UriSet),
 		Families:     make(Families),
 		Duplicates:   make(Duplicates),
@@ -106,6 +108,17 @@ func (root *Root) SetFolders(folders []Uri) (err error) {
 	return
 }
 
+func (root *Root) SetSurnameFirst(surnameFirst bool) (err error) {
+	root.SurnameFirst = surnameFirst
+
+	for _, doc := range GetOpenDocsIter() {
+		SetDocHighlightQuery(doc, root.SurnameFirst)
+		doc.UpdateHighlightCaptures()
+	}
+
+	return root.UpdateAllRefs()
+}
+
 func (root *Root) Update(tree *Tree, text []byte, uri Uri) (err error) {
 	q, err := CreateQuery(`
 		(family_name 
@@ -154,11 +167,13 @@ func (root *Root) Update(tree *Tree, text []byte, uri Uri) (err error) {
 
 		// name_ref
 		case 1:
+			surname, name := GetSurnameName(node, root.SurnameFirst)
+
 			root.AddRef(&Ref{
 				Uri:     uri,
 				Node:    node,
-				Surname: node.NamedChild(0).Content(text),
-				Name:    node.NamedChild(1).Content(text),
+				Surname: surname.Content(text),
+				Name:    name.Content(text),
 			})
 
 		// sorces -> name
@@ -219,11 +234,82 @@ func (root *Root) UpdateUnknownRefs() {
 	}
 
 	list := root.UnknownRefs
-	root.UnknownRefs = make([]*Ref, 0)
+	root.UnknownRefs = Refs{}
 
 	for _, ref := range list {
 		root.AddRef(ref)
 	}
+}
+
+func (root *Root) UpdateAllRefs() (err error) {
+	isRef := func(node *Node) bool {
+		return node != nil && (IsNameRef(node) || IsNameRef(node.Parent()))
+	}
+
+	root.UnknownRefs = slices.DeleteFunc(root.UnknownRefs, func(ref *Ref) bool {
+		return isRef(ref.Node)
+	})
+
+	for uri, list := range root.NodeRefs {
+		for node := range list {
+			if isRef(node) {
+				delete(list, node)
+			}
+		}
+
+		if len(list) == 0 {
+			delete(root.NodeRefs, uri)
+		}
+	}
+
+	for mem := range root.MembersIter() {
+		mem.Refs = slices.DeleteFunc(mem.Refs, func(ref *Ref) bool {
+			return isRef(ref.Node)
+		})
+	}
+
+	q, err := CreateQuery(`
+		(name_ref
+			(surname)
+			(name)
+		) @name_ref
+	`)
+
+	if err != nil {
+		return
+	}
+
+	defer q.Close()
+
+	tempDocs := Docs{}
+
+	trees.Range(func(key, _ any) bool {
+		uri := key.(string)
+		doc, err := tempDocs.Get(uri)
+
+		if err != nil {
+			return true
+		}
+
+		text := []byte(doc.Text)
+
+		for _, node := range QueryIter(q, doc.Tree.RootNode()) {
+			surname, name := GetSurnameName(node, root.SurnameFirst)
+
+			root.AddRef(&Ref{
+				Uri:     uri,
+				Node:    node,
+				Surname: surname.Content(text),
+				Name:    name.Content(text),
+			})
+		}
+
+		return true
+	})
+
+	root.UpdateUnknownRefs()
+
+	return
 }
 
 func (root *Root) UpdateUnknownFiles() {
@@ -550,7 +636,7 @@ func (root *Root) AddRef(ref *Ref) {
 
 	mem.Refs = append(mem.Refs, ref)
 
-	root.AddNodeRef(ref.Uri, NameRefName(ref.Node), mem)
+	root.AddNodeRef(ref.Uri, ToNameNode(ref.Node, root.SurnameFirst), mem)
 }
 
 func (root *Root) AddNodeRef(uri Uri, node *Node, mem *Member) {

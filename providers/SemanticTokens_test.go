@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestXxx(t *testing.T) {
+func TestTokensDelta(t *testing.T) {
 	tokens := Tokens{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
 	tokensLen := uint32(len(tokens))
 	ext := Tokens{0, 0, 0}

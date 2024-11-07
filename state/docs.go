@@ -8,13 +8,14 @@ import (
 	. "github.com/redexp/familymarkup-lsp/utils"
 	"github.com/redexp/textdocument"
 	familymarkup "github.com/redexp/tree-sitter-familymarkup"
+	sitter "github.com/smacker/go-tree-sitter"
 )
 
 type Docs map[Uri]*TextDocument
 
 var documents Docs = make(Docs)
 
-func OpenDoc(uri Uri) (doc *TextDocument, err error) {
+func (root *Root) OpenDoc(uri Uri) (doc *TextDocument, err error) {
 	uri, err = NormalizeUri(uri)
 
 	if err != nil {
@@ -33,10 +34,10 @@ func OpenDoc(uri Uri) (doc *TextDocument, err error) {
 		return
 	}
 
-	return OpenDocText(uri, string(text), tree)
+	return root.OpenDocText(uri, string(text), tree)
 }
 
-func OpenDocText(uri Uri, text string, tree *Tree) (doc *TextDocument, err error) {
+func (root *Root) OpenDocText(uri Uri, text string, tree *Tree) (doc *TextDocument, err error) {
 	doc = textdocument.NewTextDocument(text)
 	doc.Tree = tree
 	doc.Parser = CreateParser()
@@ -46,7 +47,21 @@ func OpenDocText(uri Uri, text string, tree *Tree) (doc *TextDocument, err error
 		SetTree(uri, doc.Tree)
 	}
 
-	q, err := familymarkup.GetHighlightQuery()
+	SetDocHighlightQuery(doc, root.SurnameFirst)
+
+	documents[uri] = doc
+
+	return
+}
+
+func SetDocHighlightQuery(doc *TextDocument, surnameFirst bool) (err error) {
+	var q *sitter.Query
+
+	if surnameFirst {
+		q, err = familymarkup.GetHighlightQuery()
+	} else {
+		q, err = familymarkup.GetHighlightQueryLastNameFirst()
+	}
 
 	if err != nil {
 		return
@@ -57,8 +72,6 @@ func OpenDocText(uri Uri, text string, tree *Tree) (doc *TextDocument, err error
 	doc.SetHighlightQuery(q, &textdocument.Ignore{
 		Missing: true,
 	})
-
-	documents[uri] = doc
 
 	return
 }

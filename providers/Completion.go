@@ -1,6 +1,8 @@
 package providers
 
 import (
+	"strings"
+
 	. "github.com/redexp/familymarkup-lsp/state"
 	. "github.com/redexp/familymarkup-lsp/utils"
 	proto "github.com/tliron/glsp/protocol_3_16"
@@ -27,6 +29,10 @@ func Completion(ctx *Ctx, params *proto.CompletionParams) (any, error) {
 
 	list := make([]proto.CompletionItem, 0)
 	hash := make(map[string]bool)
+
+	if t == "surname" && len(nodes) == 1 {
+		return list, nil
+	}
 
 	add := func(name string) {
 		_, exist := hash[name]
@@ -62,7 +68,9 @@ func Completion(ctx *Ctx, params *proto.CompletionParams) (any, error) {
 
 	root.UpdateDirty()
 
-	if t == "surname-name" || t == "surname-nil" {
+	st := root.SurnameFirst
+
+	if (st && strings.HasPrefix(t, "surname-")) || (!st && t == "nil-name") {
 		family := root.FindFamily(ToString(nodes[0], doc))
 
 		if family != nil {
@@ -71,7 +79,7 @@ func Completion(ctx *Ctx, params *proto.CompletionParams) (any, error) {
 		}
 	}
 
-	onlyFamilies := t == "nil-name" || t == "surname"
+	onlyFamilies := (st && (t == "nil-name" || t == "surname")) || (!st && t == "surname-nil")
 
 	for family := range root.FamilyIter() {
 		add(family.Name)

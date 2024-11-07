@@ -3,7 +3,6 @@ package providers
 import (
 	"sync"
 
-	. "github.com/redexp/familymarkup-lsp/state"
 	. "github.com/redexp/familymarkup-lsp/utils"
 	proto "github.com/tliron/glsp/protocol_3_16"
 )
@@ -13,8 +12,6 @@ type Tokens []proto.UInteger
 var tokensMap = make(map[string]Tokens)
 
 func SemanticTokensFull(ctx *Ctx, params *proto.SemanticTokensParams) (res *proto.SemanticTokens, err error) {
-	Debugf("full")
-
 	tokens, uri, err := getTokens(params.TextDocument.URI)
 
 	if err != nil {
@@ -31,8 +28,6 @@ func SemanticTokensFull(ctx *Ctx, params *proto.SemanticTokensParams) (res *prot
 }
 
 func SemanticTokensDelta(ctx *Ctx, params *proto.SemanticTokensDeltaParams) (res any, err error) {
-	Debugf("delta")
-
 	tokens, uri, err := getTokens(params.TextDocument.URI)
 
 	if err != nil {
@@ -53,8 +48,6 @@ func SemanticTokensDelta(ctx *Ctx, params *proto.SemanticTokensDeltaParams) (res
 
 	start, delCount, data := getTokensDelta(prevTokens, tokens)
 
-	Debugf("delta start: %d, del: %d, data: len(%d)", start, delCount, len(data))
-
 	res = proto.SemanticTokensEdit{
 		Start:       start,
 		DeleteCount: delCount,
@@ -71,7 +64,7 @@ func getTokens(docUri string) (tokens Tokens, uri string, err error) {
 		return
 	}
 
-	doc, err := OpenDoc(uri)
+	doc, err := root.OpenDoc(uri)
 
 	if err != nil {
 		return

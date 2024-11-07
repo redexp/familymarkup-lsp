@@ -6,7 +6,7 @@ require (
 	github.com/bep/debounce v1.2.1
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/redexp/textdocument v1.9.0
-	github.com/redexp/tree-sitter-familymarkup v1.7.1
+	github.com/redexp/tree-sitter-familymarkup v1.8.2
 	github.com/smacker/go-tree-sitter v0.0.0-20240827094217-dd81d9e9be82
 	github.com/spf13/pflag v1.0.5
 	github.com/tliron/commonlog v0.2.19

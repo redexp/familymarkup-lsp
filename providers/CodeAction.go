@@ -226,7 +226,7 @@ func CodeActionResolve(ctx *Ctx, params *proto.CodeAction) (res *proto.CodeActio
 				createInserText(newUri, pos, text),
 			}
 
-			docDiagnostic.Set(data.Uri, ctx)
+			scheduleDiagnostic(ctx, data.Uri, nil)
 
 			return res, nil
 		}

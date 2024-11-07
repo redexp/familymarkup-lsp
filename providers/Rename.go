@@ -130,7 +130,7 @@ func Rename(ctx *Ctx, params *proto.RenameParams) (res *proto.WorkspaceEdit, err
 			edits = make([]proto.TextEdit, 0)
 		}
 
-		node := NameRefName(ref.Node)
+		node := ToNameNode(ref.Node, root.SurnameFirst)
 
 		r, err := doc.NodeToRange(node)
 

@@ -18,7 +18,6 @@ type ParserWorker struct {
 	busy   bool
 }
 
-var logOnly string
 var parsersPool = make([]*ParserWorker, 0)
 var lang = familymarkup.GetLanguage()
 
@@ -239,9 +238,22 @@ func GetClosestSources(node *Node) *Node {
 	return GetClosestNode(node, "relation", "sources")
 }
 
-func NameRefName(node *Node) *Node {
+func GetSurnameName(name_ref *Node, is_surname_first bool) (surname *Node, name *Node) {
+	surname = name_ref.NamedChild(0)
+	name = name_ref.NamedChild(1)
+
+	if is_surname_first {
+		return
+	}
+
+	return name, surname
+}
+
+func ToNameNode(node *Node, is_surname_first bool) *Node {
 	if IsNameRef(node) {
-		return node.NamedChild(1)
+		_, name := GetSurnameName(node, is_surname_first)
+
+		return name
 	}
 
 	return node
@@ -290,7 +302,6 @@ func QueryIter(q *sitter.Query, node *Node) iter.Seq2[uint32, *Node] {
 
 	return func(yield func(uint32, *Node) bool) {
 		defer c.Close()
-		defer q.Close()
 
 		for {
 			match, ok := c.NextMatch()

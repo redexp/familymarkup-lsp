@@ -9,19 +9,20 @@ import (
 func ConfigurationChange(ctx *Ctx, config *ClientConfiguration) (err error) {
 	if config.Locale != "" {
 		err = SetLocale(config.Locale)
-
-		if err != nil {
-			return
-		}
-
-		diagnosticOpenDocs(ctx)
 	}
+
+	if err == nil && config.SurnameFirst != root.SurnameFirst {
+		err = root.SetSurnameFirst(config.SurnameFirst)
+	}
+
+	diagnosticAllDocs(ctx)
 
 	return
 }
 
 type ClientConfiguration struct {
-	Locale string `json:"locale"`
+	Locale       string `json:"locale" mapstructure:"locale"`
+	SurnameFirst bool   `json:"surname_first" mapstructure:"surname_first"`
 }
 
 func GetClientConfiguration(src any) (res ClientConfiguration, err error) {

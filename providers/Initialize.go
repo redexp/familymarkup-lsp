@@ -19,6 +19,7 @@ func Initialize(ctx *Ctx, params *proto.InitializeParams) (any, error) {
 
 	if err == nil {
 		SetLocale(options.Locale)
+		root.SurnameFirst = options.SurnameFirst
 	}
 
 	legend, types, err := GetLegend()
@@ -109,6 +110,8 @@ func Initialize(ctx *Ctx, params *proto.InitializeParams) (any, error) {
 }
 
 func Initialized(ctx *Ctx, params *proto.InitializedParams) error {
+	diagnosticAllDocs(ctx)
+
 	return nil
 }
 

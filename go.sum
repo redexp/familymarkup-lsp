@@ -31,6 +31,10 @@ github.com/redexp/textdocument v1.9.0 h1:VqKO9J8PI7KGAiVkQar3FdKczGdfUKcJSnlaCtH
 github.com/redexp/textdocument v1.9.0/go.mod h1:h6A+OIbimLswJI1S8+Gbj8PB7MmGCWpAu4CJc9SWkFc=
 github.com/redexp/tree-sitter-familymarkup v1.7.1 h1:P7LCla5M6gLJrkVY1OBr2A5z2vwsg4YcKc3r5xc6+dQ=
 github.com/redexp/tree-sitter-familymarkup v1.7.1/go.mod h1:xHypbXWIEhCP0Rrpg2yhar5gdyWrwFgaKQvSpvopm+w=
+github.com/redexp/tree-sitter-familymarkup v1.8.1 h1:HVFiWHtpXiKWs96Nf1dMrrhlaleDQoiEb/jDBgdn7PA=
+github.com/redexp/tree-sitter-familymarkup v1.8.1/go.mod h1:xHypbXWIEhCP0Rrpg2yhar5gdyWrwFgaKQvSpvopm+w=
+github.com/redexp/tree-sitter-familymarkup v1.8.2 h1:RSfms4zuqJiwf04E5ZL8w8v5ueH9kjTfD3l+cVRiS58=
+github.com/redexp/tree-sitter-familymarkup v1.8.2/go.mod h1:xHypbXWIEhCP0Rrpg2yhar5gdyWrwFgaKQvSpvopm+w=
 github.com/rivo/uniseg v0.2.0/go.mod h1:J6wj4VEh+S6ZtnVlnTBMWIodfgj8LQOQFoIToxlJtxc=
 github.com/rivo/uniseg v0.4.7 h1:WUdvkW8uEhrYfLC4ZzdpI2ztxP1I582+49Oc5Mq64VQ=
 github.com/rivo/uniseg v0.4.7/go.mod h1:FN3SvrM+Zdj16jyLfmOkMNblXMcoc8DfTHruCPUcx88=

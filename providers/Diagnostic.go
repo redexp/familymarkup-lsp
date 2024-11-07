@@ -11,12 +11,14 @@ import (
 )
 
 type DocDebouncer struct {
-	Docs     map[Uri]*Ctx
+	Ctx      *Ctx
+	Docs     map[Uri]*TextDocument
 	Debounce func(func())
 }
 
 const (
-	UnknownFamilyError = iota
+	UnknownFamilyError = uint8(iota)
+	UnknownPersonError
 	NameDuplicateWarning
 )
 
@@ -66,18 +68,23 @@ func PublishDiagnostics(ctx *Ctx, uri Uri, doc *TextDocument) {
 
 		node := ref.Node
 		message := L("unknown_person")
+		t := UnknownPersonError
 
 		if IsNameRef(node) {
 			f := root.FindFamily(ref.Surname)
+			surnameNode, nameNode := GetSurnameName(node, root.SurnameFirst)
 
-			if f != nil {
-				node = node.NamedChild(1)
-			} else {
-				node = node.NamedChild(0)
+			if f == nil {
+				node = surnameNode
 				message = L("unknown_family")
+				t = UnknownFamilyError
+			} else {
+				node = nameNode
+				message = L("unknown_person_in_family", f.Name, ToString(nameNode, doc))
 			}
 		} else if IsNewSurname(node.Parent()) {
 			message = L("unknown_family")
+			t = UnknownFamilyError
 		}
 
 		r, err := doc.NodeToRange(node)
@@ -92,7 +99,7 @@ func PublishDiagnostics(ctx *Ctx, uri Uri, doc *TextDocument) {
 			Range:    *r,
 			Message:  message,
 			Data: DiagnosticData{
-				Type: UnknownFamilyError,
+				Type: t,
 			},
 		})
 	}
@@ -113,7 +120,7 @@ func PublishDiagnostics(ctx *Ctx, uri Uri, doc *TextDocument) {
 					continue
 				}
 
-				r, err := doc.NodeToRange(NameRefName(ref.Node))
+				r, err := doc.NodeToRange(ToNameNode(ref.Node, root.SurnameFirst))
 
 				if err != nil {
 					LogDebug("Diagnostic error: %s", err.Error())
@@ -172,30 +179,52 @@ func PublishDiagnostics(ctx *Ctx, uri Uri, doc *TextDocument) {
 	})
 }
 
-func createDocDebouncer() *DocDebouncer {
-	return &DocDebouncer{
-		Docs:     make(map[string]*Ctx),
-		Debounce: debounce.New(200 * time.Millisecond),
-	}
+var docDiagnostic = &DocDebouncer{
+	Docs:     make(map[Uri]*TextDocument),
+	Debounce: debounce.New(200 * time.Millisecond),
 }
 
-func (dd *DocDebouncer) Set(uri Uri, ctx *Ctx) {
-	dd.Docs[uri] = ctx
-	dd.Debounce(func() {
-		dd.Flush()
-	})
+func (dd *DocDebouncer) Set(uri Uri, doc *TextDocument) {
+	d, ok := dd.Docs[uri]
+
+	if doc != nil || d == nil || !ok {
+		dd.Docs[uri] = doc
+	}
+
+	dd.Debounce(dd.Flush)
 }
 
 func (dd *DocDebouncer) Flush() {
 	root.UpdateDirty()
 
-	for uri, ctx := range dd.Docs {
+	for uri, doc := range dd.Docs {
 		delete(dd.Docs, uri)
 
 		if !IsFamilyUri(uri) || !UriFileExist(uri) {
 			continue
 		}
 
-		PublishDiagnostics(ctx, uri, nil)
+		PublishDiagnostics(docDiagnostic.Ctx, uri, doc)
 	}
+}
+
+func diagnosticOpenDocs(ctx *Ctx) {
+	docDiagnostic.Ctx = ctx
+
+	for uri, doc := range GetOpenDocsIter() {
+		docDiagnostic.Set(uri, doc)
+	}
+}
+
+func diagnosticAllDocs(ctx *Ctx) {
+	docDiagnostic.Ctx = ctx
+
+	WalkTrees(func(uri Uri, tree *Tree) {
+		docDiagnostic.Set(uri, nil)
+	})
+}
+
+func scheduleDiagnostic(ctx *Ctx, uri Uri, doc *TextDocument) {
+	docDiagnostic.Ctx = ctx
+	docDiagnostic.Set(uri, doc)
 }

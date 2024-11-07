@@ -7,8 +7,6 @@ import (
 	proto "github.com/tliron/glsp/protocol_3_16"
 )
 
-var docDiagnostic = createDocDebouncer()
-
 func DocOpen(ctx *Ctx, params *proto.DidOpenTextDocumentParams) (err error) {
 	uri, err := NormalizeUri(params.TextDocument.URI)
 
@@ -16,13 +14,13 @@ func DocOpen(ctx *Ctx, params *proto.DidOpenTextDocumentParams) (err error) {
 		return
 	}
 
-	doc, err := OpenDocText(uri, params.TextDocument.Text, GetTree(uri))
+	doc, err := root.OpenDocText(uri, params.TextDocument.Text, GetTree(uri))
 
 	if err != nil {
 		return
 	}
 
-	PublishDiagnostics(ctx, uri, doc)
+	scheduleDiagnostic(ctx, uri, doc)
 
 	return
 }
@@ -46,7 +44,7 @@ func DocChange(ctx *Ctx, params *proto.DidChangeTextDocumentParams) error {
 		return err
 	}
 
-	doc, err := OpenDoc(uri)
+	doc, err := root.OpenDoc(uri)
 
 	if err != nil {
 		return err
@@ -142,14 +140,8 @@ func setDirtyUri(ctx *Ctx, uri Uri, state uint8) error {
 
 	if IsFamilyUri(uri) || IsMarkdownUri(uri) {
 		root.DirtyUris.SetState(uri, state)
-		docDiagnostic.Set(uri, ctx)
+		scheduleDiagnostic(ctx, uri, nil)
 	}
 
 	return nil
-}
-
-func diagnosticOpenDocs(ctx *Ctx) {
-	for uri := range GetOpenDocsIter() {
-		docDiagnostic.Set(uri, ctx)
-	}
 }

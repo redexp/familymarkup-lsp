@@ -193,7 +193,14 @@ func getRelationsIter(family *Family) (iter.Seq2[uint32, *Node], error) {
 		return nil, err
 	}
 
-	return QueryIter(q, GetClosestNode(family.Node, "family")), nil
+	iterator := QueryIter(q, GetClosestNode(family.Node, "family"))
+
+	return func(yield func(uint32, *Node) bool) {
+		iterator(yield)
+		q.Close()
+	}, nil
+
+	// return QueryIter(q, GetClosestNode(family.Node, "family")), nil
 }
 
 // TreeHandler

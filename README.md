@@ -29,9 +29,19 @@
         Jon
     ```
 
-## Supported languages
+## Configurations
+
+### Language
+
+Language of error messages, hints and so on
 
 - [x] English
 - [x] Українська
 - [x] Русский
 
+### Surname Position
+
+How you prefer to write names
+
+- [x] Surname **before** given name like `Stark Lyanna`. Useful for autocompletion - you write `Stark ` and in autocompletion list you will see only Stark members
+- [x] Surname **after** given name like `Lyanna Stark` in case it's inconvenient to write surname first

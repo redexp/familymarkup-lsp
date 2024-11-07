@@ -24,6 +24,13 @@ func GetTree(uri Uri) *Tree {
 	return value.(*Tree)
 }
 
+func WalkTrees(cb func(Uri, *Tree)) {
+	trees.Range(func(key, value any) bool {
+		cb(key.(string), value.(*Tree))
+		return true
+	})
+}
+
 func RemoveTree(uri Uri) {
 	trees.Delete(uri)
 }
