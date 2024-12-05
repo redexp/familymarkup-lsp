@@ -5,7 +5,6 @@ import (
 	. "github.com/redexp/familymarkup-lsp/types"
 	. "github.com/redexp/familymarkup-lsp/utils"
 
-	// "github.com/redexp/textdocument"
 	proto "github.com/tliron/glsp/protocol_3_16"
 )
 
@@ -64,68 +63,6 @@ func getDefinition(uri Uri, pos *Position) (family *Family, member *Member, targ
 	if member != nil {
 		return member.Family, member, member.Node, nil
 	}
-
-	// t, nodes, err := GetTypeNode(srcDoc, pos)
-
-	// if err != nil {
-	// 	return
-	// }
-
-	// if t == "surname" || t == "surname-name" {
-	// 	root.UpdateDirty()
-	// 	family = root.FindFamily(ToString(nodes[0], srcDoc))
-
-	// 	if family == nil {
-	// 		return
-	// 	}
-
-	// 	target = family.Node
-
-	// 	if t == "surname-name" {
-	// 		member = family.GetMember(ToString(nodes[1], srcDoc))
-
-	// 		if member == nil {
-	// 			return
-	// 		}
-
-	// 		target = member.Node
-	// 	}
-	// } else if t == "name" {
-	// 	root.UpdateDirty()
-	// 	list := root.FindFamiliesByUri(uri)
-
-	// 	if len(list) == 0 {
-	// 		return
-	// 	}
-
-	// 	familyNode := GetClosestFamilyName(nodes[0])
-
-	// 	if familyNode == nil {
-	// 		return
-	// 	}
-
-	// 	start := familyNode.StartPoint()
-	// 	end := familyNode.EndPoint()
-
-	// 	for _, item := range list {
-	// 		if textdocument.CompareNodeWithRange(item.Node, &start, &end) == 0 {
-	// 			family = item
-	// 			break
-	// 		}
-	// 	}
-
-	// 	if family == nil {
-	// 		return
-	// 	}
-
-	// 	member = family.GetMember(ToString(nodes[0], srcDoc))
-
-	// 	if member == nil {
-	// 		return
-	// 	}
-
-	// 	target = member.Node
-	// }
 
 	return
 }

@@ -19,7 +19,6 @@ func Initialize(ctx *Ctx, params *proto.InitializeParams) (any, error) {
 
 	if err == nil {
 		SetLocale(options.Locale)
-		root.SurnameFirst = options.SurnameFirst
 	}
 
 	legend, types, err := GetLegend()
@@ -133,14 +132,9 @@ func GetLegend() (*proto.SemanticTokensLegend, textdocument.HighlightLegend, err
 	types := make([]string, 0)
 	modifiers := make([]string, 0)
 
-	mapTypes := map[string]string{
-		"constant": "variable",
-	}
+	mapTypes := map[string]string{}
 
-	mapMod := map[string]string{
-		"def": "definition",
-		"ref": "reference",
-	}
+	mapMod := map[string]string{}
 
 	add := func(list *[]string, item string, hash map[string]string) uint32 {
 		if v, ok := hash[item]; ok {

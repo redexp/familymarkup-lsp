@@ -1,8 +1,6 @@
 package providers
 
 import (
-	"strings"
-
 	. "github.com/redexp/familymarkup-lsp/state"
 	. "github.com/redexp/familymarkup-lsp/utils"
 	proto "github.com/tliron/glsp/protocol_3_16"
@@ -68,9 +66,7 @@ func Completion(ctx *Ctx, params *proto.CompletionParams) (any, error) {
 
 	root.UpdateDirty()
 
-	st := root.SurnameFirst
-
-	if (st && strings.HasPrefix(t, "surname-")) || (!st && t == "nil-name") {
+	if t == "nil-name" {
 		family := root.FindFamily(ToString(nodes[0], doc))
 
 		if family != nil {
@@ -79,7 +75,7 @@ func Completion(ctx *Ctx, params *proto.CompletionParams) (any, error) {
 		}
 	}
 
-	onlyFamilies := (st && (t == "nil-name" || t == "surname")) || (!st && t == "surname-nil")
+	onlyFamilies := t == "surname-nil"
 
 	for family := range root.FamilyIter() {
 		add(family.Name)

@@ -64,6 +64,8 @@ func getTokens(docUri string) (tokens Tokens, uri string, err error) {
 		return
 	}
 
+	root.UpdateDirty()
+
 	doc, err := root.OpenDoc(uri)
 
 	if err != nil {

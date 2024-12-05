@@ -4,13 +4,13 @@ import (
 	"iter"
 	"slices"
 	"strings"
+	"sync"
 
 	. "github.com/redexp/familymarkup-lsp/types"
 	. "github.com/redexp/familymarkup-lsp/utils"
 )
 
 type Root struct {
-	SurnameFirst bool
 	Folders      UriSet
 	Families     Families
 	Duplicates   Duplicates
@@ -20,11 +20,12 @@ type Root struct {
 	DirtyUris    UriSet
 	Listeners    Listeners
 	Log          func(string, ...any)
+
+	UpdateLock sync.Mutex
 }
 
 func CreateRoot(logger func(string, ...any)) *Root {
 	return &Root{
-		SurnameFirst: true,
 		Folders:      make(UriSet),
 		Families:     make(Families),
 		Duplicates:   make(Duplicates),
@@ -108,27 +109,13 @@ func (root *Root) SetFolders(folders []Uri) (err error) {
 	return
 }
 
-func (root *Root) SetSurnameFirst(surnameFirst bool) (err error) {
-	root.SurnameFirst = surnameFirst
-
-	for _, doc := range GetOpenDocsIter() {
-		SetDocHighlightQuery(doc, root.SurnameFirst)
-		doc.UpdateHighlightCaptures()
-	}
-
-	return root.UpdateAllRefs()
-}
-
 func (root *Root) Update(tree *Tree, text []byte, uri Uri) (err error) {
 	q, err := CreateQuery(`
 		(family_name 
 			(name) @family-name
 		)
 
-		(name_ref
-			(surname)
-			(name)
-		) @name_ref
+		(name_ref) @name_ref
 
 		(sources
 			(name) @sources-name
@@ -167,7 +154,7 @@ func (root *Root) Update(tree *Tree, text []byte, uri Uri) (err error) {
 
 		// name_ref
 		case 1:
-			surname, name := GetSurnameName(node, root.SurnameFirst)
+			name, surname := GetNameSurname(node)
 
 			root.AddRef(&Ref{
 				Uri:     uri,
@@ -269,10 +256,7 @@ func (root *Root) UpdateAllRefs() (err error) {
 	}
 
 	q, err := CreateQuery(`
-		(name_ref
-			(surname)
-			(name)
-		) @name_ref
+		(name_ref) @name_ref
 	`)
 
 	if err != nil {
@@ -294,7 +278,7 @@ func (root *Root) UpdateAllRefs() (err error) {
 		text := []byte(doc.Text)
 
 		for _, node := range QueryIter(q, doc.Tree.RootNode()) {
-			surname, name := GetSurnameName(node, root.SurnameFirst)
+			name, surname := GetNameSurname(node)
 
 			root.AddRef(&Ref{
 				Uri:     uri,
@@ -366,6 +350,9 @@ func (root *Root) UpdateDirty() error {
 	if len(root.DirtyUris) == 0 {
 		return nil
 	}
+
+	root.UpdateLock.Lock()
+	defer root.UpdateLock.Unlock()
 
 	uris := root.DirtyUris
 	root.DirtyUris = UriSet{}
@@ -636,7 +623,7 @@ func (root *Root) AddRef(ref *Ref) {
 
 	mem.Refs = append(mem.Refs, ref)
 
-	root.AddNodeRef(ref.Uri, ToNameNode(ref.Node, root.SurnameFirst), mem)
+	root.AddNodeRef(ref.Uri, ToNameNode(ref.Node), mem)
 }
 
 func (root *Root) AddNodeRef(uri Uri, node *Node, mem *Member) {

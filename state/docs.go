@@ -3,17 +3,27 @@ package state
 import (
 	"iter"
 	"os"
+	"sync"
 
 	. "github.com/redexp/familymarkup-lsp/types"
 	. "github.com/redexp/familymarkup-lsp/utils"
 	"github.com/redexp/textdocument"
 	familymarkup "github.com/redexp/tree-sitter-familymarkup"
-	sitter "github.com/smacker/go-tree-sitter"
 )
 
 type Docs map[Uri]*TextDocument
 
-var documents Docs = make(Docs)
+var documents sync.Map
+
+func GetDoc(uri Uri) *TextDocument {
+	value, ok := documents.Load(uri)
+
+	if !ok {
+		return nil
+	}
+
+	return value.(*TextDocument)
+}
 
 func (root *Root) OpenDoc(uri Uri) (doc *TextDocument, err error) {
 	uri, err = NormalizeUri(uri)
@@ -22,9 +32,9 @@ func (root *Root) OpenDoc(uri Uri) (doc *TextDocument, err error) {
 		return
 	}
 
-	doc, ok := documents[uri]
+	doc = GetDoc(uri)
 
-	if ok {
+	if doc != nil {
 		return
 	}
 
@@ -47,21 +57,7 @@ func (root *Root) OpenDocText(uri Uri, text string, tree *Tree) (doc *TextDocume
 		SetTree(uri, doc.Tree)
 	}
 
-	SetDocHighlightQuery(doc, root.SurnameFirst)
-
-	documents[uri] = doc
-
-	return
-}
-
-func SetDocHighlightQuery(doc *TextDocument, surnameFirst bool) (err error) {
-	var q *sitter.Query
-
-	if surnameFirst {
-		q, err = familymarkup.GetHighlightQuery()
-	} else {
-		q, err = familymarkup.GetHighlightQueryLastNameFirst()
-	}
+	q, err := familymarkup.GetHighlightQuery()
 
 	if err != nil {
 		return
@@ -73,28 +69,28 @@ func SetDocHighlightQuery(doc *TextDocument, surnameFirst bool) (err error) {
 		Missing: true,
 	})
 
+	documents.Store(uri, doc)
+
 	return
 }
 
 func GetOpenDocsIter() iter.Seq2[Uri, *TextDocument] {
 	return func(yield func(Uri, *TextDocument) bool) {
-		for uri, doc := range documents {
-			if !yield(uri, doc) {
-				break
-			}
-		}
+		documents.Range(func(key, value any) bool {
+			return yield(key.(Uri), value.(*TextDocument))
+		})
 	}
 }
 
 func CloseDoc(uri Uri) {
-	doc, exist := documents[uri]
+	doc := GetDoc(uri)
 
-	if !exist {
+	if doc == nil {
 		return
 	}
 
 	doc.Parser.Close()
-	delete(documents, uri)
+	documents.Delete(uri)
 }
 
 func RemoveDoc(uri Uri) error {
@@ -117,7 +113,7 @@ func TempDoc(uri Uri) (doc *TextDocument, err error) {
 		return
 	}
 
-	doc = documents[uri]
+	doc = GetDoc(uri)
 
 	if doc != nil {
 		return

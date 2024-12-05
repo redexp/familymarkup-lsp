@@ -21,7 +21,7 @@ type ParserWorker struct {
 var parsersPool = make([]*ParserWorker, 0)
 var lang = familymarkup.GetLanguage()
 
-var FamilyExt = []string{"fm", "fml", "family"}
+var FamilyExt = []string{"fml", "family"}
 var MarkdownExt = []string{"md", "mdx"}
 var AllExt = slices.Concat(FamilyExt, MarkdownExt)
 
@@ -238,20 +238,16 @@ func GetClosestSources(node *Node) *Node {
 	return GetClosestNode(node, "relation", "sources")
 }
 
-func GetSurnameName(name_ref *Node, is_surname_first bool) (surname *Node, name *Node) {
-	surname = name_ref.NamedChild(0)
-	name = name_ref.NamedChild(1)
+func GetNameSurname(name_ref *Node) (name *Node, surname *Node) {
+	name = name_ref.NamedChild(0)
+	surname = name_ref.NamedChild(1)
 
-	if is_surname_first {
-		return
-	}
-
-	return name, surname
+	return
 }
 
-func ToNameNode(node *Node, is_surname_first bool) *Node {
+func ToNameNode(node *Node) *Node {
 	if IsNameRef(node) {
-		_, name := GetSurnameName(node, is_surname_first)
+		name, _ := GetNameSurname(node)
 
 		return name
 	}

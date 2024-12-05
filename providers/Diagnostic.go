@@ -72,7 +72,7 @@ func PublishDiagnostics(ctx *Ctx, uri Uri, doc *TextDocument) {
 
 		if IsNameRef(node) {
 			f := root.FindFamily(ref.Surname)
-			surnameNode, nameNode := GetSurnameName(node, root.SurnameFirst)
+			nameNode, surnameNode := GetNameSurname(node)
 
 			if f == nil {
 				node = surnameNode
@@ -120,7 +120,7 @@ func PublishDiagnostics(ctx *Ctx, uri Uri, doc *TextDocument) {
 					continue
 				}
 
-				r, err := doc.NodeToRange(ToNameNode(ref.Node, root.SurnameFirst))
+				r, err := doc.NodeToRange(ToNameNode(ref.Node))
 
 				if err != nil {
 					LogDebug("Diagnostic error: %s", err.Error())
