@@ -2,6 +2,7 @@ package state
 
 import (
 	"iter"
+	"slices"
 
 	. "github.com/redexp/familymarkup-lsp/types"
 )
@@ -42,4 +43,8 @@ func (member *Member) NamesIter() iter.Seq[string] {
 			}
 		}
 	}
+}
+
+func (member *Member) HasName(name string) bool {
+	return member.Name == name || slices.Contains(member.Aliases, name)
 }

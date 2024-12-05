@@ -347,12 +347,12 @@ func (root *Root) UpdateUnknownFiles() {
 }
 
 func (root *Root) UpdateDirty() error {
+	root.UpdateLock.Lock()
+	defer root.UpdateLock.Unlock()
+
 	if len(root.DirtyUris) == 0 {
 		return nil
 	}
-
-	root.UpdateLock.Lock()
-	defer root.UpdateLock.Unlock()
 
 	uris := root.DirtyUris
 	root.DirtyUris = UriSet{}

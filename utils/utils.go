@@ -127,13 +127,12 @@ func IsMarkdownUri(uri Uri) bool {
 	return slices.Contains(MarkdownExt, Ext(uri))
 }
 
-// "surname-name", [2]*Node
-// "surname-nil", [1]*Node
-// "surname", [2]*Node
-// "surname", [1]*Node
-// "name", [1]*Node
-// "nil-name", [1]*Node
-// "nil", [0]*Node
+// "name" || "surname", [Node]
+// "name surname|", [Node, Node]
+// "name |", [Node]
+// "name| surname", [Node, Node]
+// "| surname", [Node]
+// "nil", [Node]
 func GetTypeNode(doc *TextDocument, pos *Position) (t string, nodes []*Node, err error) {
 	prev, target, next, err := doc.GetClosestHighlightCaptureByPosition(pos)
 
@@ -158,13 +157,17 @@ func GetTypeNode(doc *TextDocument, pos *Position) (t string, nodes []*Node, err
 		}
 
 		parent := node.Parent()
+		parentType := ""
+		if parent != nil {
+			parentType = parent.Type()
+		}
 
-		if parent != nil && parent.Type() == "name_aliases" {
+		if parentType == "name_aliases" || parentType == "new_surname" {
 			if i != 1 {
 				continue
 			}
 
-			return "name", []*Node{cap.Node}, nil
+			return nt, []*Node{node}, nil
 		}
 
 		nodes[i] = cap.Node
@@ -172,20 +175,22 @@ func GetTypeNode(doc *TextDocument, pos *Position) (t string, nodes []*Node, err
 
 	if nodes[0] != nil {
 		if nodes[1] != nil {
-			return "surname-name", nodes[0:2], nil
+			return "name surname|", nodes[0:2], nil
 		}
 
-		return "surname-nil", nodes[0:1], nil
+		return "name |", nodes[0:1], nil
 	}
 
-	if nodes[1] != nil {
+	node := nodes[1]
+
+	if node != nil {
 		if nodes[2] != nil {
-			return "surname", nodes[1:3], nil
+			return "name| surname", nodes[1:3], nil
 		}
 
-		t = "name"
-		p := nodes[1].Parent()
-		nodes = nodes[1:2]
+		t = node.Type()
+		p := node.Parent()
+		nodes = []*Node{node}
 
 		if p != nil && p.Type() == "family_name" {
 			t = "surname"
@@ -196,7 +201,7 @@ func GetTypeNode(doc *TextDocument, pos *Position) (t string, nodes []*Node, err
 	}
 
 	if nodes[2] != nil {
-		return "nil-name", nodes[2:3], nil
+		return "| surname", nodes[2:3], nil
 	}
 
 	return "nil", []*Node{}, nil
