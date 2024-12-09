@@ -103,14 +103,14 @@ func Rename(ctx *Ctx, params *proto.RenameParams) (res *proto.WorkspaceEdit, err
 		return res, nil
 	}
 
-	family, member, _, err := getDefinition(uri, &params.Position)
+	_, member, _, err := getDefinition(uri, &params.Position)
 
 	if err != nil || member == nil {
 		return
 	}
 
 	refs := append(member.Refs, &Ref{
-		Uri:  family.Uri,
+		Uri:  member.Family.Uri,
 		Node: member.Node,
 	})
 

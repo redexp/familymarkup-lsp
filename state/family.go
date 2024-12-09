@@ -12,20 +12,29 @@ type Family struct {
 	Aliases    []string
 	Members    Members
 	Duplicates Duplicates
-	Refs       Refs
 	Uri        Uri
 	Node       *Node
 	Root       *Root
+}
+
+func (family *Family) HasMember(name string) bool {
+	_, exist := family.Members[name]
+
+	return exist
 }
 
 func (family *Family) GetMember(name string) *Member {
 	return family.Members[name]
 }
 
-func (family *Family) AddMember(node *Node, text []byte) {
+func (family *Family) AddMember(node *Node, text []byte) *Member {
 	name := node.Content(text)
 	aliases := getAliases(node, text)
 
+	return family.AddMemberName(node, name, aliases)
+}
+
+func (family *Family) AddMemberName(node *Node, name string, aliases []string) *Member {
 	mem, exist := family.Members[name]
 
 	if exist {
@@ -45,7 +54,7 @@ func (family *Family) AddMember(node *Node, text []byte) {
 	}
 
 	family.Members[name] = member
-	family.Root.AddNodeRef(family.Uri, node, member)
+	family.Root.AddNodeRef(family.Uri, node, &FamMem{Member: member})
 
 	aliasesNode := getAliasesNode(node)
 
@@ -61,6 +70,8 @@ func (family *Family) AddMember(node *Node, text []byte) {
 
 		family.Members[alias] = member
 	}
+
+	return member
 }
 
 func (family *Family) MembersIter() iter.Seq[*Member] {

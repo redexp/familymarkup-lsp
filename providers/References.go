@@ -1,44 +1,47 @@
 package providers
 
 import (
+	"iter"
+
 	. "github.com/redexp/familymarkup-lsp/state"
+	. "github.com/redexp/familymarkup-lsp/types"
 	proto "github.com/tliron/glsp/protocol_3_16"
 )
 
 func References(ctx *Ctx, params *proto.ReferenceParams) (res []proto.Location, err error) {
-	family, member, target, err := getDefinition(params.TextDocument.URI, &params.Position)
+	family, member, _, err := getDefinition(params.TextDocument.URI, &params.Position)
 
-	if err != nil || member == nil {
+	if err != nil || (family == nil && member == nil) {
 		return
 	}
 
 	tempDocs := make(Docs)
-	res = make([]proto.Location, len(member.Refs))
+	res = make([]proto.Location, 0)
 
-	for i, ref := range member.Refs {
-		doc, err := tempDocs.Get(ref.Uri)
-
-		if err != nil {
-			return nil, err
-		}
-
-		r, err := doc.NodeToRange(ref.Node)
+	for uri, node := range GetReferencesIter(family, member) {
+		doc, err := tempDocs.Get(uri)
 
 		if err != nil {
 			return nil, err
 		}
 
-		res[i] = proto.Location{
-			URI:   ref.Uri,
+		r, err := doc.NodeToRange(node)
+
+		if err != nil {
+			return nil, err
+		}
+
+		res = append(res, proto.Location{
+			URI:   uri,
 			Range: *r,
-		}
+		})
 	}
 
 	if !params.Context.IncludeDeclaration {
 		return
 	}
 
-	if member.InfoUri != "" {
+	if member != nil && member.InfoUri != "" {
 		res = append(res, proto.Location{
 			URI: member.InfoUri,
 			Range: proto.Range{
@@ -54,22 +57,27 @@ func References(ctx *Ctx, params *proto.ReferenceParams) (res []proto.Location, 
 		})
 	}
 
-	doc, err := tempDocs.Get(family.Uri)
-
-	if err != nil {
-		return
-	}
-
-	r, err := doc.NodeToRange(target)
-
-	if err != nil {
-		return
-	}
-
-	res = append(res, proto.Location{
-		URI:   family.Uri,
-		Range: *r,
-	})
-
 	return
+}
+
+func GetReferencesIter(family *Family, member *Member) iter.Seq2[Uri, *Node] {
+	return func(yield func(string, *Node) bool) {
+		if family == nil {
+			family = &Family{}
+		}
+
+		if member == nil {
+			member = &Member{}
+		}
+
+		for uri, nodes := range root.NodeRefs {
+			for node, famMem := range nodes {
+				if famMem.Family == family || famMem.Member == member {
+					if !yield(uri, node) {
+						return
+					}
+				}
+			}
+		}
+	}
 }

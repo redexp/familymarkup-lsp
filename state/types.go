@@ -9,6 +9,7 @@ type Ref struct {
 	Node    *Node
 	Surname string
 	Name    string
+	Member  *Member
 }
 
 type Duplicate struct {
@@ -18,10 +19,15 @@ type Duplicate struct {
 	Uri    string
 }
 
+type FamMem struct {
+	Family *Family
+	Member *Member
+}
+
 type (
 	Families   map[string]*Family
 	Members    map[string]*Member
-	NodeRefs   map[Uri]map[*Node]*Member
+	NodeRefs   map[Uri]map[*Node]*FamMem
 	Duplicates map[string][]*Duplicate
 	Refs       []*Ref
 	Listeners  map[string][]func()

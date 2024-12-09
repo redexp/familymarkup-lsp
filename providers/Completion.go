@@ -27,6 +27,11 @@ func Completion(ctx *Ctx, params *proto.CompletionParams) (any, error) {
 		return nil, err
 	}
 
+	// show names for surname (except new_surname)
+	if t == "surname" && nodes[0].Parent().Type() != "new_surname" {
+		t = "name"
+	}
+
 	list := make([]proto.CompletionItem, 0)
 	hash := make(map[string]bool)
 

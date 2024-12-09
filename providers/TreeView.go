@@ -109,32 +109,36 @@ func TreeMembers(ctx *Ctx, loc *TreeItemLocation) (list []*TreeMember, err error
 	}
 
 	count := int(targets.NamedChildCount())
-	list = make([]*TreeMember, count)
+	list = make([]*TreeMember, 0)
+
+	add := func(node *Node, name string, aliases []string) {
+		list = append(list, &TreeMember{
+			TreeItemPoint: TreeItemPoint(node.StartPoint()),
+
+			Name:    name,
+			Aliases: aliases,
+		})
+	}
 
 	for i := 0; i < count; i++ {
 		node := targets.NamedChild(i)
+
+		if node.Type() == "comment" {
+			continue
+		}
 
 		if IsNameDef(node) {
 			mem := root.GetMemberByUriNode(f.Uri, node.ChildByFieldName("name"))
 
 			if mem != nil {
-				list[i] = &TreeMember{
-					TreeItemPoint: TreeItemPoint(mem.Node.StartPoint()),
-
-					Name:    mem.Name,
-					Aliases: mem.Aliases,
-				}
+				add(mem.Node, mem.Name, mem.Aliases)
 				continue
 			}
 		} else if IsNumUnknown(node) {
 			node = node.NamedChild(1)
 		}
 
-		list[i] = &TreeMember{
-			TreeItemPoint: TreeItemPoint(node.StartPoint()),
-
-			Name: ToString(node, doc),
-		}
+		add(node, ToString(node, doc), []string{})
 	}
 
 	return

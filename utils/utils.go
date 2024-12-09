@@ -284,6 +284,18 @@ func IsNumUnknown(node *Node) bool {
 	return node != nil && node.Type() == "num_unknown"
 }
 
+func IsFamilyRelation(node *Node) bool {
+	rel := GetClosestNode(node, "relation")
+
+	if rel == nil {
+		return false
+	}
+
+	arrow := rel.ChildByFieldName("arrow")
+
+	return arrow != nil && arrow.Type() == "eq"
+}
+
 func P[T ~string | ~int32](src T) *T {
 	return &src
 }

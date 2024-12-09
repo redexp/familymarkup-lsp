@@ -79,77 +79,51 @@ func DocSymbols(ctx *Ctx, params *proto.DocumentSymbolParams) (res any, err erro
 func AllSymbols(ctx *Ctx, params *proto.WorkspaceSymbolParams) (list []WorkspaceSymbol, err error) {
 	parts := splitQuery(params.Query)
 	count := len(parts)
-	empty := count == 0
-
-	var q string
-
-	if count == 1 {
-		q = parts[0]
-	} else if count > 1 {
-		q = parts[1]
-	}
 
 	list = make([]WorkspaceSymbol, 0)
 
-	for f := range root.FamilyIter() {
-		fs := WorkspaceSymbol{
+	add := func(uri Uri, name string, container *string) {
+		list = append(list, WorkspaceSymbol{
 			SymbolInformation: proto.SymbolInformation{
-				Kind: proto.SymbolKindNamespace,
-				Name: f.Name,
+				Kind:          proto.SymbolKindConstant,
+				Name:          name,
+				ContainerName: container,
 			},
 			Location: proto.TextDocumentIdentifier{
-				URI: f.Uri,
+				URI: uri,
 			},
+		})
+	}
+
+	if count == 0 {
+		for f := range root.FamilyIter() {
+			add(f.Uri, f.Name, nil)
+
+			for mem := range f.MembersIter() {
+				add(f.Uri, mem.Name, &f.Name)
+			}
 		}
+	} else if count == 1 {
+		for f := range root.FamilyIter() {
+			if startsWith(f.Name, parts[0]) {
+				add(f.Uri, f.Name, nil)
+			}
 
-		if empty {
-			list = append(list, fs)
-		} else {
-			valid := false
-
-			for name := range f.NamesIter() {
-				if startsWith(name, parts[0]) {
-					valid = true
-					break
+			for mem := range f.MembersIter() {
+				if startsWith(mem.Name, parts[0]) {
+					add(f.Uri, mem.Name, &f.Name)
 				}
 			}
-
-			if !valid && count > 1 {
-				continue
-			}
-
-			if valid {
-				list = append(list, fs)
-			}
 		}
-
-		for mem := range f.MembersIter() {
-			ms := WorkspaceSymbol{
-				SymbolInformation: proto.SymbolInformation{
-					Kind:          proto.SymbolKindConstant,
-					Name:          mem.Name,
-					ContainerName: &fs.Name,
-				},
-				Location: proto.TextDocumentIdentifier{
-					URI: f.Uri,
-				},
-			}
-
-			if empty {
-				list = append(list, ms)
+	} else {
+		for f := range root.FamilyIter() {
+			if !startsWith(f.Name, parts[1]) {
 				continue
 			}
 
-			for name := range mem.NamesIter() {
-				if startsWith(name, q) {
-					if count > 1 {
-						ms.Name = fmt.Sprintf("%s %s", fs.Name, name)
-					} else {
-						ms.Name = name
-					}
-
-					list = append(list, ms)
-					break
+			for mem := range f.MembersIter() {
+				if startsWith(mem.Name, parts[0]) {
+					add(f.Uri, fmt.Sprintf("%s %s", mem.Name, f.Name), &f.Name)
 				}
 			}
 		}
@@ -211,10 +185,6 @@ func ResolveSymbol(ctx *Ctx, symbol *WorkspaceSymbol) (res *WorkspaceSymbolLocat
 
 		parts := strings.Split(symbol.Name, " ")
 		name := parts[0]
-
-		if len(parts) > 1 {
-			name = parts[1]
-		}
 
 		mem, exist := f.Members[name]
 

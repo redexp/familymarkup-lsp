@@ -16,9 +16,17 @@ func Hover(ctx *Ctx, params *proto.HoverParams) (h *proto.Hover, err error) {
 		return
 	}
 
-	f, m, _, err := getDefinition(uri, &params.Position)
+	f, m, target, err := getDefinition(uri, &params.Position)
 
-	if err != nil || f == nil {
+	if err != nil || (f == nil && m == nil) {
+		return
+	}
+
+	if f == nil && m != nil {
+		f = m.Family
+	}
+
+	if m != nil && m.Node == target {
 		return
 	}
 
@@ -36,7 +44,7 @@ func Hover(ctx *Ctx, params *proto.HoverParams) (h *proto.Hover, err error) {
 		return
 	}
 
-	message := fmt.Sprintf("**%s**", name)
+	message := name
 
 	if len(aliases) > 0 {
 		message += " (" + strings.Join(aliases, ", ") + ")"
@@ -59,12 +67,6 @@ func Hover(ctx *Ctx, params *proto.HoverParams) (h *proto.Hover, err error) {
 		return
 	}
 
-	target, err := doc.GetClosestNodeByPosition(&params.Position)
-
-	if err != nil || target == nil {
-		return
-	}
-
 	if IsNameRef(target.Parent()) {
 		target = target.Parent()
 	}
@@ -79,7 +81,7 @@ func Hover(ctx *Ctx, params *proto.HoverParams) (h *proto.Hover, err error) {
 		Range: r,
 		Contents: proto.MarkupContent{
 			Kind:  proto.MarkupKindMarkdown,
-			Value: message,
+			Value: fmt.Sprintf("```fml\n%s\n```", message),
 		},
 	}
 

@@ -2,6 +2,7 @@ package providers
 
 import (
 	. "github.com/redexp/familymarkup-lsp/state"
+	. "github.com/redexp/familymarkup-lsp/types"
 	. "github.com/redexp/familymarkup-lsp/utils"
 	proto "github.com/tliron/glsp/protocol_3_16"
 )
@@ -13,9 +14,15 @@ func DocumentHighlight(ctx *Ctx, params *proto.DocumentHighlightParams) (res []p
 		return
 	}
 
+	nodes, exist := root.NodeRefs[uri]
+
+	if !exist {
+		return
+	}
+
 	family, member, _, err := getDefinition(uri, &params.Position)
 
-	if err != nil || member == nil || len(member.Refs) == 0 {
+	if err != nil {
 		return
 	}
 
@@ -26,36 +33,42 @@ func DocumentHighlight(ctx *Ctx, params *proto.DocumentHighlightParams) (res []p
 	}
 
 	res = make([]proto.DocumentHighlight, 0)
+	kind := P(proto.DocumentHighlightKindRead)
 
-	if family.Uri == uri {
-		r, err := doc.NodeToRange(member.Node)
+	add := func(node *Node) error {
+		r, err := doc.NodeToRange(node)
 
 		if err != nil {
-			return nil, err
+			return err
 		}
 
 		res = append(res, proto.DocumentHighlight{
 			Range: *r,
-			Kind:  P(proto.DocumentHighlightKindRead),
+			Kind:  kind,
 		})
+
+		return nil
 	}
 
-	for _, ref := range member.Refs {
-		if ref.Uri != uri {
+	if family != nil {
+		add(family.Node)
+	}
+
+	if member != nil {
+		add(member.Node)
+	}
+
+	for node, famMem := range nodes {
+		if (family == nil || famMem.Family != family) && (member == nil || famMem.Member != member) {
 			continue
 		}
 
-		r, err := doc.NodeToRange(ref.Node)
+		err = add(node)
 
 		if err != nil {
-			return nil, err
+			return
 		}
-
-		res = append(res, proto.DocumentHighlight{
-			Range: *r,
-			Kind:  P(proto.DocumentHighlightKindRead),
-		})
 	}
 
-	return res, nil
+	return
 }

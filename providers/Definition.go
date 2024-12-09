@@ -9,26 +9,44 @@ import (
 )
 
 func Definition(ctx *Ctx, params *proto.DefinitionParams) (res any, err error) {
-	family, _, target, err := getDefinition(params.TextDocument.URI, &params.Position)
-
-	if err != nil || target == nil {
-		return
-	}
-
-	doc, err := TempDoc(family.Uri)
+	uri, err := NormalizeUri(params.TextDocument.URI)
 
 	if err != nil {
 		return
 	}
 
-	r, err := doc.NodeToRange(target)
+	family, member, target, err := getDefinition(uri, &params.Position)
+
+	if err != nil {
+		return
+	}
+
+	doc, err := TempDoc(uri)
+
+	if err != nil {
+		return
+	}
+
+	var node *Node
+
+	if family != nil {
+		node = family.Node
+	} else if member != nil {
+		node = member.Node
+	}
+
+	if node == nil || node == target {
+		return
+	}
+
+	r, err := doc.NodeToRange(node)
 
 	if err != nil {
 		return
 	}
 
 	return proto.Location{
-		URI:   family.Uri,
+		URI:   uri,
 		Range: *r,
 	}, nil
 }
@@ -52,17 +70,20 @@ func getDefinition(uri Uri, pos *Position) (family *Family, member *Member, targ
 		return
 	}
 
-	node, err := srcDoc.GetClosestNodeByPosition(pos)
+	target, err = srcDoc.GetClosestNodeByPosition(pos)
 
-	if err != nil || node == nil {
+	if err != nil || target == nil {
 		return
 	}
 
-	member = root.GetMemberByUriNode(uri, node)
+	famMem := root.GetFamMem(uri, target)
 
-	if member != nil {
-		return member.Family, member, member.Node, nil
+	if famMem == nil {
+		return
 	}
+
+	family = famMem.Family
+	member = famMem.Member
 
 	return
 }

@@ -15,6 +15,7 @@ type Member struct {
 	Refs    Refs
 	InfoUri Uri
 	Family  *Family
+	Origin  *Member
 }
 
 func (member *Member) GetUniqName() string {
