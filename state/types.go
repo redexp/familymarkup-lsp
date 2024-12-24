@@ -22,12 +22,13 @@ type Duplicate struct {
 type FamMem struct {
 	Family *Family
 	Member *Member
+	Node   *Node
 }
 
 type (
 	Families   map[string]*Family
 	Members    map[string]*Member
-	NodeRefs   map[Uri]map[*Node]*FamMem
+	NodeRefs   map[Uri]map[string]*FamMem
 	Duplicates map[string][]*Duplicate
 	Refs       []*Ref
 	Listeners  map[string][]func()

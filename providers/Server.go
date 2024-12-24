@@ -14,6 +14,7 @@ func (req *RequestHandler) Handle(ctx *Ctx) (res any, validMethod bool, validPar
 		res, validMethod, validParams, err = h.Handle(ctx)
 
 		if validMethod {
+			Debugf("method: %s, err: %v", ctx.Method, err != nil)
 			return
 		}
 	}

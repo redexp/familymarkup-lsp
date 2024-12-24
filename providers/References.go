@@ -71,9 +71,9 @@ func GetReferencesIter(family *Family, member *Member) iter.Seq2[Uri, *Node] {
 		}
 
 		for uri, nodes := range root.NodeRefs {
-			for node, famMem := range nodes {
-				if famMem.Family == family || famMem.Member == member {
-					if !yield(uri, node) {
+			for _, item := range nodes {
+				if item.Family == family || item.Member == member {
+					if !yield(uri, item.Node) {
 						return
 					}
 				}

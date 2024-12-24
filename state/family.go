@@ -28,7 +28,7 @@ func (family *Family) GetMember(name string) *Member {
 }
 
 func (family *Family) AddMember(node *Node, text []byte) *Member {
-	name := node.Content(text)
+	name := node.Utf8Text(text)
 	aliases := getAliases(node, text)
 
 	return family.AddMemberName(node, name, aliases)
@@ -54,7 +54,7 @@ func (family *Family) AddMemberName(node *Node, name string, aliases []string) *
 	}
 
 	family.Members[name] = member
-	family.Root.AddNodeRef(family.Uri, node, &FamMem{Member: member})
+	family.Root.AddNodeRef(family.Uri, &FamMem{Member: member, Node: node})
 
 	aliasesNode := getAliasesNode(node)
 
@@ -64,7 +64,7 @@ func (family *Family) AddMemberName(node *Node, name string, aliases []string) *
 		if exist {
 			addDuplicate(family.Duplicates, alias, &Duplicate{
 				Member: mem,
-				Node:   aliasesNode.NamedChild(i),
+				Node:   aliasesNode.NamedChild(uint(i)),
 			})
 		}
 

@@ -23,7 +23,7 @@ func TreeFamilies(ctx *Ctx) ([]*TreeFamily, error) {
 
 	for f := range root.FamilyIter() {
 		list = append(list, &TreeFamily{
-			TreeItemPoint: TreeItemPoint(f.Node.StartPoint()),
+			TreeItemPoint: toTreeItemPoint(f.Node.StartPosition()),
 
 			URI:     f.Uri,
 			Name:    f.Name,
@@ -66,7 +66,7 @@ func TreeRelations(ctx *Ctx, loc *TreeItemLocation) (list []*TreeRelation, err e
 		arrowNode := relNode.ChildByFieldName("arrow")
 
 		list = append(list, &TreeRelation{
-			TreeItemPoint: TreeItemPoint(sourcesNode.StartPoint()),
+			TreeItemPoint: toTreeItemPoint(sourcesNode.StartPosition()),
 
 			Label: ToString(sourcesNode, doc),
 			Arrow: ToString(arrowNode, doc),
@@ -92,7 +92,7 @@ func TreeMembers(ctx *Ctx, loc *TreeItemLocation) (list []*TreeMember, err error
 	var relationNode *Node
 
 	for _, relNode := range relIter {
-		if relNode.StartPoint().Row == loc.Row {
+		if relNode.StartPosition().Row == uint(loc.Row) {
 			relationNode = relNode
 			break
 		}
@@ -108,22 +108,22 @@ func TreeMembers(ctx *Ctx, loc *TreeItemLocation) (list []*TreeMember, err error
 		return make([]*TreeMember, 0), nil
 	}
 
-	count := int(targets.NamedChildCount())
+	count := uint(targets.NamedChildCount())
 	list = make([]*TreeMember, 0)
 
 	add := func(node *Node, name string, aliases []string) {
 		list = append(list, &TreeMember{
-			TreeItemPoint: TreeItemPoint(node.StartPoint()),
+			TreeItemPoint: toTreeItemPoint(node.StartPosition()),
 
 			Name:    name,
 			Aliases: aliases,
 		})
 	}
 
-	for i := 0; i < count; i++ {
+	for i := uint(0); i < count; i++ {
 		node := targets.NamedChild(i)
 
-		if node.Type() == "comment" {
+		if node.Kind() == "comment" {
 			continue
 		}
 
@@ -152,8 +152,8 @@ func TreeLocation(ctx *Ctx, params *TreeLocationParams) (pos *proto.Position, er
 	}
 
 	return doc.PointToPosition(Point{
-		Row:    params.Row,
-		Column: params.Column,
+		Row:    uint(params.Row),
+		Column: uint(params.Column),
 	})
 }
 
@@ -172,7 +172,7 @@ func getFamilyDoc(loc *TreeItemLocation) (f *Family, doc *TextDocument, err erro
 
 	if exist {
 		for _, dup := range dups {
-			if dup.Family.Node.StartPoint().Row == loc.Row {
+			if dup.Family.Node.StartPosition().Row == uint(loc.Row) {
 				f = dup.Family
 				return
 			}
@@ -197,7 +197,7 @@ func getRelationsIter(family *Family) (iter.Seq2[uint32, *Node], error) {
 		return nil, err
 	}
 
-	iterator := QueryIter(q, GetClosestNode(family.Node, "family"))
+	iterator := QueryIter(q, GetClosestNode(family.Node, "family"), []byte{})
 
 	return func(yield func(uint32, *Node) bool) {
 		iterator(yield)
@@ -205,6 +205,13 @@ func getRelationsIter(family *Family) (iter.Seq2[uint32, *Node], error) {
 	}, nil
 
 	// return QueryIter(q, GetClosestNode(family.Node, "family")), nil
+}
+
+func toTreeItemPoint(pos Point) TreeItemPoint {
+	return TreeItemPoint{
+		Row:    uint32(pos.Row),
+		Column: uint32(pos.Column),
+	}
 }
 
 // TreeHandler

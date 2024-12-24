@@ -34,7 +34,7 @@ func Hover(ctx *Ctx, params *proto.HoverParams) (h *proto.Hover, err error) {
 	aliases := f.Aliases
 
 	if m != nil {
-		if m.Node.Parent().Type() == "sources" {
+		if m.Node.Parent().Kind() == "sources" {
 			return
 		}
 
@@ -73,6 +73,8 @@ func Hover(ctx *Ctx, params *proto.HoverParams) (h *proto.Hover, err error) {
 
 	r, err := doc.NodeToRange(target)
 
+	Debugf("%s", message)
+
 	if err != nil {
 		return
 	}
@@ -84,6 +86,8 @@ func Hover(ctx *Ctx, params *proto.HoverParams) (h *proto.Hover, err error) {
 			Value: fmt.Sprintf("```fml\n%s\n```", message),
 		},
 	}
+
+	Debugf(message)
 
 	return
 }

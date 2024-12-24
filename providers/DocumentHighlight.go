@@ -58,12 +58,12 @@ func DocumentHighlight(ctx *Ctx, params *proto.DocumentHighlightParams) (res []p
 		add(member.Node)
 	}
 
-	for node, famMem := range nodes {
+	for _, famMem := range nodes {
 		if (family == nil || famMem.Family != family) && (member == nil || famMem.Member != member) {
 			continue
 		}
 
-		err = add(node)
+		err = add(famMem.Node)
 
 		if err != nil {
 			return

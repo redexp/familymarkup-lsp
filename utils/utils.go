@@ -1,7 +1,7 @@
 package utils
 
 import (
-	"context"
+	"errors"
 	"iter"
 	urlParser "net/url"
 	"path/filepath"
@@ -10,7 +10,7 @@ import (
 
 	. "github.com/redexp/familymarkup-lsp/types"
 	familymarkup "github.com/redexp/tree-sitter-familymarkup"
-	sitter "github.com/smacker/go-tree-sitter"
+	sitter "github.com/tree-sitter/go-tree-sitter"
 )
 
 type ParserWorker struct {
@@ -53,7 +53,7 @@ func GetParser() *ParserWorker {
 func (p *ParserWorker) Parse(text []byte) (tree *Tree, err error) {
 	p.busy = true
 
-	tree, err = p.parser.ParseCtx(context.Background(), nil, text)
+	tree = p.parser.Parse(text, nil)
 
 	if len(parsersPool) > 1 {
 		p.parser.Close()
@@ -142,24 +142,24 @@ func GetTypeNode(doc *TextDocument, pos *Position) (t string, nodes []*Node, err
 
 	caps := []*QueryCapture{prev, target, next}
 	nodes = make([]*Node, 3)
-	line := pos.Line
+	line := uint(pos.Line)
 
 	for i, cap := range caps {
 		if cap == nil {
 			continue
 		}
 
-		node := cap.Node
-		nt := node.Type()
+		node := &cap.Node
+		nt := node.Kind()
 
-		if (nt != "name" && nt != "surname") || node.StartPoint().Row != line {
+		if (nt != "name" && nt != "surname") || node.StartPosition().Row != line {
 			continue
 		}
 
 		parent := node.Parent()
 		parentType := ""
 		if parent != nil {
-			parentType = parent.Type()
+			parentType = parent.Kind()
 		}
 
 		if parentType == "name_aliases" || parentType == "new_surname" {
@@ -170,7 +170,7 @@ func GetTypeNode(doc *TextDocument, pos *Position) (t string, nodes []*Node, err
 			return nt, []*Node{node}, nil
 		}
 
-		nodes[i] = cap.Node
+		nodes[i] = &cap.Node
 	}
 
 	if nodes[0] != nil {
@@ -188,11 +188,11 @@ func GetTypeNode(doc *TextDocument, pos *Position) (t string, nodes []*Node, err
 			return "name| surname", nodes[1:3], nil
 		}
 
-		t = node.Type()
+		t = node.Kind()
 		p := node.Parent()
 		nodes = []*Node{node}
 
-		if p != nil && p.Type() == "family_name" {
+		if p != nil && p.Kind() == "family_name" {
 			t = "surname"
 			return
 		}
@@ -208,7 +208,7 @@ func GetTypeNode(doc *TextDocument, pos *Position) (t string, nodes []*Node, err
 }
 
 func GetClosestNode(node *Node, parentType string, fields ...string) *Node {
-	for node != nil && node.Type() != parentType {
+	for node != nil && node.Kind() != parentType {
 		node = node.Parent()
 	}
 
@@ -261,27 +261,27 @@ func ToNameNode(node *Node) *Node {
 }
 
 func IsFamilyName(node *Node) bool {
-	return node != nil && node.Type() == "family_name"
+	return node != nil && node.Kind() == "family_name"
 }
 
 func IsNameAliases(node *Node) bool {
-	return node != nil && node.Type() == "name_aliases"
+	return node != nil && node.Kind() == "name_aliases"
 }
 
 func IsNameRef(node *Node) bool {
-	return node != nil && node.Type() == "name_ref"
+	return node != nil && node.Kind() == "name_ref"
 }
 
 func IsNameDef(node *Node) bool {
-	return node != nil && node.Type() == "name_def"
+	return node != nil && node.Kind() == "name_def"
 }
 
 func IsNewSurname(node *Node) bool {
-	return node != nil && node.Type() == "new_surname"
+	return node != nil && node.Kind() == "new_surname"
 }
 
 func IsNumUnknown(node *Node) bool {
-	return node != nil && node.Type() == "num_unknown"
+	return node != nil && node.Kind() == "num_unknown"
 }
 
 func IsFamilyRelation(node *Node) bool {
@@ -293,7 +293,7 @@ func IsFamilyRelation(node *Node) bool {
 
 	arrow := rel.ChildByFieldName("arrow")
 
-	return arrow != nil && arrow.Type() == "eq"
+	return arrow != nil && arrow.Kind() == "eq"
 }
 
 func P[T ~string | ~int32](src T) *T {
@@ -301,32 +301,27 @@ func P[T ~string | ~int32](src T) *T {
 }
 
 func CreateQuery(pattern string) (*sitter.Query, error) {
-	return sitter.NewQuery([]byte(pattern), lang)
+	q, err := sitter.NewQuery(lang, pattern)
+
+	if err != nil {
+		return nil, errors.New(err.Message)
+	}
+
+	return q, nil
 }
 
-func CreateCursor(q *sitter.Query, node *Node) *sitter.QueryCursor {
-	c := sitter.NewQueryCursor()
-	c.Exec(q, node)
-	return c
-}
-
-func QueryIter(q *sitter.Query, node *Node) iter.Seq2[uint32, *Node] {
-	c := CreateCursor(q, node)
-
+func QueryIter(q *sitter.Query, node *Node, text []byte) iter.Seq2[uint32, *Node] {
 	return func(yield func(uint32, *Node) bool) {
-		defer c.Close()
+		qc := sitter.NewQueryCursor()
+		defer qc.Close()
 
-		for {
-			match, ok := c.NextMatch()
+		c := qc.Captures(q, node, text)
 
-			if !ok {
-				break
-			}
+		for match, index := c.Next(); match != nil; match, index = c.Next() {
+			cap := match.Captures[index]
 
-			for _, cap := range match.Captures {
-				if !yield(cap.Index, cap.Node) {
-					return
-				}
+			if !yield(cap.Index, &cap.Node) {
+				return
 			}
 		}
 	}
@@ -338,7 +333,7 @@ func GetErrorNodesIter(root *Node) iter.Seq[*Node] {
 			return
 		}
 
-		c := sitter.NewTreeCursor(root)
+		c := root.Walk()
 		defer c.Close()
 
 		active := true
@@ -349,7 +344,7 @@ func GetErrorNodesIter(root *Node) iter.Seq[*Node] {
 				return
 			}
 
-			node := c.CurrentNode()
+			node := c.Node()
 
 			if node.IsError() {
 				active = yield(node)
@@ -360,7 +355,7 @@ func GetErrorNodesIter(root *Node) iter.Seq[*Node] {
 				return
 			}
 
-			if !c.GoToFirstChild() {
+			if !c.GotoFirstChild() {
 				return
 			}
 
@@ -371,12 +366,12 @@ func GetErrorNodesIter(root *Node) iter.Seq[*Node] {
 					return
 				}
 
-				if !c.GoToNextSibling() {
+				if !c.GotoNextSibling() {
 					break
 				}
 			}
 
-			c.GoToParent()
+			c.GotoParent()
 		}
 
 		traverse()

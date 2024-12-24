@@ -49,11 +49,11 @@ func getAliases(nameNode *Node, text []byte) []string {
 		return make([]string, 0)
 	}
 
-	count := int(node.NamedChildCount())
+	count := uint(node.NamedChildCount())
 	list := make([]string, count)
 
-	for i := 0; i < count; i++ {
-		list[i] = node.NamedChild(i).Content(text)
+	for i := uint(0); i < count; i++ {
+		list[i] = node.NamedChild(i).Utf8Text(text)
 	}
 
 	return list

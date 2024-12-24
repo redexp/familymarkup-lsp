@@ -38,6 +38,9 @@ func DocClose(ctx *Ctx, params *proto.DidCloseTextDocumentParams) error {
 }
 
 func DocChange(ctx *Ctx, params *proto.DidChangeTextDocumentParams) error {
+	root.UpdateLock.Lock()
+	defer root.UpdateLock.Unlock()
+
 	uri, err := NormalizeUri(params.TextDocument.URI)
 
 	if err != nil {
@@ -72,6 +75,9 @@ func DocChange(ctx *Ctx, params *proto.DidChangeTextDocumentParams) error {
 }
 
 func DocCreate(ctx *Ctx, params *proto.CreateFilesParams) error {
+	root.UpdateLock.Lock()
+	defer root.UpdateLock.Unlock()
+
 	for _, file := range params.Files {
 		err := setDirtyUri(ctx, file.URI, FileCreate)
 
@@ -86,6 +92,9 @@ func DocCreate(ctx *Ctx, params *proto.CreateFilesParams) error {
 }
 
 func DocRename(ctx *Ctx, params *proto.RenameFilesParams) error {
+	root.UpdateLock.Lock()
+	defer root.UpdateLock.Unlock()
+
 	for _, file := range params.Files {
 		err := RemoveDoc(file.OldURI)
 
@@ -112,6 +121,9 @@ func DocRename(ctx *Ctx, params *proto.RenameFilesParams) error {
 }
 
 func DocDelete(ctx *Ctx, params *proto.DeleteFilesParams) error {
+	root.UpdateLock.Lock()
+	defer root.UpdateLock.Unlock()
+
 	for _, file := range params.Files {
 		err := RemoveDoc(file.URI)
 

@@ -196,10 +196,10 @@ func CodeActionResolve(ctx *Ctx, params *proto.CodeAction) (res *proto.CodeActio
 
 		text := fmt.Sprintf("%s\n\n", surname)
 
-		if node.Type() == "surname" {
+		if node.Kind() == "surname" {
 			next := node.NextSibling()
 
-			if next != nil && next.Type() == "name" {
+			if next != nil && next.Kind() == "name" {
 				text = fmt.Sprintf("%s? + ? =\n1. %s", text, ToString(next, doc))
 			}
 		}
@@ -241,7 +241,7 @@ func CodeActionResolve(ctx *Ctx, params *proto.CodeAction) (res *proto.CodeActio
 			root = doc.Tree.RootNode()
 		}
 
-		pos, err := doc.PointToPosition(root.EndPoint())
+		pos, err := doc.PointToPosition(root.EndPosition())
 
 		if err != nil {
 			return nil, err

@@ -2,8 +2,8 @@ package types
 
 import (
 	"github.com/redexp/textdocument"
-	sitter "github.com/smacker/go-tree-sitter"
 	proto "github.com/tliron/glsp/protocol_3_16"
+	sitter "github.com/tree-sitter/go-tree-sitter"
 )
 
 type TextDocument = textdocument.TextDocument

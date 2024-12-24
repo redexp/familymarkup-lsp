@@ -57,10 +57,10 @@ func (root *Root) OpenDocText(uri Uri, text string, tree *Tree) (doc *TextDocume
 		SetTree(uri, doc.Tree)
 	}
 
-	q, err := familymarkup.GetHighlightQuery()
+	q, qerr := familymarkup.GetHighlightQuery()
 
-	if err != nil {
-		return
+	if qerr != nil {
+		return nil, qerr
 	}
 
 	doc.HighlightCapturesDirty = true
@@ -151,7 +151,7 @@ func ToString(node *Node, doc *TextDocument) string {
 		return ""
 	}
 
-	return node.Content([]byte(doc.Text))
+	return node.Utf8Text([]byte(doc.Text))
 }
 
 func (docs Docs) Get(uri Uri) (doc *TextDocument, err error) {
