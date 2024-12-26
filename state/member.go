@@ -8,7 +8,6 @@ import (
 )
 
 type Member struct {
-	Id      string
 	Name    string
 	Aliases []string
 	Node    *Node

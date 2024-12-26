@@ -7,7 +7,6 @@ import (
 )
 
 type Family struct {
-	Id         string
 	Name       string
 	Aliases    []string
 	Members    Members
@@ -45,7 +44,6 @@ func (family *Family) AddMemberName(node *Node, name string, aliases []string) *
 	}
 
 	member := &Member{
-		Id:      name,
 		Name:    name,
 		Aliases: aliases,
 		Node:    node,
