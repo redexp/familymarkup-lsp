@@ -21,21 +21,23 @@ func Definition(ctx *Ctx, params *proto.DefinitionParams) (res any, err error) {
 		return
 	}
 
-	doc, err := TempDoc(uri)
-
-	if err != nil {
-		return
-	}
-
 	var node *Node
 
-	if family != nil {
-		node = family.Node
-	} else if member != nil {
+	if member != nil {
 		node = member.Node
+		uri = member.Family.Uri
+	} else if family != nil {
+		node = family.Node
+		uri = family.Uri
 	}
 
 	if node == nil || node == target {
+		return
+	}
+
+	doc, err := TempDoc(uri)
+
+	if err != nil {
 		return
 	}
 
