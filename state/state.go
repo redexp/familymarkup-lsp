@@ -265,74 +265,6 @@ func (root *Root) UpdateUnknownRefs() {
 	}
 }
 
-func (root *Root) UpdateAllRefs() (err error) {
-	isRef := func(node *Node) bool {
-		return node != nil && (IsNameRef(node) || IsNameRef(node.Parent()))
-	}
-
-	root.UnknownRefs = slices.DeleteFunc(root.UnknownRefs, func(ref *Ref) bool {
-		return isRef(ref.Node)
-	})
-
-	for uri, list := range root.NodeRefs {
-		for key, item := range list {
-			if isRef(item.Node) {
-				delete(list, key)
-			}
-		}
-
-		if len(list) == 0 {
-			delete(root.NodeRefs, uri)
-		}
-	}
-
-	for mem := range root.MembersIter() {
-		mem.Refs = slices.DeleteFunc(mem.Refs, func(ref *Ref) bool {
-			return isRef(ref.Node)
-		})
-	}
-
-	q, err := CreateQuery(`
-		(name_ref) @name_ref
-	`)
-
-	if err != nil {
-		return
-	}
-
-	defer q.Close()
-
-	tempDocs := Docs{}
-
-	trees.Range(func(key, _ any) bool {
-		uri := key.(string)
-		doc, err := tempDocs.Get(uri)
-
-		if err != nil {
-			return true
-		}
-
-		text := []byte(doc.Text)
-
-		for _, node := range QueryIter(q, doc.Tree.RootNode(), []byte{}) {
-			name, surname := GetNameSurname(node)
-
-			root.AddRef(&Ref{
-				Uri:     uri,
-				Node:    node,
-				Surname: surname.Utf8Text(text),
-				Name:    name.Utf8Text(text),
-			})
-		}
-
-		return true
-	})
-
-	root.UpdateUnknownRefs()
-
-	return
-}
-
 func (root *Root) UpdateUnknownFiles() {
 	files := root.UnknownFiles
 
@@ -501,7 +433,6 @@ func (root *Root) AddFamily(uri Uri, node *Node, text []byte) *Family {
 	name := node.Utf8Text(text)
 
 	family := &Family{
-		Id:         name,
 		Name:       name,
 		Aliases:    getAliases(node, text),
 		Members:    make(Members),
@@ -580,6 +511,20 @@ func (root *Root) RemoveFamily(f *Family) {
 			delete(root.Duplicates, name)
 		} else {
 			root.Duplicates[name] = dups
+		}
+	}
+
+	for uri, nodes := range root.NodeRefs {
+		for key, item := range nodes {
+			if item.Family == f && item.Member == nil {
+				delete(nodes, key)
+
+				root.AddUnknownRef(&Ref{
+					Uri:     uri,
+					Node:    item.Node,
+					Surname: f.Name,
+				})
+			}
 		}
 	}
 }

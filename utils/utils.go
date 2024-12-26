@@ -277,7 +277,14 @@ func IsNameDef(node *Node) bool {
 }
 
 func IsNewSurname(node *Node) bool {
-	return node != nil && node.Kind() == "new_surname"
+	if node == nil {
+		return false
+	}
+
+	kind := node.Kind()
+	parent := node.Parent().Kind()
+
+	return (kind == "surname" && parent == "name_def") || (kind == "name" && parent == "new_surname")
 }
 
 func IsNumUnknown(node *Node) bool {

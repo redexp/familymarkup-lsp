@@ -196,12 +196,9 @@ func CodeActionResolve(ctx *Ctx, params *proto.CodeAction) (res *proto.CodeActio
 
 		text := fmt.Sprintf("%s\n\n", surname)
 
-		if node.Kind() == "surname" {
-			next := node.NextSibling()
-
-			if next != nil && next.Kind() == "name" {
-				text = fmt.Sprintf("%s? + ? =\n1. %s", text, ToString(next, doc))
-			}
+		if IsNameRef(node.Parent()) {
+			name, _ := GetNameSurname(node.Parent())
+			text = fmt.Sprintf("%s? + ? =\n1. %s", text, ToString(name, doc))
 		}
 
 		if data.Mod == CreateFamilyOnNewFile {

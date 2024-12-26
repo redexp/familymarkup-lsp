@@ -82,7 +82,7 @@ func PublishDiagnostics(ctx *Ctx, uri Uri, doc *TextDocument) {
 				node = nameNode
 				message = L("unknown_person_in_family", f.Name, ToString(nameNode, doc))
 			}
-		} else if IsNewSurname(node.Parent()) {
+		} else if IsNewSurname(node) {
 			message = L("unknown_family")
 			t = UnknownFamilyError
 		}
