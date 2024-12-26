@@ -199,6 +199,10 @@ func CodeActionResolve(ctx *Ctx, params *proto.CodeAction) (res *proto.CodeActio
 		if IsNameRef(node.Parent()) {
 			name, _ := GetNameSurname(node.Parent())
 			text = fmt.Sprintf("%s? + ? =\n1. %s", text, ToString(name, doc))
+		} else if IsNewSurname(node) {
+			name := node.Parent().ChildByFieldName("name")
+			surnameNode := GetClosestFamilyName(node)
+			text = fmt.Sprintf("%s? + %s %s = ", text, ToString(name, doc), ToString(surnameNode, doc))
 		}
 
 		if data.Mod == CreateFamilyOnNewFile {
