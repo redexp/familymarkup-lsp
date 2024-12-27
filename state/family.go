@@ -26,6 +26,32 @@ func (family *Family) GetMember(name string) *Member {
 	return family.Members[name]
 }
 
+func (family *Family) FindMember(name string) (mem *Member) {
+	mem = family.GetMember(name)
+
+	if mem != nil {
+		return
+	}
+
+	source := []rune(name)
+	min := uint(len(source))
+
+	for key, m := range family.Members {
+		diff := compareNames(source, []rune(key))
+
+		if diff < min {
+			min = diff
+			mem = m
+		}
+	}
+
+	if min <= 2 {
+		return mem
+	}
+
+	return nil
+}
+
 func (family *Family) AddMember(node *Node, text []byte) *Member {
 	name := node.Utf8Text(text)
 	aliases := getAliases(node, text)
