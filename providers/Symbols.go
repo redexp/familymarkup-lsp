@@ -103,27 +103,42 @@ func AllSymbols(ctx *Ctx, params *proto.WorkspaceSymbolParams) (list []Workspace
 				add(f.Uri, mem.Name, &f.Name)
 			}
 		}
-	} else if count == 1 {
-		for f := range root.FamilyIter() {
-			if startsWith(f.Name, parts[0]) {
-				add(f.Uri, f.Name, nil)
-			}
 
-			for mem := range f.MembersIter() {
-				if startsWith(mem.Name, parts[0]) {
-					add(f.Uri, mem.Name, &f.Name)
-				}
+		return
+	}
+
+	surnameQuery := parts[0]
+
+	if count > 1 {
+		surnameQuery = parts[1]
+	}
+
+	for f := range root.FamilyIter() {
+		surname := ""
+
+		for name := range f.NamesIter() {
+			if startsWith(name, surnameQuery) {
+				surname = name
+				break
 			}
 		}
-	} else {
-		for f := range root.FamilyIter() {
-			if !startsWith(f.Name, parts[1]) {
-				continue
-			}
 
-			for mem := range f.MembersIter() {
-				if startsWith(mem.Name, parts[0]) {
-					add(f.Uri, fmt.Sprintf("%s %s", mem.Name, f.Name), &f.Name)
+		if count == 1 && surname != "" {
+			add(f.Uri, surname, nil)
+			continue
+		}
+
+		for mem := range f.MembersIter() {
+			for name := range mem.NamesIter() {
+				if startsWith(name, parts[0]) {
+					title := name
+
+					if surname != "" {
+						title = fmt.Sprintf("%s %s", name, surname)
+					}
+
+					add(f.Uri, title, &f.Name)
+					break
 				}
 			}
 		}
