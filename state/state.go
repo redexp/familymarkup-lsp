@@ -459,7 +459,6 @@ func (root *Root) AddFamily(uri Uri, node *Node, text []byte) *Family {
 		if exist {
 			addDuplicate(root.Duplicates, name, &Duplicate{
 				Family: dup,
-				Node:   node,
 				Uri:    uri,
 			})
 		}

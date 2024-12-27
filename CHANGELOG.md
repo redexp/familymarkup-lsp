@@ -1,5 +1,11 @@
 # Change Log
 
+## [1.4.1] - 2024-12-27
+
+### Fixed
+
+- duplicates for members with changed surname
+
 ## [1.4.0] - 2024-12-27
 
 ### Added

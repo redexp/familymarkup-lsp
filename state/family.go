@@ -65,7 +65,6 @@ func (family *Family) AddMemberName(node *Node, name string, aliases []string) *
 	if exist {
 		addDuplicate(family.Duplicates, name, &Duplicate{
 			Member: mem,
-			Node:   node,
 		})
 	}
 
@@ -80,15 +79,12 @@ func (family *Family) AddMemberName(node *Node, name string, aliases []string) *
 	family.Members[name] = member
 	family.Root.AddNodeRef(family.Uri, &FamMem{Member: member, Node: node})
 
-	aliasesNode := getAliasesNode(node)
-
-	for i, alias := range aliases {
+	for _, alias := range aliases {
 		mem, exist = family.Members[alias]
 
 		if exist {
 			addDuplicate(family.Duplicates, alias, &Duplicate{
 				Member: mem,
-				Node:   aliasesNode.NamedChild(uint(i)),
 			})
 		}
 

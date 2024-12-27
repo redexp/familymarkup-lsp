@@ -15,7 +15,6 @@ type Ref struct {
 type Duplicate struct {
 	Family *Family
 	Member *Member
-	Node   *Node
 	Uri    string
 }
 
