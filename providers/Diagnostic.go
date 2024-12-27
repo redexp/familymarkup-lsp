@@ -62,7 +62,7 @@ func PublishDiagnostics(ctx *Ctx, uri Uri, doc *TextDocument) {
 	}
 
 	for _, ref := range root.UnknownRefs {
-		if ref.Uri != uri {
+		if ref.Uri != uri || ref.Member != nil {
 			continue
 		}
 
