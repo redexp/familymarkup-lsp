@@ -204,20 +204,13 @@ func (root *Root) Update(tree *Tree, text []byte, uri Uri) (err error) {
 				continue
 			}
 
-			f := root.FindFamily(surname.Utf8Text(text))
-
-			if f == nil {
-				root.AddUnknownRef(&Ref{
-					Uri:     uri,
-					Node:    node,
-					Surname: surname.Utf8Text(text),
-					Name:    node.Utf8Text(text),
-					Member:  mem,
-				})
-			} else if f != family {
-				m := f.AddMember(node, text)
-				m.Origin = mem
-			}
+			// post update check for surname and ref from that surname to this member
+			root.AddUnknownRef(&Ref{
+				Uri:     uri,
+				Node:    surname,
+				Surname: surname.Utf8Text(text),
+				Member:  mem,
+			})
 
 		// new_surname
 		case 4:
@@ -254,7 +247,23 @@ func (root *Root) UpdateUnknownRefs() {
 			continue
 		}
 
-		mem := f.AddMemberName(ref.Node, ref.Member.Name, ref.Member.Aliases)
+		origin := ref.Member
+		var targetNode *Node
+
+		// find first ref of this member in that file (usualy as mether in family relation)
+		for _, ref := range origin.Refs {
+			if ref.Uri == f.Uri {
+				targetNode = ref.Node
+				break
+			}
+		}
+
+		if targetNode == nil {
+			root.AddUnknownRef(ref)
+			continue
+		}
+
+		mem := f.AddMemberName(targetNode, origin.Name, origin.Aliases)
 		mem.Origin = ref.Member
 	}
 
@@ -584,7 +593,7 @@ func (root *Root) FindMember(surname string, name string) (family *Family, membe
 		return
 	}
 
-	member = family.GetMember(name)
+	member = family.FindMember(name)
 
 	return
 }
