@@ -1,5 +1,11 @@
 # Change Log
 
+## [1.4.2] - 2024-12-28
+
+### Fixed
+
+- Document highlights for member reference
+
 ## [1.4.1] - 2024-12-27
 
 ### Fixed

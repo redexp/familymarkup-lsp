@@ -50,11 +50,11 @@ func DocumentHighlight(ctx *Ctx, params *proto.DocumentHighlightParams) (res []p
 		return nil
 	}
 
-	if family != nil {
+	if family != nil && family.Uri == uri {
 		add(family.Node)
 	}
 
-	if member != nil {
+	if member != nil && member.Family.Uri == uri {
 		add(member.Node)
 	}
 
