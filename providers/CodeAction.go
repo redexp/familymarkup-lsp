@@ -36,6 +36,11 @@ func CodeAction(ctx *Ctx, params *proto.CodeActionParams) (any, error) {
 
 	list := make([]proto.CodeAction, 0)
 	tempDocs := make(Docs)
+	QuickFix := P(proto.CodeActionKindQuickFix)
+
+	add := func(items ...proto.CodeAction) {
+		list = append(list, items...)
+	}
 
 	for _, d := range params.Context.Diagnostics {
 		if d.Data == nil {
@@ -67,11 +72,10 @@ func CodeAction(ctx *Ctx, params *proto.CodeActionParams) (any, error) {
 
 			family := GetClosestFamilyName(node)
 
-			list = append(
-				list,
+			add(
 				proto.CodeAction{
 					Title:       L("create_family_after", name, ToString(family, doc)),
-					Kind:        P(proto.CodeActionKindQuickFix),
+					Kind:        QuickFix,
 					Diagnostics: []proto.Diagnostic{d},
 					Data: CodeActionData{
 						Uri:  uri,
@@ -81,7 +85,7 @@ func CodeAction(ctx *Ctx, params *proto.CodeActionParams) (any, error) {
 				},
 				proto.CodeAction{
 					Title:       L("create_family_at_end", name),
-					Kind:        P(proto.CodeActionKindQuickFix),
+					Kind:        QuickFix,
 					Diagnostics: []proto.Diagnostic{d},
 					Data: CodeActionData{
 						Uri:  uri,
@@ -91,7 +95,7 @@ func CodeAction(ctx *Ctx, params *proto.CodeActionParams) (any, error) {
 				},
 				proto.CodeAction{
 					Title:       L("create_family_file", name),
-					Kind:        P(proto.CodeActionKindQuickFix),
+					Kind:        QuickFix,
 					Diagnostics: []proto.Diagnostic{d},
 					Data: CodeActionData{
 						Uri:  uri,
@@ -141,9 +145,9 @@ func CodeAction(ctx *Ctx, params *proto.CodeActionParams) (any, error) {
 					return nil, err
 				}
 
-				list = append(list, proto.CodeAction{
+				add(proto.CodeAction{
 					Title:       L("change_name_from_source", name, ToString(sources, doc)),
-					Kind:        P(proto.CodeActionKindQuickFix),
+					Kind:        QuickFix,
 					Diagnostics: []proto.Diagnostic{d},
 					Data: CodeActionData{
 						Uri:  uri,
@@ -152,6 +156,17 @@ func CodeAction(ctx *Ctx, params *proto.CodeActionParams) (any, error) {
 					},
 				})
 			}
+
+		case ChildWithoutRelationsInfo:
+			add(proto.CodeAction{
+				Title:       L("create_child_relation"),
+				Kind:        QuickFix,
+				Diagnostics: []proto.Diagnostic{d},
+				Data: CodeActionData{
+					Uri:  uri,
+					Type: ChildWithoutRelationsInfo,
+				},
+			})
 		}
 	}
 
@@ -252,6 +267,29 @@ func CodeActionResolve(ctx *Ctx, params *proto.CodeAction) (res *proto.CodeActio
 
 	case NameDuplicateWarning:
 		res.Edit.DocumentChanges = []any{createEdit(data.Uri, start, end, data.Name)}
+
+	case ChildWithoutRelationsInfo:
+		doc, err := TempDoc(data.Uri)
+
+		if err != nil {
+			return nil, err
+		}
+
+		node, err := doc.GetClosestNodeByPosition(&start)
+
+		if err != nil {
+			return nil, err
+		}
+
+		root := GetClosestNode(node, "family")
+
+		pos, err := doc.PointToPosition(root.EndPosition())
+
+		if err != nil {
+			return nil, err
+		}
+
+		res.Edit.DocumentChanges = []any{createInserText(data.Uri, *pos, fmt.Sprintf("\n\n%s + ? =\n", ToString(node, doc)))}
 	}
 
 	return res, nil

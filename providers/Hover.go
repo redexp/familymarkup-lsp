@@ -26,7 +26,7 @@ func Hover(ctx *Ctx, params *proto.HoverParams) (h *proto.Hover, err error) {
 		f = m.Family
 	}
 
-	if m != nil && m.Node == target {
+	if m != nil && IsNameDef(target.Parent()) {
 		return
 	}
 

@@ -14,5 +14,6 @@ var (
 )
 
 var supportDiagnostics = false
+var warnChildrenWithoutRelations = false
 
 type Ctx = glsp.Context

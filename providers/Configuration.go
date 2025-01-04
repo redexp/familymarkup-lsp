@@ -11,13 +11,16 @@ func ConfigurationChange(ctx *Ctx, config *ClientConfiguration) (err error) {
 		err = SetLocale(config.Locale)
 	}
 
+	warnChildrenWithoutRelations = config.WarnChildrenWithoutRelations
+
 	diagnosticAllDocs(ctx)
 
 	return
 }
 
 type ClientConfiguration struct {
-	Locale string `json:"locale" mapstructure:"locale"`
+	Locale                       string `json:"locale" mapstructure:"locale"`
+	WarnChildrenWithoutRelations bool   `json:"warnChildrenWithoutRelations" mapstructure:"warnChildrenWithoutRelations"`
 }
 
 func GetClientConfiguration(src any) (res ClientConfiguration, err error) {

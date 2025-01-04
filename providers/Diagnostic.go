@@ -20,6 +20,7 @@ const (
 	UnknownFamilyError = uint8(iota)
 	UnknownPersonError
 	NameDuplicateWarning
+	ChildWithoutRelationsInfo
 )
 
 type DiagnosticData struct {
@@ -46,6 +47,14 @@ func PublishDiagnostics(ctx *Ctx, uri Uri, doc *TextDocument) {
 
 	list := make([]proto.Diagnostic, 0)
 
+	add := func(item proto.Diagnostic) {
+		list = append(list, item)
+	}
+
+	Error := P(proto.DiagnosticSeverityError)
+	Warning := P(proto.DiagnosticSeverityWarning)
+	Info := P(proto.DiagnosticSeverityInformation)
+
 	for node := range GetErrorNodesIter(doc.Tree.RootNode()) {
 		r, err := doc.NodeToRange(node)
 
@@ -54,8 +63,8 @@ func PublishDiagnostics(ctx *Ctx, uri Uri, doc *TextDocument) {
 			return
 		}
 
-		list = append(list, proto.Diagnostic{
-			Severity: P(proto.DiagnosticSeverityError),
+		add(proto.Diagnostic{
+			Severity: Error,
 			Range:    *r,
 			Message:  L("syntax_error"),
 		})
@@ -67,7 +76,7 @@ func PublishDiagnostics(ctx *Ctx, uri Uri, doc *TextDocument) {
 		}
 
 		node := ref.Node
-		message := L("unknown_person")
+		message := L("unknown_person", ref.Name)
 		t := UnknownPersonError
 
 		if IsNameRef(node) {
@@ -76,14 +85,14 @@ func PublishDiagnostics(ctx *Ctx, uri Uri, doc *TextDocument) {
 
 			if f == nil {
 				node = surnameNode
-				message = L("unknown_family")
+				message = L("unknown_family", ref.Surname)
 				t = UnknownFamilyError
 			} else {
 				node = nameNode
 				message = L("unknown_person_in_family", f.Name, ToString(nameNode, doc))
 			}
 		} else if IsNewSurname(node) {
-			message = L("unknown_family")
+			message = L("unknown_family", ref.Surname)
 			t = UnknownFamilyError
 		}
 
@@ -94,8 +103,8 @@ func PublishDiagnostics(ctx *Ctx, uri Uri, doc *TextDocument) {
 			continue
 		}
 
-		list = append(list, proto.Diagnostic{
-			Severity: P(proto.DiagnosticSeverityError),
+		add(proto.Diagnostic{
+			Severity: Error,
 			Range:    *r,
 			Message:  message,
 			Data: DiagnosticData{
@@ -157,8 +166,8 @@ func PublishDiagnostics(ctx *Ctx, uri Uri, doc *TextDocument) {
 					}
 				}
 
-				list = append(list, proto.Diagnostic{
-					Severity:           P(proto.DiagnosticSeverityWarning),
+				add(proto.Diagnostic{
+					Severity:           Warning,
 					Range:              *r,
 					Message:            L("duplicate_count_of_name", count, name),
 					RelatedInformation: locations,
@@ -169,6 +178,37 @@ func PublishDiagnostics(ctx *Ctx, uri Uri, doc *TextDocument) {
 					},
 				})
 			}
+		}
+	}
+
+	if warnChildrenWithoutRelations {
+		for mem := range root.MembersIter() {
+			if mem.Family.Uri != uri || len(mem.Refs) > 0 || mem.Origin != nil || !IsNameDef(mem.Node.Parent()) {
+				continue
+			}
+
+			d, err := tempDocs.Get(mem.Family.Uri)
+
+			if err != nil {
+				LogDebug("Diagnostic error: %s", err.Error())
+				continue
+			}
+
+			r, err := d.NodeToRange(mem.Node)
+
+			if err != nil {
+				LogDebug("Diagnostic error: %s", err.Error())
+				continue
+			}
+
+			add(proto.Diagnostic{
+				Severity: Info,
+				Range:    *r,
+				Message:  L("child_without_relations", mem.Name, mem.Family.Name),
+				Data: DiagnosticData{
+					Type: ChildWithoutRelationsInfo,
+				},
+			})
 		}
 	}
 

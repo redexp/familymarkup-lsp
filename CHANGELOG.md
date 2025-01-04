@@ -1,5 +1,16 @@
 # Change Log
 
+## [1.5.0] - 2025-01-04
+
+### Added
+
+- Setting `warnChildrenWithoutRelations` which enables diagnostic for children without relationships
+- Quick fix "Create family relation" for child without relationships
+
+### Removed
+
+- Hint for children in family relation
+
 ## [1.4.2] - 2024-12-28
 
 ### Fixed

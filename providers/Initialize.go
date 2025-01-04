@@ -19,6 +19,7 @@ func Initialize(ctx *Ctx, params *proto.InitializeParams) (any, error) {
 
 	if err == nil {
 		SetLocale(options.Locale)
+		warnChildrenWithoutRelations = options.WarnChildrenWithoutRelations
 	}
 
 	legend, types, err := GetLegend()
