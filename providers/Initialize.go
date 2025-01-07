@@ -87,6 +87,7 @@ func Initialize(ctx *Ctx, params *proto.InitializeParams) (any, error) {
 				},
 				ResolveProvider: &proto.True,
 			},
+			DocumentFormattingProvider: true,
 		},
 	}
 

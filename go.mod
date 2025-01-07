@@ -6,7 +6,7 @@ require (
 	github.com/bep/debounce v1.2.1
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/redexp/textdocument v1.10.0
-	github.com/redexp/tree-sitter-familymarkup v1.12.0
+	github.com/redexp/tree-sitter-familymarkup v1.14.0
 	github.com/spf13/pflag v1.0.5
 	github.com/tliron/commonlog v0.2.19
 	github.com/tliron/glsp v0.2.2
@@ -29,7 +29,7 @@ require (
 	github.com/segmentio/ksuid v1.0.4 // indirect
 	github.com/sourcegraph/jsonrpc2 v0.2.0 // indirect
 	github.com/tliron/kutil v0.3.26 // indirect
-	golang.org/x/crypto v0.31.0 // indirect
-	golang.org/x/sys v0.28.0 // indirect
-	golang.org/x/term v0.27.0 // indirect
+	golang.org/x/crypto v0.32.0 // indirect
+	golang.org/x/sys v0.29.0 // indirect
+	golang.org/x/term v0.28.0 // indirect
 )

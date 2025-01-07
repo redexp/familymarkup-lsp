@@ -162,7 +162,7 @@ func GetTypeNode(doc *TextDocument, pos *Position) (t string, nodes []*Node, err
 			parentType = parent.Kind()
 		}
 
-		if parentType == "name_aliases" || parentType == "new_surname" {
+		if parentType == "name_aliases" {
 			if i != 1 {
 				continue
 			}
@@ -281,10 +281,7 @@ func IsNewSurname(node *Node) bool {
 		return false
 	}
 
-	kind := node.Kind()
-	parent := node.Parent().Kind()
-
-	return (kind == "surname" && parent == "name_def") || (kind == "name" && parent == "new_surname")
+	return node.Kind() == "surname" && node.Parent().Kind() == "name_def"
 }
 
 func IsNumUnknown(node *Node) bool {
@@ -382,5 +379,23 @@ func GetErrorNodesIter(root *Node) iter.Seq[*Node] {
 		}
 
 		traverse()
+	}
+}
+
+func ChildrenIter(root *Node) iter.Seq[*Node] {
+	return func(yield func(*Node) bool) {
+		child := root.Child(0)
+
+		if child == nil || !yield(child) {
+			return
+		}
+
+		for {
+			child = child.NextSibling()
+
+			if child == nil || !yield(child) {
+				return
+			}
+		}
 	}
 }

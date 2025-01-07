@@ -27,6 +27,7 @@ func NewProtocolHandlers() *protocol.Handler {
 		TextDocumentFoldingRange:            FoldingRange,
 		TextDocumentCodeAction:              CodeAction,
 		TextDocumentDocumentSymbol:          DocSymbols,
+		TextDocumentFormatting:              DocFormating,
 		CodeActionResolve:                   CodeActionResolve,
 	}
 }

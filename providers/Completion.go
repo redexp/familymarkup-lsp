@@ -27,8 +27,8 @@ func Completion(ctx *Ctx, params *proto.CompletionParams) (any, error) {
 		return nil, err
 	}
 
-	// show names for surname (except new_surname)
-	if t == "surname" && nodes[0].Parent().Kind() != "new_surname" {
+	// show names for surname
+	if t == "surname" {
 		t = "name"
 	}
 

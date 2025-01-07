@@ -129,12 +129,6 @@ func (root *Root) Update(tree *Tree, text []byte, uri Uri) (err error) {
 		)
 
 		(name_def
-			(new_surname
-				(name) @name_def-new_surname
-			)
-		)
-
-		(name_def
 			(surname) @name_def-surname
 		)
 	`)
@@ -212,9 +206,8 @@ func (root *Root) Update(tree *Tree, text []byte, uri Uri) (err error) {
 				Member:  mem,
 			})
 
-		// new_surname
+		// new surname
 		case 4:
-		case 5:
 			root.AddRef(&Ref{
 				Uri:     uri,
 				Node:    node,
