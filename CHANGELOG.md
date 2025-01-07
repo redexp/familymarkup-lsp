@@ -1,5 +1,11 @@
 # Change Log
 
+## [1.6.0] - 2025-01-07
+
+### Added
+
+- Formating (file, range and on type)
+
 ## [1.5.0] - 2025-01-04
 
 ### Added
