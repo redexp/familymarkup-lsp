@@ -87,7 +87,12 @@ func Initialize(ctx *Ctx, params *proto.InitializeParams) (any, error) {
 				},
 				ResolveProvider: &proto.True,
 			},
-			DocumentFormattingProvider: true,
+			DocumentFormattingProvider:      true,
+			DocumentRangeFormattingProvider: true,
+			DocumentOnTypeFormattingProvider: &proto.DocumentOnTypeFormattingOptions{
+				FirstTriggerCharacter: " ",
+				MoreTriggerCharacter:  []string{"(", ")", "\n"},
+			},
 		},
 	}
 

@@ -11,7 +11,37 @@ import (
 )
 
 func DocFormating(ctx *Ctx, params *proto.DocumentFormattingParams) (list []proto.TextEdit, err error) {
-	doc, err := TempDoc(params.TextDocument.URI)
+	return prettyfy(params.TextDocument.URI, nil)
+}
+
+func RangeFormating(ctx *Ctx, params *proto.DocumentRangeFormattingParams) (list []proto.TextEdit, err error) {
+	return prettyfy(params.TextDocument.URI, &params.Range)
+}
+
+func LineFormating(ctx *Ctx, params *proto.DocumentOnTypeFormattingParams) (list []proto.TextEdit, err error) {
+	pos := params.Position
+	line := pos.Line
+
+	if params.Ch == "\n" {
+		line--
+	}
+
+	r := &Range{
+		Start: Position{
+			Line:      line,
+			Character: 0,
+		},
+		End: Position{
+			Line:      line,
+			Character: pos.Character,
+		},
+	}
+
+	return prettyfy(params.TextDocument.URI, r)
+}
+
+func prettyfy(uri Uri, r *Range) (list []proto.TextEdit, err error) {
+	doc, err := TempDoc(uri)
 
 	if err != nil {
 		return
@@ -36,13 +66,13 @@ func DocFormating(ctx *Ctx, params *proto.DocumentFormattingParams) (list []prot
 		list = append(list, items...)
 	}
 
-	checkFirst := func(pos *proto.Range) {
+	checkFirst := func(pos *Range) {
 		if pos.Start.Character == 0 {
 			return
 		}
 
 		add(proto.TextEdit{
-			Range: proto.Range{
+			Range: Range{
 				Start: Position{
 					Line:      pos.Start.Line,
 					Character: 0,
@@ -56,7 +86,7 @@ func DocFormating(ctx *Ctx, params *proto.DocumentFormattingParams) (list []prot
 	checkBetween := func(aPos *Position, bPos *Position, text string) {
 		if bPos.Character-aPos.Character != uint32(len(text)) {
 			add(proto.TextEdit{
-				Range: proto.Range{
+				Range: Range{
 					Start: *aPos,
 					End:   *bPos,
 				},
@@ -121,10 +151,18 @@ func DocFormating(ctx *Ctx, params *proto.DocumentFormattingParams) (list []prot
 	}
 
 	for index, node := range QueryIter(q, doc.Tree.RootNode(), []byte(doc.Text)) {
+		nodePos, err := doc.NodeToRange(node)
+
+		if err != nil {
+			return nil, err
+		}
+
+		if r != nil && !RangeOverlaps(r, nodePos) {
+			continue
+		}
+
 		switch index {
-		case 0:
-			checkNameAliases(node)
-		case 1:
+		case 0, 1:
 			checkNameAliases(node)
 
 		case 2:
@@ -251,7 +289,7 @@ func DocFormating(ctx *Ctx, params *proto.DocumentFormattingParams) (list []prot
 				}
 
 				add(proto.TextEdit{
-					Range: proto.Range{
+					Range: Range{
 						Start: Position{
 							Line:      namePos.Start.Line,
 							Character: start,
@@ -267,8 +305,8 @@ func DocFormating(ctx *Ctx, params *proto.DocumentFormattingParams) (list []prot
 	return
 }
 
-func childPosIter(prev *Node, doc *TextDocument) iter.Seq2[*proto.Range, error] {
-	return func(yield func(*proto.Range, error) bool) {
+func childPosIter(prev *Node, doc *TextDocument) iter.Seq2[*Range, error] {
+	return func(yield func(*Range, error) bool) {
 		for {
 			next := prev.NextNamedSibling()
 

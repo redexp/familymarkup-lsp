@@ -28,6 +28,8 @@ func NewProtocolHandlers() *protocol.Handler {
 		TextDocumentCodeAction:              CodeAction,
 		TextDocumentDocumentSymbol:          DocSymbols,
 		TextDocumentFormatting:              DocFormating,
+		TextDocumentRangeFormatting:         RangeFormating,
+		TextDocumentOnTypeFormatting:        LineFormating,
 		CodeActionResolve:                   CodeActionResolve,
 	}
 }
