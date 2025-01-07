@@ -44,7 +44,7 @@ func References(ctx *Ctx, params *proto.ReferenceParams) (res []proto.Location, 
 	if member != nil && member.InfoUri != "" {
 		res = append(res, proto.Location{
 			URI: member.InfoUri,
-			Range: proto.Range{
+			Range: Range{
 				Start: proto.Position{
 					Line:      0,
 					Character: 0,

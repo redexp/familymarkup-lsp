@@ -260,6 +260,22 @@ func ToNameNode(node *Node) *Node {
 	return node
 }
 
+func RangeOverlaps(a *Range, b *Range) bool {
+	if a.End.Line < b.Start.Line || b.End.Line < a.Start.Line {
+		return false
+	}
+
+	if a.End.Line == b.Start.Line && a.End.Character <= b.Start.Character {
+		return false
+	}
+
+	if b.End.Line == a.Start.Line && b.End.Character <= a.Start.Character {
+		return false
+	}
+
+	return true
+}
+
 func IsFamilyName(node *Node) bool {
 	return node != nil && node.Kind() == "family_name"
 }

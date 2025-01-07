@@ -13,3 +13,4 @@ type Node = sitter.Node
 type Point = sitter.Point
 type QueryCapture = sitter.QueryCapture
 type Position = proto.Position
+type Range = proto.Range
