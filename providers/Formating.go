@@ -182,6 +182,10 @@ func prettyfy(uri Uri, r *Range) (list []proto.TextEdit, err error) {
 					break
 				}
 
+				if next.IsMissing() {
+					continue
+				}
+
 				nextPos, err := doc.NodeToRange(next)
 
 				if err != nil {
@@ -201,9 +205,14 @@ func prettyfy(uri Uri, r *Range) (list []proto.TextEdit, err error) {
 			}
 
 			arrow := node.NextNamedSibling()
+
+			if arrow == nil || arrow.IsMissing() {
+				continue
+			}
+
 			kind := arrow.Kind()
 
-			if arrow == nil || (kind != "arrow" && kind != "eq") {
+			if kind != "arrow" && kind != "eq" {
 				continue
 			}
 
