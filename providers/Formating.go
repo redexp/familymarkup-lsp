@@ -89,6 +89,22 @@ func prettyfy(uri Uri, r *Range) (list []proto.TextEdit, err error) {
 		list = append(list, items...)
 	}
 
+	validRange := func(a *Range, b *Range) bool {
+		if a != nil && a.Start.Line != a.End.Line {
+			return false
+		}
+
+		if b != nil && b.Start.Line != b.End.Line {
+			return false
+		}
+
+		if a != nil && b != nil && a.End.Line != b.Start.Line {
+			return false
+		}
+
+		return true
+	}
+
 	checkFirst := func(pos *Range) {
 		if pos.Start.Character == 0 {
 			return
@@ -138,7 +154,7 @@ func prettyfy(uri Uri, r *Range) (list []proto.TextEdit, err error) {
 
 		aliasesPos, err := doc.NodeToRange(aliases)
 
-		if err != nil {
+		if err != nil || !validRange(namePos, aliasesPos) {
 			return
 		}
 
@@ -152,14 +168,14 @@ func prettyfy(uri Uri, r *Range) (list []proto.TextEdit, err error) {
 
 		prevPos, err := doc.NodeToRange(prev)
 
-		if err != nil {
+		if err != nil || !validRange(aliasesPos, prevPos) {
 			return
 		}
 
 		checkBetween(&aliasesPos.Start, &prevPos.Start, "(")
 
 		for nextPos, err := range childPosIter(prev, doc) {
-			if err != nil {
+			if err != nil || !validRange(prevPos, nextPos) {
 				return err
 			}
 
@@ -168,7 +184,9 @@ func prettyfy(uri Uri, r *Range) (list []proto.TextEdit, err error) {
 			prevPos = nextPos
 		}
 
-		checkBetween(&prevPos.End, &aliasesPos.End, ")")
+		if validRange(prevPos, aliasesPos) {
+			checkBetween(&prevPos.End, &aliasesPos.End, ")")
+		}
 
 		return
 	}
@@ -241,7 +259,7 @@ func prettyfy(uri Uri, r *Range) (list []proto.TextEdit, err error) {
 
 			arrowPos, err := doc.NodeToRange(arrow)
 
-			if err != nil {
+			if err != nil || !validRange(prevPos, arrowPos) {
 				return nil, err
 			}
 
@@ -259,7 +277,7 @@ func prettyfy(uri Uri, r *Range) (list []proto.TextEdit, err error) {
 
 				nodePos, err := doc.NodeToRange(node)
 
-				if err != nil {
+				if err != nil || !validRange(arrowPos, nodePos) {
 					return nil, err
 				}
 
