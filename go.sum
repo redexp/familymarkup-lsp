@@ -30,6 +30,8 @@ github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZb
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/redexp/textdocument v1.10.0 h1:pFQxCFiV5S7mOCPoW9z7R+Fm8qo/taj9T0LWrV+16bU=
 github.com/redexp/textdocument v1.10.0/go.mod h1:O5uUstTBCbtzfDYFHW9UoUhNixPQFqXvSlG6UDhjkMs=
+github.com/redexp/textdocument v1.11.0 h1:EiMgOAjYE6caAAAVEUNSNjCHP2geGl/xvzK8gxDfgyM=
+github.com/redexp/textdocument v1.11.0/go.mod h1:O5uUstTBCbtzfDYFHW9UoUhNixPQFqXvSlG6UDhjkMs=
 github.com/redexp/tree-sitter-familymarkup v1.12.0 h1:oL6Tc03oEEO8D7nyAT1gr9PSf2+Ocwp6jl6Iracq3uY=
 github.com/redexp/tree-sitter-familymarkup v1.12.0/go.mod h1:qiaierYUoQ0Bmr7GC09Yl4ADTmraI96iqXjrA3qmbsw=
 github.com/redexp/tree-sitter-familymarkup v1.14.0 h1:leeGpG7yw0L6uj73Ou+Y4PPZG84n7jiDMydFTxbU2pQ=

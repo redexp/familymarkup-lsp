@@ -1,5 +1,11 @@
 # Change Log
 
+## [1.7.0] - 2025-01-12
+
+### Changed
+
+- Formating: add child number on `Enter`, remove empty child number on `Enter`
+
 ## [1.6.0] - 2025-01-07
 
 ### Added

@@ -3,6 +3,9 @@ package providers
 import (
 	"fmt"
 	"iter"
+	"regexp"
+	"strconv"
+	"strings"
 
 	. "github.com/redexp/familymarkup-lsp/state"
 	. "github.com/redexp/familymarkup-lsp/types"
@@ -22,10 +25,6 @@ func LineFormating(ctx *Ctx, params *proto.DocumentOnTypeFormattingParams) (list
 	pos := params.Position
 	line := pos.Line
 
-	if params.Ch == "\n" {
-		line--
-	}
-
 	r := &Range{
 		Start: Position{
 			Line:      line,
@@ -37,7 +36,31 @@ func LineFormating(ctx *Ctx, params *proto.DocumentOnTypeFormattingParams) (list
 		},
 	}
 
-	return prettyfy(params.TextDocument.URI, r)
+	newLine := params.Ch == "\n"
+
+	if newLine {
+		r.Start.Line--
+	}
+
+	list, err = prettyfy(params.TextDocument.URI, r)
+
+	if err != nil {
+		return
+	}
+
+	if newLine {
+		edits, err := addNewLineNum(params.TextDocument.URI, &pos)
+
+		if err != nil {
+			return nil, err
+		}
+
+		if len(edits) > 0 {
+			list = append(list, edits...)
+		}
+	}
+
+	return
 }
 
 func prettyfy(uri Uri, r *Range) (list []proto.TextEdit, err error) {
@@ -310,6 +333,128 @@ func prettyfy(uri Uri, r *Range) (list []proto.TextEdit, err error) {
 			}
 		}
 	}
+
+	return
+}
+
+func addNewLineNum(uri Uri, pos *Position) (list []proto.TextEdit, err error) {
+	doc, err := TempDoc(uri)
+
+	if err != nil {
+		return
+	}
+
+	text, err := doc.GetTextOnLine(pos.Line - 1)
+
+	if err != nil {
+		return
+	}
+
+	textLen := uint32(len(text))
+	text = strings.TrimSpace(text)
+
+	match, err := regexp.MatchString("^\\d+\\.?$", text)
+
+	if err != nil {
+		return
+	}
+
+	if match {
+		list = append(list, proto.TextEdit{
+			Range: Range{
+				Start: Position{
+					Line:      pos.Line - 1,
+					Character: 0,
+				},
+				End: Position{
+					Line:      pos.Line - 1,
+					Character: textLen,
+				},
+			},
+			NewText: "",
+		})
+
+		return
+	}
+
+	exp := regexp.MustCompile(`^(\d+)\.? `)
+
+	replaceNums := func(line uint32, index uint) {
+		for {
+			text, err := doc.GetTextOnLine(line)
+
+			if err != nil {
+				return
+			}
+
+			match := exp.FindStringSubmatch(text)
+
+			if len(match) == 0 {
+				return
+			}
+
+			num, err := strconv.Atoi(match[1])
+
+			if err != nil {
+				return
+			}
+
+			if num != int(index) {
+				list = append(list, proto.TextEdit{
+					Range: Range{
+						Start: Position{
+							Line:      line,
+							Character: 0,
+						},
+						End: Position{
+							Line:      line,
+							Character: uint32(len(match[0])),
+						},
+					},
+					NewText: fmt.Sprintf("%d. ", index),
+				})
+			}
+
+			line++
+			index++
+		}
+	}
+
+	if strings.HasSuffix(text, "=") {
+		list = append(list, proto.TextEdit{
+			Range: Range{
+				Start: *pos,
+				End:   *pos,
+			},
+			NewText: "1. ",
+		})
+
+		replaceNums(pos.Line+1, 2)
+
+		return
+	}
+
+	result := exp.FindStringSubmatch(text)
+
+	if len(result) == 0 {
+		return
+	}
+
+	num, err := strconv.Atoi(result[1])
+
+	if err != nil {
+		return
+	}
+
+	list = append(list, proto.TextEdit{
+		Range: Range{
+			Start: *pos,
+			End:   *pos,
+		},
+		NewText: fmt.Sprintf("%d. ", num+1),
+	})
+
+	replaceNums(pos.Line+1, uint(num+2))
 
 	return
 }
