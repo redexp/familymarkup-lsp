@@ -440,7 +440,13 @@ func addNewLineNum(uri Uri, pos *Position) (list []proto.TextEdit, err error) {
 		}
 	}
 
-	if strings.HasSuffix(text, "=") {
+	match, err = regexp.MatchString(`=[\p{Ll}'" ]*$`, text)
+
+	if err != nil {
+		return
+	}
+
+	if match {
 		list = append(list, proto.TextEdit{
 			Range: Range{
 				Start: *pos,
