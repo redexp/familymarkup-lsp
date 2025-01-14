@@ -181,11 +181,19 @@ func (root *Root) Update(tree *Tree, text []byte, uri Uri) (err error) {
 
 		// new member or member ref
 		case 3:
+			surnameNode := node.Parent().ChildByFieldName("surname")
+
 			if !IsFamilyRelation(node) {
+				surname := family.Name
+
+				if surnameNode != nil {
+					surname = surnameNode.Utf8Text(text)
+				}
+
 				root.AddRef(&Ref{
 					Uri:     uri,
 					Node:    node,
-					Surname: family.Name,
+					Surname: surname,
 					Name:    node.Utf8Text(text),
 				})
 
@@ -194,17 +202,15 @@ func (root *Root) Update(tree *Tree, text []byte, uri Uri) (err error) {
 
 			mem := family.AddMember(node, text)
 
-			surname := node.Parent().ChildByFieldName("surname")
-
-			if surname == nil {
+			if surnameNode == nil {
 				continue
 			}
 
 			// post update check for surname and ref from that surname to this member
 			root.AddUnknownRef(&Ref{
 				Uri:     uri,
-				Node:    surname,
-				Surname: surname.Utf8Text(text),
+				Node:    surnameNode,
+				Surname: surnameNode.Utf8Text(text),
 				Member:  mem,
 			})
 
