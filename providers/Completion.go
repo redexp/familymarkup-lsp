@@ -23,7 +23,7 @@ func Completion(ctx *Ctx, params *proto.CompletionParams) (any, error) {
 
 	t, nodes, err := GetTypeNode(doc, &params.Position)
 
-	if err != nil {
+	if err != nil || t == "nil" {
 		return nil, err
 	}
 
