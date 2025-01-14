@@ -9,6 +9,7 @@
 ### Fixed
 
 - Duplicate diagnostic for member with changed surname
+- No needed space for next relation while formating
 
 ## [1.6.0] - 2025-01-07
 

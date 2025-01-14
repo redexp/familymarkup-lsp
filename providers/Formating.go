@@ -235,11 +235,13 @@ func prettyfy(uri Uri, r *Range) (list []proto.TextEdit, err error) {
 
 				text := " "
 
-				if !next.IsNamed() && ToString(next, doc) == "," {
+				if !next.IsNamed() && !next.IsError() && ToString(next, doc) == "," {
 					text = ""
 				}
 
-				checkBetween(&prevPos.End, &nextPos.Start, text)
+				if validRange(prevPos, nextPos) {
+					checkBetween(&prevPos.End, &nextPos.Start, text)
+				}
 
 				prev = next
 				prevPos = nextPos
