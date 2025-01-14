@@ -94,7 +94,7 @@ func Completion(ctx *Ctx, params *proto.CompletionParams) (any, error) {
 		t = "name"
 	}
 
-	if IsNameDef(nodes[0].Parent()) && (t == "name |" || t == "name surname|") {
+	if (t == "name |" || t == "name surname|") && IsNameDef(nodes[0].Parent()) {
 		t = "surname"
 	}
 
