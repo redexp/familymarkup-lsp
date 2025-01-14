@@ -56,10 +56,17 @@ func (family *Family) AddMember(node *Node, text []byte) *Member {
 	name := node.Utf8Text(text)
 	aliases := getAliases(node, text)
 
-	return family.AddMemberName(node, name, aliases)
+	surnameNode := node.Parent().ChildByFieldName("surname")
+	surname := ""
+
+	if surnameNode != nil {
+		surname = surnameNode.Utf8Text(text)
+	}
+
+	return family.AddMemberName(node, name, aliases, surname)
 }
 
-func (family *Family) AddMemberName(node *Node, name string, aliases []string) *Member {
+func (family *Family) AddMemberName(node *Node, name string, aliases []string, surname string) *Member {
 	mem, exist := family.Members[name]
 
 	if exist {
@@ -71,6 +78,7 @@ func (family *Family) AddMemberName(node *Node, name string, aliases []string) *
 	member := &Member{
 		Name:    name,
 		Aliases: aliases,
+		Surname: surname,
 		Node:    node,
 		Refs:    make([]*Ref, 0),
 		Family:  family,

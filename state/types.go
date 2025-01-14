@@ -10,6 +10,7 @@ type Ref struct {
 	Surname string
 	Name    string
 	Member  *Member
+	Family  *Family
 }
 
 type Duplicate struct {

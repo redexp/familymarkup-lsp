@@ -29,9 +29,9 @@ type DiagnosticData struct {
 	Name    string `json:"name"`
 }
 
-func PublishDiagnostics(ctx *Ctx, uri Uri, doc *TextDocument) {
+func PublishDiagnostics(ctx *Ctx, uri Uri, doc *TextDocument) error {
 	if !supportDiagnostics {
-		return
+		return nil
 	}
 
 	var err error
@@ -40,8 +40,7 @@ func PublishDiagnostics(ctx *Ctx, uri Uri, doc *TextDocument) {
 		doc, err = TempDoc(uri)
 
 		if err != nil {
-			LogDebug("Diagnostic open doc error: %s", err.Error())
-			return
+			return err
 		}
 	}
 
@@ -59,8 +58,7 @@ func PublishDiagnostics(ctx *Ctx, uri Uri, doc *TextDocument) {
 		r, err := doc.NodeToRange(node)
 
 		if err != nil {
-			LogDebug("Diagnostic error: %s", err.Error())
-			return
+			return err
 		}
 
 		add(proto.Diagnostic{
@@ -99,8 +97,7 @@ func PublishDiagnostics(ctx *Ctx, uri Uri, doc *TextDocument) {
 		r, err := doc.NodeToRange(node)
 
 		if err != nil {
-			LogDebug("Diagnostic error: %s", err.Error())
-			continue
+			return err
 		}
 
 		add(proto.Diagnostic{
@@ -116,54 +113,71 @@ func PublishDiagnostics(ctx *Ctx, uri Uri, doc *TextDocument) {
 	tempDocs := make(Docs)
 	tempDocs[uri] = doc
 
+	var locations []proto.DiagnosticRelatedInformation
+
+	ensureLocations := func(family *Family, name string) error {
+		if locations != nil {
+			return nil
+		}
+
+		doc, err := tempDocs.Get(family.Uri)
+
+		if err != nil {
+			return err
+		}
+
+		dups := family.Duplicates[name]
+
+		member := family.GetMember(name)
+
+		dups = append(dups, &Duplicate{Member: member})
+
+		locations = make([]proto.DiagnosticRelatedInformation, len(dups))
+
+		for i, dup := range dups {
+			node := dup.Member.Node
+			r, err := doc.NodeToRange(node)
+
+			if err != nil {
+				return err
+			}
+
+			sources := GetClosestSources(node)
+
+			locations[i] = proto.DiagnosticRelatedInformation{
+				Location: proto.Location{
+					URI:   family.Uri,
+					Range: *r,
+				},
+				Message: L("child_of_source", ToString(sources, doc)),
+			}
+		}
+
+		return nil
+	}
+
 	for family := range root.FamilyIter() {
 		for name, dups := range family.Duplicates {
-			member := family.Members[name]
-			dups = append(dups, &Duplicate{Member: member})
-			count := len(dups)
+			locations = nil
 
-			var locations []proto.DiagnosticRelatedInformation
+			member := family.GetMember(name)
+			count := len(dups) + 1
 
 			for _, ref := range member.Refs {
-				if ref.Uri != uri {
+				if ref.Uri != uri || ref.Family == family {
 					continue
 				}
 
 				r, err := doc.NodeToRange(ToNameNode(ref.Node))
 
 				if err != nil {
-					LogDebug("Diagnostic error: %s", err.Error())
-					continue
+					return err
 				}
 
-				if locations == nil {
-					d, err := tempDocs.Get(family.Uri)
+				err = ensureLocations(family, name)
 
-					if err != nil {
-						LogDebug("Diagnostic error: %s", err.Error())
-						continue
-					}
-
-					locations = make([]proto.DiagnosticRelatedInformation, count)
-					for i, dup := range dups {
-						node := dup.Member.Node
-						rr, err := d.NodeToRange(node)
-
-						if err != nil {
-							LogDebug("Diagnostic error: %s", err.Error())
-							continue
-						}
-
-						sources := GetClosestSources(node)
-
-						locations[i] = proto.DiagnosticRelatedInformation{
-							Location: proto.Location{
-								URI:   family.Uri,
-								Range: *rr,
-							},
-							Message: L("child_of_source", ToString(sources, d)),
-						}
-					}
+				if err != nil {
+					return err
 				}
 
 				add(proto.Diagnostic{
@@ -190,15 +204,13 @@ func PublishDiagnostics(ctx *Ctx, uri Uri, doc *TextDocument) {
 			d, err := tempDocs.Get(mem.Family.Uri)
 
 			if err != nil {
-				LogDebug("Diagnostic error: %s", err.Error())
-				continue
+				return err
 			}
 
 			r, err := d.NodeToRange(mem.Node)
 
 			if err != nil {
-				LogDebug("Diagnostic error: %s", err.Error())
-				continue
+				return err
 			}
 
 			add(proto.Diagnostic{
@@ -217,6 +229,8 @@ func PublishDiagnostics(ctx *Ctx, uri Uri, doc *TextDocument) {
 		// TODO add version
 		Diagnostics: list,
 	})
+
+	return nil
 }
 
 var docDiagnostic = &DocDebouncer{
@@ -244,7 +258,11 @@ func (dd *DocDebouncer) Flush() {
 			continue
 		}
 
-		PublishDiagnostics(docDiagnostic.Ctx, uri, doc)
+		err := PublishDiagnostics(docDiagnostic.Ctx, uri, doc)
+
+		if err != nil {
+			LogDebug("Diagnostic error: %s", err.Error())
+		}
 	}
 }
 

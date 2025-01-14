@@ -6,6 +6,10 @@
 
 - Formating: add child number on `Enter`, remove empty child number on `Enter`
 
+### Fixed
+
+- Duplicate diagnostic for member with changed surname
+
 ## [1.6.0] - 2025-01-07
 
 ### Added

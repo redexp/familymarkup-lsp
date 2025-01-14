@@ -160,6 +160,7 @@ func (root *Root) Update(tree *Tree, text []byte, uri Uri) (err error) {
 				Node:    node,
 				Surname: surname.Utf8Text(text),
 				Name:    name.Utf8Text(text),
+				Family:  family,
 			})
 
 		// sorces -> name
@@ -172,6 +173,7 @@ func (root *Root) Update(tree *Tree, text []byte, uri Uri) (err error) {
 					Node:    node,
 					Surname: family.Name,
 					Name:    name,
+					Family:  family,
 				})
 			} else {
 				family.AddMember(node, text)
@@ -256,7 +258,7 @@ func (root *Root) UpdateUnknownRefs() {
 			continue
 		}
 
-		mem := f.AddMemberName(targetNode, origin.Name, origin.Aliases)
+		mem := f.AddMemberName(targetNode, origin.Name, origin.Aliases, "")
 		mem.Origin = ref.Member
 	}
 
@@ -601,6 +603,23 @@ func (root *Root) AddRef(ref *Ref) {
 	if mem == nil {
 		root.AddUnknownRef(ref)
 		return
+	}
+
+	dups, exist := f.Duplicates[mem.NormalizeName(ref.Name)]
+
+	if exist && ref.Family != nil {
+		for _, dup := range dups {
+			if dup.Member.Surname == "" {
+				continue
+			}
+
+			fam := root.FindFamily(dup.Member.Surname)
+
+			if fam == ref.Family {
+				mem = dup.Member
+				break
+			}
+		}
 	}
 
 	mem.Refs = append(mem.Refs, ref)

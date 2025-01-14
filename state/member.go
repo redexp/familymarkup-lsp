@@ -8,9 +8,10 @@ import (
 )
 
 type Member struct {
+	Node    *Node
 	Name    string
 	Aliases []string
-	Node    *Node
+	Surname string
 	Refs    Refs
 	InfoUri Uri
 	Family  *Family
@@ -47,4 +48,24 @@ func (member *Member) NamesIter() iter.Seq[string] {
 
 func (member *Member) HasName(name string) bool {
 	return member.Name == name || slices.Contains(member.Aliases, name)
+}
+
+func (member *Member) NormalizeName(name string) (res string) {
+	if member.HasName(name) {
+		return name
+	}
+
+	runeName := []rune(name)
+	min := uint(len(runeName))
+
+	for n := range member.NamesIter() {
+		diff := compareNames([]rune(n), runeName)
+
+		if diff <= 2 && diff < min {
+			min = diff
+			res = n
+		}
+	}
+
+	return
 }
