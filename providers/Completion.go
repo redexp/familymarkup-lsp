@@ -76,6 +76,16 @@ func Completion(ctx *Ctx, params *proto.CompletionParams) (any, error) {
 		}
 	}
 
+	if t == "= |" || t == "= label|" {
+		for _, labels := range root.Labels {
+			for _, label := range labels {
+				add(label)
+			}
+		}
+
+		return list, nil
+	}
+
 	if t == "| surname" || t == "name| surname" {
 		surname := nodes[0]
 

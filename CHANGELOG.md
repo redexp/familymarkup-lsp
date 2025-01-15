@@ -2,9 +2,10 @@
 
 ## [1.7.0] - 2025-01-12
 
-### Changed
+### Added
 
 - Formating: add child number on `Enter`, remove empty child number on `Enter`
+- Completion: label after `=` sign
 
 ### Fixed
 

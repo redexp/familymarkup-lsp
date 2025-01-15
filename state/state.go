@@ -19,6 +19,7 @@ type Root struct {
 	UnknownRefs  []*Ref
 	UnknownFiles Files
 	DirtyUris    UriSet
+	Labels       map[Uri][]string
 	Listeners    Listeners
 	Log          func(string, ...any)
 
@@ -34,6 +35,7 @@ func CreateRoot(logger func(string, ...any)) *Root {
 		UnknownRefs:  make([]*Ref, 0),
 		UnknownFiles: make(Files),
 		DirtyUris:    make(UriSet),
+		Labels:       make(map[Uri][]string),
 		Listeners:    make(Listeners),
 		Log:          logger,
 	}
@@ -131,6 +133,11 @@ func (root *Root) Update(tree *Tree, text []byte, uri Uri) (err error) {
 		(name_def
 			(surname) @name_def-surname
 		)
+
+		(relation
+			arrow: (eq)
+			label: (words) @label
+		)
 	`)
 
 	if err != nil {
@@ -221,6 +228,9 @@ func (root *Root) Update(tree *Tree, text []byte, uri Uri) (err error) {
 				Node:    node,
 				Surname: node.Utf8Text(text),
 			})
+
+		case 5:
+			root.AddLabel(family.Uri, node.Utf8Text(text))
 		}
 	}
 
@@ -419,6 +429,8 @@ func (root *Root) UpdateDirty() error {
 	tempDocs := make(Docs)
 
 	for uri, state := range uris {
+		delete(root.Labels, uri)
+
 		if state == FileDelete {
 			continue
 		}
@@ -721,6 +733,23 @@ func (root *Root) AddUnknownFile(uri Uri) error {
 	root.UnknownFiles[uri] = file
 
 	return nil
+}
+
+func (root *Root) AddLabel(uri Uri, label string) {
+	label = strings.TrimSpace(label)
+
+	list, exist := root.Labels[uri]
+
+	if !exist {
+		root.Labels[uri] = []string{label}
+		return
+	}
+
+	if slices.Contains(list, label) {
+		return
+	}
+
+	root.Labels[uri] = append(list, label)
 }
 
 func (root *Root) Trigger(event string) {

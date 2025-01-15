@@ -127,12 +127,14 @@ func IsMarkdownUri(uri Uri) bool {
 	return slices.Contains(MarkdownExt, Ext(uri))
 }
 
+// "= |", []
+// "= label|", [Node]
 // "name" || "surname", [Node]
 // "name surname|", [Node, Node]
 // "name |", [Node]
 // "name| surname", [Node, Node]
 // "| surname", [Node]
-// "nil", [Node]
+// "nil", []
 func GetTypeNode(doc *TextDocument, pos *Position) (t string, nodes []*Node, err error) {
 	prev, target, next, err := doc.GetClosestHighlightCaptureByPosition(pos)
 
@@ -145,14 +147,32 @@ func GetTypeNode(doc *TextDocument, pos *Position) (t string, nodes []*Node, err
 	line := uint(pos.Line)
 
 	for i, cap := range caps {
-		if cap == nil {
+		if cap == nil || cap.Node.StartPosition().Row != line {
 			continue
 		}
 
-		node := &cap.Node
+		nodes[i] = &cap.Node
+	}
+
+	if nodes[0] != nil && nodes[0].Kind() == "eq" {
+		if nodes[1] == nil && nodes[0].StartPosition().Row == uint(pos.Line) {
+			return "= |", []*Node{}, nil
+		}
+
+		if nodes[1] != nil && nodes[1].Kind() == "words" {
+			return "= label|", []*Node{nodes[1]}, nil
+		}
+	}
+
+	for i, node := range nodes {
+		if node == nil {
+			continue
+		}
+
 		nt := node.Kind()
 
-		if (nt != "name" && nt != "surname") || node.StartPosition().Row != line {
+		if nt != "name" && nt != "surname" {
+			nodes[i] = nil
 			continue
 		}
 
@@ -164,13 +184,12 @@ func GetTypeNode(doc *TextDocument, pos *Position) (t string, nodes []*Node, err
 
 		if parentType == "name_aliases" {
 			if i != 1 {
+				nodes[i] = nil
 				continue
 			}
 
 			return nt, []*Node{node}, nil
 		}
-
-		nodes[i] = &cap.Node
 	}
 
 	if nodes[0] != nil {
