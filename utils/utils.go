@@ -2,6 +2,7 @@ package utils
 
 import (
 	"errors"
+	proto "github.com/tliron/glsp/protocol_3_16"
 	"iter"
 	urlParser "net/url"
 	"path/filepath"
@@ -9,6 +10,7 @@ import (
 	"strings"
 
 	. "github.com/redexp/familymarkup-lsp/types"
+	fm "github.com/redexp/familymarkup-parser"
 	familymarkup "github.com/redexp/tree-sitter-familymarkup"
 	sitter "github.com/tree-sitter/go-tree-sitter"
 )
@@ -18,53 +20,11 @@ type ParserWorker struct {
 	busy   bool
 }
 
-var parsersPool = make([]*ParserWorker, 0)
 var lang = familymarkup.GetLanguage()
 
 var FamilyExt = []string{"fml", "family"}
 var MarkdownExt = []string{"md", "mdx"}
 var AllExt = slices.Concat(FamilyExt, MarkdownExt)
-
-func CreateParser() *sitter.Parser {
-	p := sitter.NewParser()
-	p.SetLanguage(familymarkup.GetLanguage())
-	return p
-}
-
-func GetParser() *ParserWorker {
-	var parser *ParserWorker
-
-	for _, p := range parsersPool {
-		if !p.busy {
-			return p
-		}
-	}
-
-	parser = &ParserWorker{
-		parser: CreateParser(),
-		busy:   true,
-	}
-
-	parsersPool = append(parsersPool, parser)
-
-	return parser
-}
-
-func (p *ParserWorker) Parse(text []byte) (tree *Tree, err error) {
-	p.busy = true
-
-	tree = p.parser.Parse(text, nil)
-
-	if len(parsersPool) > 1 {
-		p.parser.Close()
-		index := slices.Index(parsersPool, p)
-		parsersPool = slices.Delete(parsersPool, index, index+1)
-	}
-
-	p.busy = false
-
-	return
-}
 
 func UriToPath(uri Uri) (string, error) {
 	if strings.HasPrefix(uri, "/") {
@@ -125,105 +85,6 @@ func IsFamilyUri(uri Uri) bool {
 
 func IsMarkdownUri(uri Uri) bool {
 	return slices.Contains(MarkdownExt, Ext(uri))
-}
-
-// "= |", []
-// "= label|", [Node]
-// "name" || "surname", [Node]
-// "name surname|", [Node, Node]
-// "name |", [Node]
-// "name| surname", [Node, Node]
-// "| surname", [Node]
-// "nil", []
-func GetTypeNode(doc *TextDocument, pos *Position) (t string, nodes []*Node, err error) {
-	prev, target, next, err := doc.GetClosestHighlightCaptureByPosition(pos)
-
-	if err != nil {
-		return
-	}
-
-	caps := []*QueryCapture{prev, target, next}
-	nodes = make([]*Node, 3)
-	line := uint(pos.Line)
-
-	for i, cap := range caps {
-		if cap == nil || cap.Node.StartPosition().Row != line {
-			continue
-		}
-
-		nodes[i] = &cap.Node
-	}
-
-	if nodes[0] != nil && nodes[0].Kind() == "eq" {
-		if nodes[1] == nil && nodes[0].StartPosition().Row == uint(pos.Line) {
-			return "= |", []*Node{}, nil
-		}
-
-		if nodes[1] != nil && nodes[1].Kind() == "words" {
-			return "= label|", []*Node{nodes[1]}, nil
-		}
-	}
-
-	for i, node := range nodes {
-		if node == nil {
-			continue
-		}
-
-		nt := node.Kind()
-
-		if nt != "name" && nt != "surname" {
-			nodes[i] = nil
-			continue
-		}
-
-		parent := node.Parent()
-		parentType := ""
-		if parent != nil {
-			parentType = parent.Kind()
-		}
-
-		if parentType == "name_aliases" {
-			if i != 1 {
-				nodes[i] = nil
-				continue
-			}
-
-			return nt, []*Node{node}, nil
-		}
-	}
-
-	if nodes[0] != nil {
-		if nodes[1] != nil {
-			return "name surname|", nodes[0:2], nil
-		}
-
-		return "name |", nodes[0:1], nil
-	}
-
-	node := nodes[1]
-
-	if node != nil {
-		if nodes[2] != nil {
-			return "name| surname", nodes[1:3], nil
-		}
-
-		t = node.Kind()
-		p := node.Parent()
-		nodes = []*Node{node}
-
-		if p != nil && p.Kind() == "family_name" {
-			t = "surname"
-			return
-		}
-
-		return
-	}
-
-	if nodes[2] != nil {
-		return "| surname", nodes[2:3], nil
-	}
-
-	return "nil", []*Node{}, nil
 }
 
 func GetClosestNode(node *Node, parentType string, fields ...string) *Node {
@@ -319,20 +180,8 @@ func IsNewSurname(node *Node) bool {
 	return node.Kind() == "surname" && node.Parent().Kind() == "name_def"
 }
 
-func IsNumUnknown(node *Node) bool {
-	return node != nil && node.Kind() == "num_unknown"
-}
-
-func IsFamilyRelation(node *Node) bool {
-	rel := GetClosestNode(node, "relation")
-
-	if rel == nil {
-		return false
-	}
-
-	arrow := rel.ChildByFieldName("arrow")
-
-	return arrow != nil && arrow.Kind() == "eq"
+func IsFamilyRelation(rel *fm.Relation) bool {
+	return rel.Arrow != nil && rel.Arrow.SubType == fm.TokenEqual
 }
 
 func P[T ~string | ~int32](src T) *T {
@@ -432,5 +281,49 @@ func ChildrenIter(root *Node) iter.Seq[*Node] {
 				return
 			}
 		}
+	}
+}
+
+func TokensToStrings(tokens []*fm.Token) []string {
+	list := make([]string, len(tokens))
+
+	for i, token := range tokens {
+		list[i] = token.Text
+	}
+
+	return list
+}
+
+func LocToRange(loc fm.Loc) *proto.Range {
+	return &proto.Range{
+		Start: Position{
+			Line:      uint32(loc.Start.Line),
+			Character: uint32(loc.Start.Char),
+		},
+		End: Position{
+			Line:      uint32(loc.End.Line),
+			Character: uint32(loc.End.Char),
+		},
+	}
+}
+
+func TokenToPosition(token *fm.Token) proto.Position {
+	return proto.Position{
+		Line:      uint32(token.Line),
+		Character: uint32(token.Char),
+	}
+}
+
+func TokenEndToPosition(token *fm.Token) proto.Position {
+	return proto.Position{
+		Line:      uint32(token.Line),
+		Character: uint32(token.EndChar()),
+	}
+}
+
+func TokenToRange(token *fm.Token) proto.Range {
+	return proto.Range{
+		Start: TokenToPosition(token),
+		End:   TokenEndToPosition(token),
 	}
 }

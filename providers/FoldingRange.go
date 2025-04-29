@@ -3,6 +3,7 @@ package providers
 import (
 	. "github.com/redexp/familymarkup-lsp/state"
 	. "github.com/redexp/familymarkup-lsp/utils"
+	fm "github.com/redexp/familymarkup-parser"
 	proto "github.com/tliron/glsp/protocol_3_16"
 )
 
@@ -19,33 +20,28 @@ func FoldingRange(ctx *Ctx, params *proto.FoldingRangeParams) (res []proto.Foldi
 		return
 	}
 
-	q, err := CreateQuery(`
-		(family) @family
+	res = getFoldingRanges(doc.Root)
 
-		(relation) @rel
-	`)
+	return
+}
 
-	if err != nil {
-		return
+func getFoldingRanges(root *fm.Root) (list []proto.FoldingRange) {
+	kind := P("region")
+
+	add := func(loc fm.Loc) {
+		list = append(list, proto.FoldingRange{
+			StartLine: proto.UInteger(loc.Start.Line),
+			EndLine:   proto.UInteger(loc.End.Line),
+			Kind:      kind,
+		})
 	}
 
-	defer q.Close()
+	for _, family := range root.Families {
+		add(family.Loc)
 
-	res = make([]proto.FoldingRange, 0)
-
-	for _, node := range QueryIter(q, doc.Tree.RootNode(), []byte(doc.Text)) {
-		start := node.StartPosition().Row
-		end := node.EndPosition().Row
-
-		if start == end {
-			continue
+		for _, rel := range family.Relations {
+			add(rel.Loc)
 		}
-
-		res = append(res, proto.FoldingRange{
-			StartLine: uint32(start),
-			EndLine:   uint32(end),
-			Kind:      P("region"),
-		})
 	}
 
 	return

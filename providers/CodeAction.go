@@ -133,7 +133,7 @@ func CodeAction(ctx *Ctx, params *proto.CodeActionParams) (any, error) {
 					continue
 				}
 
-				sources := GetClosestSources(dup.Member.Node)
+				sources := GetClosestSources(dup.Member.Person)
 
 				if sources == nil {
 					continue

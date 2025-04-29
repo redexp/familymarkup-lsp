@@ -1,6 +1,7 @@
 package state
 
 import (
+	fm "github.com/redexp/familymarkup-parser"
 	"iter"
 	"slices"
 
@@ -8,7 +9,7 @@ import (
 )
 
 type Member struct {
-	Node    *Node
+	Person  *fm.Person
 	Name    string
 	Aliases []string
 	Surname string

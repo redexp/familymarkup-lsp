@@ -3,7 +3,7 @@ package providers
 import (
 	"encoding/json"
 	"fmt"
-	"iter"
+	fm "github.com/redexp/familymarkup-parser"
 	"slices"
 	"strings"
 	"time"
@@ -23,7 +23,7 @@ func TreeFamilies(ctx *Ctx) ([]*TreeFamily, error) {
 
 	for f := range root.FamilyIter() {
 		list = append(list, &TreeFamily{
-			TreeItemPoint: toTreeItemPoint(f.Node.StartPosition()),
+			TreeItemPoint: toTreeItemPoint(f.Node.Loc),
 
 			URI:     f.Uri,
 			Name:    f.Name,
@@ -53,23 +53,20 @@ func TreeRelations(ctx *Ctx, loc *TreeItemLocation) (list []*TreeRelation, err e
 		return
 	}
 
-	relIter, err := getRelationsIter(f)
-
-	if err != nil {
-		return
-	}
-
 	list = make([]*TreeRelation, 0)
 
-	for _, relNode := range relIter {
-		sourcesNode := relNode.ChildByFieldName("sources")
-		arrowNode := relNode.ChildByFieldName("arrow")
+	for _, rel := range f.Node.Relations {
+		label, err := doc.GetTextByRange(LocToRange(rel.Sources.Loc))
+
+		if err != nil {
+			return nil, err
+		}
 
 		list = append(list, &TreeRelation{
-			TreeItemPoint: toTreeItemPoint(sourcesNode.StartPosition()),
+			TreeItemPoint: toTreeItemPoint(rel.Loc),
 
-			Label: ToString(sourcesNode, doc),
-			Arrow: ToString(arrowNode, doc),
+			Label: label,
+			Arrow: rel.Arrow.Text,
 		})
 	}
 
@@ -77,23 +74,18 @@ func TreeRelations(ctx *Ctx, loc *TreeItemLocation) (list []*TreeRelation, err e
 }
 
 func TreeMembers(ctx *Ctx, loc *TreeItemLocation) (list []*TreeMember, err error) {
-	f, doc, err := getFamilyDoc(loc)
+	f, _, err := getFamilyDoc(loc)
 
 	if err != nil {
 		return
 	}
 
-	relIter, err := getRelationsIter(f)
+	var relationNode *fm.Relation
+	row := int(loc.Row)
 
-	if err != nil {
-		return
-	}
-
-	var relationNode *Node
-
-	for _, relNode := range relIter {
-		if relNode.StartPosition().Row == uint(loc.Row) {
-			relationNode = relNode
+	for _, rel := range f.Node.Relations {
+		if rel.Start.Line == row {
+			relationNode = rel
 			break
 		}
 	}
@@ -102,43 +94,37 @@ func TreeMembers(ctx *Ctx, loc *TreeItemLocation) (list []*TreeMember, err error
 		return nil, fmt.Errorf("relation not found")
 	}
 
-	targets := relationNode.ChildByFieldName("targets")
+	targets := relationNode.Targets
 
 	if targets == nil {
 		return make([]*TreeMember, 0), nil
 	}
 
-	count := uint(targets.NamedChildCount())
 	list = make([]*TreeMember, 0)
 
-	add := func(node *Node, name string, aliases []string) {
+	add := func(person *fm.Person, name string, aliases []string) {
 		list = append(list, &TreeMember{
-			TreeItemPoint: toTreeItemPoint(node.StartPosition()),
+			TreeItemPoint: toTreeItemPoint(person.Loc),
 
 			Name:    name,
 			Aliases: aliases,
 		})
 	}
 
-	for i := uint(0); i < count; i++ {
-		node := targets.NamedChild(i)
-
-		if node.Kind() == "comment" {
+	for _, person := range targets.Persons {
+		if person.Unknown != nil {
+			add(person, person.Unknown.Text, []string{})
 			continue
 		}
 
-		if IsNameDef(node) {
-			mem := root.GetMemberByUriNode(f.Uri, node.ChildByFieldName("name"))
+		mem := root.GetMemberByUriToken(f.Uri, person.Name)
 
-			if mem != nil {
-				add(mem.Node, mem.Name, mem.Aliases)
-				continue
-			}
-		} else if IsNumUnknown(node) {
-			node = node.NamedChild(1)
+		if mem != nil {
+			add(person, mem.Name, mem.Aliases)
+			continue
 		}
 
-		add(node, ToString(node, doc), []string{})
+		add(person, person.Name.Text, TokensToStrings(person.Aliases))
 	}
 
 	return
@@ -161,7 +147,7 @@ func TreeReload() {
 	treeContext.Notify("tree/reload", nil)
 }
 
-func getFamilyDoc(loc *TreeItemLocation) (f *Family, doc *TextDocument, err error) {
+func getFamilyDoc(loc *TreeItemLocation) (f *Family, doc *Doc, err error) {
 	doc, err = TempDoc(loc.URI)
 
 	if err != nil {
@@ -171,8 +157,10 @@ func getFamilyDoc(loc *TreeItemLocation) (f *Family, doc *TextDocument, err erro
 	dups, exist := root.Duplicates[loc.FamilyName]
 
 	if exist {
+		row := int(loc.Row)
+
 		for _, dup := range dups {
-			if dup.Family.Node.StartPosition().Row == uint(loc.Row) {
+			if dup.Family.Node.Start.Line == row {
 				f = dup.Family
 				return
 			}
@@ -188,29 +176,10 @@ func getFamilyDoc(loc *TreeItemLocation) (f *Family, doc *TextDocument, err erro
 	return
 }
 
-func getRelationsIter(family *Family) (iter.Seq2[uint32, *Node], error) {
-	q, err := CreateQuery(`
-		(relation) @rel
-	`)
-
-	if err != nil {
-		return nil, err
-	}
-
-	iterator := QueryIter(q, GetClosestNode(family.Node, "family"), []byte{})
-
-	return func(yield func(uint32, *Node) bool) {
-		iterator(yield)
-		q.Close()
-	}, nil
-
-	// return QueryIter(q, GetClosestNode(family.Node, "family")), nil
-}
-
-func toTreeItemPoint(pos Point) TreeItemPoint {
+func toTreeItemPoint(loc fm.Loc) TreeItemPoint {
 	return TreeItemPoint{
-		Row:    uint32(pos.Row),
-		Column: uint32(pos.Column),
+		Row:    uint32(loc.Start.Line),
+		Column: uint32(loc.Start.Char),
 	}
 }
 

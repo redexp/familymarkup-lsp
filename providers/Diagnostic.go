@@ -73,7 +73,7 @@ func PublishDiagnostics(ctx *Ctx, uri Uri, doc *TextDocument) error {
 			continue
 		}
 
-		node := ref.Node
+		node := ref.Loc
 		message := L("unknown_person", ref.Name)
 		t := UnknownPersonError
 
@@ -135,7 +135,7 @@ func PublishDiagnostics(ctx *Ctx, uri Uri, doc *TextDocument) error {
 		locations = make([]proto.DiagnosticRelatedInformation, len(dups))
 
 		for i, dup := range dups {
-			node := dup.Member.Node
+			node := dup.Member.Person
 			r, err := doc.NodeToRange(node)
 
 			if err != nil {
@@ -168,7 +168,7 @@ func PublishDiagnostics(ctx *Ctx, uri Uri, doc *TextDocument) error {
 					continue
 				}
 
-				r, err := doc.NodeToRange(ToNameNode(ref.Node))
+				r, err := doc.NodeToRange(ToNameNode(ref.Loc))
 
 				if err != nil {
 					return err
@@ -197,7 +197,7 @@ func PublishDiagnostics(ctx *Ctx, uri Uri, doc *TextDocument) error {
 
 	if warnChildrenWithoutRelations {
 		for mem := range root.MembersIter() {
-			if mem.Family.Uri != uri || len(mem.Refs) > 0 || mem.Origin != nil || !IsNameDef(mem.Node.Parent()) {
+			if mem.Family.Uri != uri || len(mem.Refs) > 0 || mem.Origin != nil || !IsNameDef(mem.Person.Parent()) {
 				continue
 			}
 
@@ -207,7 +207,7 @@ func PublishDiagnostics(ctx *Ctx, uri Uri, doc *TextDocument) error {
 				return err
 			}
 
-			r, err := d.NodeToRange(mem.Node)
+			r, err := d.NodeToRange(mem.Person)
 
 			if err != nil {
 				return err
@@ -277,9 +277,9 @@ func diagnosticOpenDocs(ctx *Ctx) {
 func diagnosticAllDocs(ctx *Ctx) {
 	docDiagnostic.Ctx = ctx
 
-	WalkTrees(func(uri Uri, tree *Tree) {
+	for uri := range GetOpenDocsIter() {
 		docDiagnostic.Set(uri, nil)
-	})
+	}
 }
 
 func scheduleDiagnostic(ctx *Ctx, uri Uri, doc *TextDocument) {

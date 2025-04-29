@@ -16,7 +16,7 @@ func Hover(ctx *Ctx, params *proto.HoverParams) (h *proto.Hover, err error) {
 		return
 	}
 
-	f, m, target, err := getDefinition(uri, &params.Position)
+	f, m, target, err := getDefinition(uri, params.Position)
 
 	if err != nil || (f == nil && m == nil) {
 		return
@@ -34,7 +34,7 @@ func Hover(ctx *Ctx, params *proto.HoverParams) (h *proto.Hover, err error) {
 	aliases := f.Aliases
 
 	if m != nil {
-		if m.Node.Parent().Kind() == "sources" {
+		if m.Person.Parent().Kind() == "sources" {
 			return
 		}
 
@@ -51,7 +51,7 @@ func Hover(ctx *Ctx, params *proto.HoverParams) (h *proto.Hover, err error) {
 	}
 
 	if m != nil {
-		sources := GetClosestSources(m.Node)
+		sources := GetClosestSources(m.Person)
 		doc, err := TempDoc(f.Uri)
 
 		if err != nil {

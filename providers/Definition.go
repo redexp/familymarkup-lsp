@@ -4,6 +4,7 @@ import (
 	. "github.com/redexp/familymarkup-lsp/state"
 	. "github.com/redexp/familymarkup-lsp/types"
 	. "github.com/redexp/familymarkup-lsp/utils"
+	fm "github.com/redexp/familymarkup-parser"
 
 	proto "github.com/tliron/glsp/protocol_3_16"
 )
@@ -15,45 +16,33 @@ func Definition(ctx *Ctx, params *proto.DefinitionParams) (res any, err error) {
 		return
 	}
 
-	family, member, target, err := getDefinition(uri, &params.Position)
+	family, member, source, err := getDefinition(uri, params.Position)
 
 	if err != nil {
 		return
 	}
 
-	var node *Node
+	var target *fm.Token
 
 	if member != nil {
-		node = member.Node
+		target = member.Person.Name
 		uri = member.Family.Uri
 	} else if family != nil {
-		node = family.Node
+		target = family.Node.Name
 		uri = family.Uri
 	}
 
-	if node == nil || node == target {
-		return
-	}
-
-	doc, err := TempDoc(uri)
-
-	if err != nil {
-		return
-	}
-
-	r, err := doc.NodeToRange(node)
-
-	if err != nil {
+	if target == nil || target.IsEqual(source) {
 		return
 	}
 
 	return proto.Location{
 		URI:   uri,
-		Range: *r,
+		Range: TokenToRange(target),
 	}, nil
 }
 
-func getDefinition(uri Uri, pos *Position) (family *Family, member *Member, target *Node, err error) {
+func getDefinition(uri Uri, pos Position) (family *Family, member *Member, token *fm.Token, err error) {
 	uri, err = NormalizeUri(uri)
 
 	if err != nil {
@@ -66,19 +55,7 @@ func getDefinition(uri Uri, pos *Position) (family *Family, member *Member, targ
 		LogDebug("getDefinition UpdateDirty %s", err)
 	}
 
-	srcDoc, err := TempDoc(uri)
-
-	if err != nil {
-		return
-	}
-
-	target, err = srcDoc.GetClosestNodeByPosition(pos)
-
-	if err != nil || target == nil {
-		return
-	}
-
-	famMem := root.GetFamMem(uri, target)
+	famMem := root.GetFamMemByPosition(uri, pos)
 
 	if famMem == nil {
 		return
@@ -86,6 +63,7 @@ func getDefinition(uri Uri, pos *Position) (family *Family, member *Member, targ
 
 	family = famMem.Family
 	member = famMem.Member
+	token = famMem.Token
 
 	return
 }

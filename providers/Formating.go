@@ -2,7 +2,7 @@ package providers
 
 import (
 	"fmt"
-	"iter"
+	fm "github.com/redexp/familymarkup-parser"
 	"regexp"
 	"strconv"
 	"strings"
@@ -14,11 +14,11 @@ import (
 )
 
 func DocFormating(ctx *Ctx, params *proto.DocumentFormattingParams) (list []proto.TextEdit, err error) {
-	return prettyfy(params.TextDocument.URI, nil)
+	return prettify(params.TextDocument.URI, nil)
 }
 
 func RangeFormating(ctx *Ctx, params *proto.DocumentRangeFormattingParams) (list []proto.TextEdit, err error) {
-	return prettyfy(params.TextDocument.URI, &params.Range)
+	return prettify(params.TextDocument.URI, &params.Range)
 }
 
 func LineFormating(ctx *Ctx, params *proto.DocumentOnTypeFormattingParams) (list []proto.TextEdit, err error) {
@@ -42,7 +42,7 @@ func LineFormating(ctx *Ctx, params *proto.DocumentOnTypeFormattingParams) (list
 		r.Start.Line--
 	}
 
-	list, err = prettyfy(params.TextDocument.URI, r)
+	list, err = prettify(params.TextDocument.URI, r)
 
 	if err != nil {
 		return
@@ -63,293 +63,278 @@ func LineFormating(ctx *Ctx, params *proto.DocumentOnTypeFormattingParams) (list
 	return
 }
 
-func prettyfy(uri Uri, r *Range) (list []proto.TextEdit, err error) {
+func prettify(uri Uri, r *Range) (list []proto.TextEdit, err error) {
 	doc, err := TempDoc(uri)
 
 	if err != nil {
 		return
 	}
 
-	q, err := CreateQuery(`
-		(family_name) @f
-		(name_def) @n
+	validRange := func(rng *Range) bool {
+		if r == nil {
+			return true
+		}
 
-		(sources) @s
-		
-		(targets) @t
-	`)
+		start := rng.Start
+		end := rng.End
 
-	if err != nil {
-		return
-	}
+		if r.Start.Line < start.Line && end.Line < r.End.Line {
+			return true
+		}
 
-	defer q.Close()
-
-	add := func(items ...proto.TextEdit) {
-		list = append(list, items...)
-	}
-
-	validRange := func(a *Range, b *Range) bool {
-		if a != nil && a.Start.Line != a.End.Line {
+		if r.Start.Line == start.Line && start.Character < r.Start.Character {
 			return false
 		}
 
-		if b != nil && b.Start.Line != b.End.Line {
-			return false
-		}
-
-		if a != nil && b != nil && a.End.Line != b.Start.Line {
+		if r.End.Line == end.Line && r.End.Character <= end.Character {
 			return false
 		}
 
 		return true
 	}
 
-	checkFirst := func(pos *Range) {
-		if pos.Start.Character == 0 {
+	add := func(item proto.TextEdit) {
+		if !validRange(&item.Range) {
 			return
 		}
 
-		add(proto.TextEdit{
-			Range: Range{
-				Start: Position{
-					Line:      pos.Start.Line,
-					Character: 0,
-				},
-				End: pos.Start,
-			},
-			NewText: "",
-		})
+		list = append(list, item)
 	}
 
-	checkBetween := func(aPos *Position, bPos *Position, text string) {
-		if bPos.Character-aPos.Character != uint32(len(text)) {
-			add(proto.TextEdit{
-				Range: Range{
-					Start: *aPos,
-					End:   *bPos,
-				},
-				NewText: text,
-			})
-		}
-	}
-
-	checkNameAliases := func(node *Node) (err error) {
-		name := node.ChildByFieldName("name")
-		namePos, err := doc.NodeToRange(name)
+	check := func(edit proto.TextEdit) (err error) {
+		text, err := doc.GetTextByRange(&edit.Range)
 
 		if err != nil {
 			return
 		}
 
-		if IsFamilyName(node) {
-			checkFirst(namePos)
-		}
-
-		aliases := node.ChildByFieldName("aliases")
-
-		if aliases == nil {
-			return
-		}
-
-		aliasesPos, err := doc.NodeToRange(aliases)
-
-		if err != nil || !validRange(namePos, aliasesPos) {
-			return
-		}
-
-		checkBetween(&namePos.End, &aliasesPos.Start, " ")
-
-		prev := aliases.NamedChild(0)
-
-		if prev == nil {
-			return
-		}
-
-		prevPos, err := doc.NodeToRange(prev)
-
-		if err != nil || !validRange(aliasesPos, prevPos) {
-			return
-		}
-
-		checkBetween(&aliasesPos.Start, &prevPos.Start, "(")
-
-		for nextPos, err := range childPosIter(prev, doc) {
-			if err != nil || !validRange(prevPos, nextPos) {
-				return err
-			}
-
-			checkBetween(&prevPos.End, &nextPos.Start, ", ")
-
-			prevPos = nextPos
-		}
-
-		if validRange(prevPos, aliasesPos) {
-			checkBetween(&prevPos.End, &aliasesPos.End, ")")
+		if text != edit.NewText {
+			add(edit)
 		}
 
 		return
 	}
 
-	for index, node := range QueryIter(q, doc.Tree.RootNode(), []byte(doc.Text)) {
-		nodePos, err := doc.NodeToRange(node)
-
-		if err != nil {
-			return nil, err
+	checkNameAliases := func(name *fm.Token, aliases []*fm.Token) (err error) {
+		if name != nil && name.Type == fm.TokenSurname && name.Char != 0 {
+			add(proto.TextEdit{
+				Range: Range{
+					Start: Position{
+						Line:      uint32(name.Line),
+						Character: 0,
+					},
+					End: TokenToPosition(name),
+				},
+				NewText: "",
+			})
 		}
 
-		if r != nil && !RangeOverlaps(r, nodePos) {
-			continue
+		if aliases == nil {
+			return
 		}
 
-		switch index {
-		case 0, 1:
-			checkNameAliases(node)
+		count := len(aliases)
 
-		case 2:
-			prev := node.NamedChild(0)
-			prevPos, err := doc.NodeToRange(prev)
+		if count == 0 {
+			return
+		}
+
+		first := aliases[0]
+
+		if name != nil {
+			err = check(proto.TextEdit{
+				Range: Range{
+					Start: TokenEndToPosition(name),
+					End:   TokenToPosition(first),
+				},
+				NewText: " (",
+			})
 
 			if err != nil {
-				return nil, err
+				return
+			}
+		}
+
+		prev := first
+
+		for i := 1; i < count; i++ {
+			alias := aliases[i]
+
+			err = check(proto.TextEdit{
+				Range: Range{
+					Start: TokenEndToPosition(prev),
+					End:   TokenToPosition(alias),
+				},
+				NewText: ", ",
+			})
+
+			if err != nil {
+				return
 			}
 
-			checkFirst(prevPos)
+			prev = alias
+		}
 
-			for {
-				next := prev.NextSibling()
+		last := aliases[count-1]
+		lastIndex := doc.TokenIndex(last)
+		tokensCount := len(doc.Tokens)
 
-				if next == nil {
-					break
-				}
+		for i := lastIndex + 1; i < tokensCount; i++ {
+			token := doc.Tokens[i]
 
-				if next.IsMissing() {
-					continue
-				}
-
-				nextPos, err := doc.NodeToRange(next)
-
-				if err != nil {
-					return nil, err
-				}
-
-				text := " "
-
-				if !next.IsNamed() && !next.IsError() && ToString(next, doc) == "," {
-					text = ""
-				}
-
-				if validRange(prevPos, nextPos) {
-					checkBetween(&prevPos.End, &nextPos.Start, text)
-				}
-
-				prev = next
-				prevPos = nextPos
-			}
-
-			arrow := node.NextNamedSibling()
-
-			if arrow == nil || arrow.IsMissing() {
+			if token.Type == fm.TokenSpace {
 				continue
 			}
 
-			kind := arrow.Kind()
-
-			if kind != "arrow" && kind != "eq" {
-				continue
+			if token.SubType != fm.TokenBracketRight || i-lastIndex == 1 {
+				break
 			}
 
-			arrowPos, err := doc.NodeToRange(arrow)
+			add(proto.TextEdit{
+				Range: Range{
+					Start: TokenEndToPosition(last),
+					End:   TokenToPosition(token),
+				},
+				NewText: ")",
+			})
 
-			if err != nil || !validRange(prevPos, arrowPos) {
-				return nil, err
-			}
+			break
+		}
 
-			checkBetween(&prevPos.End, &arrowPos.Start, " ")
+		return
+	}
 
-		case 3:
-			arrow := node.PrevNamedSibling()
+	for _, family := range doc.Root.Families {
+		err = checkNameAliases(family.Name, family.Aliases)
 
-			if arrow != nil && arrow.StartPosition().Row == node.StartPosition().Row {
-				arrowPos, err := doc.NodeToRange(arrow)
+		if err != nil {
+			return
+		}
 
-				if err != nil {
-					return nil, err
-				}
-
-				nodePos, err := doc.NodeToRange(node)
-
-				if err != nil || !validRange(arrowPos, nodePos) {
-					return nil, err
-				}
-
-				checkBetween(&arrowPos.End, &nodePos.Start, " ")
-			}
-
-			hasNum := false
-
-			for child := range ChildrenIter(node) {
-				hasNum = child.ChildByFieldName("number") != nil
-
-				if hasNum {
-					break
-				}
-			}
-
-			if !hasNum {
-				continue
-			}
-
-			num := 0
-			prevLine := node.PrevNamedSibling().EndPosition().Row
-
-			for child := range ChildrenIter(node) {
-				kind := child.Kind()
-				childLine := child.StartPosition().Row
-				sameLine := prevLine == childLine
-				prevLine = childLine
-
-				if kind != "name_def" && kind != "num_unknown" && kind != "unknown" {
+		for _, rel := range family.Relations {
+			for _, relList := range []*fm.RelList{rel.Sources, rel.Targets} {
+				if relList == nil {
 					continue
 				}
 
-				num++
+				hasNum := false
 
-				numNode := child.ChildByFieldName("number")
-				numText := fmt.Sprintf("%d.", num)
-
-				if numNode != nil && ToString(numNode, doc) == numText {
-					continue
+				for _, person := range relList.Persons {
+					hasNum = person.Num != nil
+					if hasNum {
+						break
+					}
 				}
 
-				nameNode := child.ChildByFieldName("name")
+				for n, person := range relList.Persons {
+					err = checkNameAliases(person.Name, person.Aliases)
 
-				if nameNode == nil {
-					nameNode = child
+					if err != nil {
+						return
+					}
+
+					if person.Num != nil {
+						prev, next := doc.PrevNextTokens(person.Num)
+
+						if prev != nil && prev.Type == fm.TokenSpace && prev.Char == 0 {
+							add(proto.TextEdit{
+								Range:   TokenToRange(prev),
+								NewText: "",
+							})
+						}
+
+						num := strconv.Itoa(n+1) + "."
+
+						if person.Num.Text != num {
+							add(proto.TextEdit{
+								Range:   TokenToRange(person.Num),
+								NewText: num,
+							})
+						}
+
+						if next != nil && next.Type != fm.TokenSpace {
+							add(proto.TextEdit{
+								Range: Range{
+									Start: TokenEndToPosition(person.Num),
+									End:   TokenToPosition(next),
+								},
+								NewText: " ",
+							})
+						}
+					}
 				}
 
-				namePos, err := doc.NodeToRange(nameNode)
+				for _, sep := range relList.Separators {
+					prev, next := doc.PrevNextTokens(sep)
 
-				if err != nil {
-					return nil, err
+					switch sep.Type {
+					case fm.TokenComma:
+						if prev != nil && prev.Type == fm.TokenSpace {
+							add(proto.TextEdit{
+								Range: Range{
+									Start: TokenToPosition(prev),
+									End:   TokenToPosition(sep),
+								},
+								NewText: "",
+							})
+						}
+
+						if next != nil && next.Type != fm.TokenSpace {
+							add(proto.TextEdit{
+								Range: Range{
+									Start: TokenEndToPosition(sep),
+									End:   TokenToPosition(next),
+								},
+								NewText: " ",
+							})
+						}
+
+					case fm.TokenPlus:
+						if prev != nil && prev.Type != fm.TokenSpace {
+							add(proto.TextEdit{
+								Range: Range{
+									Start: TokenEndToPosition(prev),
+									End:   TokenToPosition(sep),
+								},
+								NewText: " ",
+							})
+						}
+
+						if next != nil && next.Type != fm.TokenSpace {
+							add(proto.TextEdit{
+								Range: Range{
+									Start: TokenEndToPosition(sep),
+									End:   TokenToPosition(next),
+								},
+								NewText: " ",
+							})
+						}
+					}
 				}
+			}
 
-				start := uint32(0)
+			if rel.Arrow != nil {
+				prev, next := doc.PrevNextTokens(rel.Arrow)
 
-				if sameLine {
-					start = namePos.Start.Character
-				}
-
-				add(proto.TextEdit{
-					Range: Range{
-						Start: Position{
-							Line:      namePos.Start.Line,
-							Character: start,
+				if prev != nil && prev.Type != fm.TokenSpace {
+					add(proto.TextEdit{
+						Range: Range{
+							Start: TokenToPosition(prev),
+							End:   TokenToPosition(rel.Arrow),
 						},
-						End: namePos.Start,
-					},
-					NewText: numText + " ",
-				})
+						NewText: " ",
+					})
+				}
+
+				if next != nil && next.Line == rel.Arrow.Line && next.Type != fm.TokenSpace && next.SubType != fm.TokenNewLine {
+					add(proto.TextEdit{
+						Range: Range{
+							Start: TokenEndToPosition(rel.Arrow),
+							End:   TokenToPosition(next),
+						},
+						NewText: " ",
+					})
+				}
 			}
 		}
 	}
@@ -483,24 +468,4 @@ func addNewLineNum(uri Uri, pos *Position) (list []proto.TextEdit, err error) {
 	replaceNums(pos.Line+1, uint(num+2))
 
 	return
-}
-
-func childPosIter(prev *Node, doc *TextDocument) iter.Seq2[*Range, error] {
-	return func(yield func(*Range, error) bool) {
-		for {
-			next := prev.NextNamedSibling()
-
-			if next == nil {
-				break
-			}
-
-			nextPos, err := doc.NodeToRange(next)
-
-			if !yield(nextPos, err) {
-				break
-			}
-
-			prev = next
-		}
-	}
 }

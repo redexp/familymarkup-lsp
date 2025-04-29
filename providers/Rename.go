@@ -7,21 +7,9 @@ import (
 )
 
 func PrepareRename(ctx *Ctx, params *proto.PrepareRenameParams) (res any, err error) {
-	uri, err := NormalizeUri(params.TextDocument.URI)
+	famMem := root.GetFamMemByPosition(params.TextDocument.URI, params.Position)
 
-	if err != nil {
-		return
-	}
-
-	doc, err := TempDoc(uri)
-
-	if err != nil {
-		return
-	}
-
-	node, err := doc.GetClosestNodeByPosition(&params.Position)
-
-	if err != nil || node == nil {
+	if famMem == nil {
 		return
 	}
 
@@ -29,17 +17,7 @@ func PrepareRename(ctx *Ctx, params *proto.PrepareRenameParams) (res any, err er
 		DefaultBehavior: true,
 	}
 
-	if IsFamilyName(node.Parent()) {
-		return
-	}
-
-	mem := root.GetMemberByUriNode(uri, node)
-
-	if mem != nil {
-		return
-	}
-
-	return nil, nil
+	return
 }
 
 func Rename(ctx *Ctx, params *proto.RenameParams) (res *proto.WorkspaceEdit, err error) {
@@ -110,8 +88,8 @@ func Rename(ctx *Ctx, params *proto.RenameParams) (res *proto.WorkspaceEdit, err
 	}
 
 	refs := append(member.Refs, &Ref{
-		Uri:  member.Family.Uri,
-		Node: member.Node,
+		Uri: member.Family.Uri,
+		Loc: member.Person,
 	})
 
 	tempDocs := make(Docs)
@@ -130,7 +108,7 @@ func Rename(ctx *Ctx, params *proto.RenameParams) (res *proto.WorkspaceEdit, err
 			edits = make([]proto.TextEdit, 0)
 		}
 
-		node := ToNameNode(ref.Node)
+		node := ToNameNode(ref.Loc)
 
 		r, err := doc.NodeToRange(node)
 

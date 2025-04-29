@@ -2,18 +2,23 @@ package providers
 
 import (
 	. "github.com/redexp/familymarkup-lsp/state"
+	. "github.com/redexp/familymarkup-lsp/types"
 	. "github.com/redexp/familymarkup-lsp/utils"
 	proto "github.com/tliron/glsp/protocol_3_16"
 )
 
-func Completion(ctx *Ctx, params *proto.CompletionParams) (any, error) {
+func Completion(ctx *Ctx, params *proto.CompletionParams) (res any, err error) {
 	uri, err := NormalizeUri(params.TextDocument.URI)
 
 	if err != nil {
-		return nil, err
+		return
 	}
 
-	root.UpdateDirty()
+	err = root.UpdateDirty()
+
+	if err != nil {
+		return
+	}
 
 	doc, err := TempDoc(uri)
 
@@ -149,4 +154,104 @@ func Completion(ctx *Ctx, params *proto.CompletionParams) (any, error) {
 	}
 
 	return list, nil
+}
+
+// GetTypeNode
+// "= |", []
+// "= label|", [Loc]
+// "name" || "surname", [Loc]
+// "name surname|", [Loc, Loc]
+// "name |", [Loc]
+// "name| surname", [Loc, Loc]
+// "| surname", [Loc]
+// "nil", []
+func GetTypeNode(doc *TextDocument, pos *Position) (t string, nodes []*Node, err error) {
+	prev, target, next, err := doc.GetClosestHighlightCaptureByPosition(pos)
+
+	if err != nil {
+		return
+	}
+
+	caps := []*QueryCapture{prev, target, next}
+	nodes = make([]*Node, 3)
+	line := uint(pos.Line)
+
+	for i, cap := range caps {
+		if cap == nil || cap.Node.StartPosition().Row != line {
+			continue
+		}
+
+		nodes[i] = &cap.Node
+	}
+
+	if nodes[0] != nil && nodes[0].Kind() == "eq" {
+		if nodes[1] == nil && nodes[0].StartPosition().Row == uint(pos.Line) {
+			return "= |", []*Node{}, nil
+		}
+
+		if nodes[1] != nil && nodes[1].Kind() == "words" {
+			return "= label|", []*Node{nodes[1]}, nil
+		}
+	}
+
+	for i, node := range nodes {
+		if node == nil {
+			continue
+		}
+
+		nt := node.Kind()
+
+		if nt != "name" && nt != "surname" {
+			nodes[i] = nil
+			continue
+		}
+
+		parent := node.Parent()
+		parentType := ""
+		if parent != nil {
+			parentType = parent.Kind()
+		}
+
+		if parentType == "name_aliases" {
+			if i != 1 {
+				nodes[i] = nil
+				continue
+			}
+
+			return nt, []*Node{node}, nil
+		}
+	}
+
+	if nodes[0] != nil {
+		if nodes[1] != nil {
+			return "name surname|", nodes[0:2], nil
+		}
+
+		return "name |", nodes[0:1], nil
+	}
+
+	node := nodes[1]
+
+	if node != nil {
+		if nodes[2] != nil {
+			return "name| surname", nodes[1:3], nil
+		}
+
+		t = node.Kind()
+		p := node.Parent()
+		nodes = []*Node{node}
+
+		if p != nil && p.Kind() == "family_name" {
+			t = "surname"
+			return
+		}
+
+		return
+	}
+
+	if nodes[2] != nil {
+		return "| surname", nodes[2:3], nil
+	}
+
+	return "nil", []*Node{}, nil
 }

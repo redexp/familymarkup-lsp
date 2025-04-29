@@ -1,39 +1,28 @@
 package providers
 
 import (
+	fm "github.com/redexp/familymarkup-parser"
 	"iter"
 
 	. "github.com/redexp/familymarkup-lsp/state"
 	. "github.com/redexp/familymarkup-lsp/types"
+	. "github.com/redexp/familymarkup-lsp/utils"
 	proto "github.com/tliron/glsp/protocol_3_16"
 )
 
 func References(ctx *Ctx, params *proto.ReferenceParams) (res []proto.Location, err error) {
-	family, member, _, err := getDefinition(params.TextDocument.URI, &params.Position)
+	family, member, _, err := getDefinition(params.TextDocument.URI, params.Position)
 
 	if err != nil || (family == nil && member == nil) {
 		return
 	}
 
-	tempDocs := make(Docs)
 	res = make([]proto.Location, 0)
 
-	for uri, node := range GetReferencesIter(family, member) {
-		doc, err := tempDocs.Get(uri)
-
-		if err != nil {
-			return nil, err
-		}
-
-		r, err := doc.NodeToRange(node)
-
-		if err != nil {
-			return nil, err
-		}
-
+	for uri, loc := range GetReferencesIter(family, member) {
 		res = append(res, proto.Location{
 			URI:   uri,
-			Range: *r,
+			Range: *LocToRange(loc),
 		})
 	}
 
@@ -60,8 +49,8 @@ func References(ctx *Ctx, params *proto.ReferenceParams) (res []proto.Location, 
 	return
 }
 
-func GetReferencesIter(family *Family, member *Member) iter.Seq2[Uri, *Node] {
-	return func(yield func(string, *Node) bool) {
+func GetReferencesIter(family *Family, member *Member) iter.Seq2[Uri, fm.Loc] {
+	return func(yield func(string, fm.Loc) bool) {
 		if family == nil {
 			family = &Family{}
 		}
@@ -73,7 +62,7 @@ func GetReferencesIter(family *Family, member *Member) iter.Seq2[Uri, *Node] {
 		for uri, nodes := range root.NodeRefs {
 			for _, item := range nodes {
 				if item.Family == family || item.Member == member {
-					if !yield(uri, item.Node) {
+					if !yield(uri, item.Loc) {
 						return
 					}
 				}

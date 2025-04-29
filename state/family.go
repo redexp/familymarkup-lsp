@@ -1,9 +1,11 @@
 package state
 
 import (
+	fm "github.com/redexp/familymarkup-parser"
 	"iter"
 
 	. "github.com/redexp/familymarkup-lsp/types"
+	. "github.com/redexp/familymarkup-lsp/utils"
 )
 
 type Family struct {
@@ -12,7 +14,7 @@ type Family struct {
 	Members    Members
 	Duplicates Duplicates
 	Uri        Uri
-	Node       *Node
+	Node       *fm.Family
 	Root       *Root
 }
 
@@ -52,21 +54,25 @@ func (family *Family) FindMember(name string) (mem *Member) {
 	return nil
 }
 
-func (family *Family) AddMember(node *Node, text []byte) *Member {
-	name := node.Utf8Text(text)
-	aliases := getAliases(node, text)
+func (family *Family) AddMember(person *fm.Person) *Member {
+	name := person.Name.Text
+	aliases := TokensToStrings(person.Aliases)
 
-	surnameNode := node.Parent().ChildByFieldName("surname")
 	surname := ""
 
-	if surnameNode != nil {
-		surname = surnameNode.Utf8Text(text)
+	if person.Surname != nil {
+		surname = person.Surname.Text
+
+		family.Root.AddRef(&Ref{
+			Uri:     family.Uri,
+			Surname: person.Surname,
+		})
 	}
 
-	return family.AddMemberName(node, name, aliases, surname)
+	return family.AddMemberName(person, name, aliases, surname)
 }
 
-func (family *Family) AddMemberName(node *Node, name string, aliases []string, surname string) *Member {
+func (family *Family) AddMemberName(person *fm.Person, name string, aliases []string, surname string) *Member {
 	mem, exist := family.Members[name]
 
 	if exist {
@@ -79,13 +85,13 @@ func (family *Family) AddMemberName(node *Node, name string, aliases []string, s
 		Name:    name,
 		Aliases: aliases,
 		Surname: surname,
-		Node:    node,
+		Person:  person,
 		Refs:    make([]*Ref, 0),
 		Family:  family,
 	}
 
 	family.Members[name] = member
-	family.Root.AddNodeRef(family.Uri, &FamMem{Member: member, Node: node})
+	family.Root.AddNodeRef(family.Uri, &FamMem{Member: member, Loc: person.Loc})
 
 	for _, alias := range aliases {
 		mem, exist = family.Members[alias]

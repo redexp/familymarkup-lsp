@@ -14,7 +14,7 @@ func DocOpen(ctx *Ctx, params *proto.DidOpenTextDocumentParams) (err error) {
 		return
 	}
 
-	doc, err := root.OpenDocText(uri, params.TextDocument.Text, GetTree(uri))
+	doc, err := root.OpenDocText(uri, params.TextDocument.Text)
 
 	if err != nil {
 		return
@@ -63,8 +63,6 @@ func DocChange(ctx *Ctx, params *proto.DidChangeTextDocumentParams) error {
 		case proto.TextDocumentContentChangeEvent:
 			err = doc.Change(&change)
 		}
-
-		SetTree(uri, doc.Tree)
 
 		if err != nil {
 			return err

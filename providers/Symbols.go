@@ -55,7 +55,7 @@ func DocSymbols(ctx *Ctx, params *proto.DocumentSymbolParams) (res any, err erro
 		}
 
 		for mem := range f.MembersIter() {
-			r, err := doc.NodeToRange(mem.Node)
+			r, err := doc.NodeToRange(mem.Person)
 
 			if err != nil {
 				return nil, err
@@ -207,7 +207,7 @@ func ResolveSymbol(ctx *Ctx, symbol *WorkspaceSymbol) (res *WorkspaceSymbolLocat
 			return nil, fmt.Errorf("member not found")
 		}
 
-		r, err := doc.NodeToRange(mem.Node)
+		r, err := doc.NodeToRange(mem.Person)
 
 		if err != nil {
 			return nil, err

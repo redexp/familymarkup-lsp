@@ -1,31 +1,64 @@
 package state
 
 import (
+	fm "github.com/redexp/familymarkup-parser"
 	"iter"
 	"os"
+	"slices"
 	"sync"
 
 	. "github.com/redexp/familymarkup-lsp/types"
 	. "github.com/redexp/familymarkup-lsp/utils"
 	"github.com/redexp/textdocument"
-	familymarkup "github.com/redexp/tree-sitter-familymarkup"
 )
 
-type Docs map[Uri]*TextDocument
+type Doc struct {
+	*TextDocument
+
+	Uri    Uri
+	Tokens []*fm.Token
+	Root   *fm.Root
+}
+
+type Docs map[Uri]*Doc
 
 var documents sync.Map
 
-func GetDoc(uri Uri) *TextDocument {
+func CreateDoc(uri Uri, text string) *Doc {
+	doc := &Doc{
+		TextDocument: textdocument.NewTextDocument(text),
+		Uri:          uri,
+		Tokens:       fm.Lexer(text),
+	}
+
+	doc.Root = fm.ParseTokens(doc.Tokens)
+
+	return doc
+}
+
+func CreateDocFromUri(uri Uri) (doc *Doc, err error) {
+	text, err := GetText(uri)
+
+	if err != nil {
+		return
+	}
+
+	doc = CreateDoc(uri, text)
+
+	return
+}
+
+func GetDoc(uri Uri) *Doc {
 	value, ok := documents.Load(uri)
 
 	if !ok {
 		return nil
 	}
 
-	return value.(*TextDocument)
+	return value.(*Doc)
 }
 
-func (root *Root) OpenDoc(uri Uri) (doc *TextDocument, err error) {
+func (root *Root) OpenDoc(uri Uri) (doc *Doc, err error) {
 	uri, err = NormalizeUri(uri)
 
 	if err != nil {
@@ -38,46 +71,27 @@ func (root *Root) OpenDoc(uri Uri) (doc *TextDocument, err error) {
 		return
 	}
 
-	tree, text, err := GetTreeText(uri)
+	text, err := GetText(uri)
 
 	if err != nil {
 		return
 	}
 
-	return root.OpenDocText(uri, string(text), tree)
+	return root.OpenDocText(uri, text)
 }
 
-func (root *Root) OpenDocText(uri Uri, text string, tree *Tree) (doc *TextDocument, err error) {
-	doc = textdocument.NewTextDocument(text)
-	doc.Tree = tree
-	doc.Parser = CreateParser()
-
-	if tree == nil {
-		doc.UpdateTree(nil)
-		SetTree(uri, doc.Tree)
-	}
-
-	q, qerr := familymarkup.GetHighlightQuery()
-
-	if qerr != nil {
-		return nil, qerr
-	}
-
-	doc.HighlightCapturesDirty = true
-
-	doc.SetHighlightQuery(q, &textdocument.Ignore{
-		Missing: true,
-	})
+func (root *Root) OpenDocText(uri Uri, text string) (doc *Doc, err error) {
+	doc = CreateDoc(uri, text)
 
 	documents.Store(uri, doc)
 
 	return
 }
 
-func GetOpenDocsIter() iter.Seq2[Uri, *TextDocument] {
-	return func(yield func(Uri, *TextDocument) bool) {
+func GetOpenDocsIter() iter.Seq2[Uri, *Doc] {
+	return func(yield func(Uri, *Doc) bool) {
 		documents.Range(func(key, value any) bool {
-			return yield(key.(Uri), value.(*TextDocument))
+			return yield(key.(Uri), value.(*Doc))
 		})
 	}
 }
@@ -89,7 +103,6 @@ func CloseDoc(uri Uri) {
 		return
 	}
 
-	doc.Parser.Close()
 	documents.Delete(uri)
 }
 
@@ -101,12 +114,11 @@ func RemoveDoc(uri Uri) error {
 	}
 
 	CloseDoc(uri)
-	RemoveTree(uri)
 
 	return nil
 }
 
-func TempDoc(uri Uri) (doc *TextDocument, err error) {
+func TempDoc(uri Uri) (doc *Doc, err error) {
 	uri, err = NormalizeUri(uri)
 
 	if err != nil {
@@ -119,16 +131,7 @@ func TempDoc(uri Uri) (doc *TextDocument, err error) {
 		return
 	}
 
-	tree, text, err := GetTreeText(uri)
-
-	if err != nil {
-		return
-	}
-
-	doc = textdocument.NewTextDocument(string(text))
-	doc.Tree = tree
-
-	return
+	return CreateDocFromUri(uri)
 }
 
 func UriFileExist(uri Uri) bool {
@@ -146,7 +149,7 @@ func UriFileExist(uri Uri) bool {
 	return !info.IsDir()
 }
 
-func ToString(node *Node, doc *TextDocument) string {
+func ToString(node *Node, doc *Doc) string {
 	if node == nil {
 		return ""
 	}
@@ -154,7 +157,31 @@ func ToString(node *Node, doc *TextDocument) string {
 	return node.Utf8Text([]byte(doc.Text))
 }
 
-func (docs Docs) Get(uri Uri) (doc *TextDocument, err error) {
+func GetText(uri Uri) (text string, err error) {
+	uri, err = NormalizeUri(uri)
+
+	if err != nil {
+		return
+	}
+
+	path, err := UriToPath(uri)
+
+	if err != nil {
+		return
+	}
+
+	bytes, err := os.ReadFile(path)
+
+	if err != nil {
+		return
+	}
+
+	text = string(bytes)
+
+	return
+}
+
+func (docs Docs) Get(uri Uri) (doc *Doc, err error) {
 	doc = docs[uri]
 
 	if doc != nil {
@@ -168,6 +195,30 @@ func (docs Docs) Get(uri Uri) (doc *TextDocument, err error) {
 	}
 
 	docs[uri] = doc
+
+	return
+}
+
+func (doc *Doc) TokenIndex(token *fm.Token) int {
+	return slices.Index(doc.Tokens, token)
+}
+
+func (doc *Doc) PrevNextTokens(token *fm.Token) (prev *fm.Token, next *fm.Token) {
+	count := len(doc.Tokens)
+
+	if count <= 1 {
+		return
+	}
+
+	index := doc.TokenIndex(token)
+
+	if index > 0 {
+		prev = doc.Tokens[index-1]
+	}
+
+	if index < count-1 {
+		next = doc.Tokens[index+1]
+	}
 
 	return
 }

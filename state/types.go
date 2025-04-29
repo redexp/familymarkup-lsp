@@ -2,13 +2,14 @@ package state
 
 import (
 	. "github.com/redexp/familymarkup-lsp/types"
+	fm "github.com/redexp/familymarkup-parser"
 )
 
 type Ref struct {
 	Uri     Uri
-	Node    *Node
-	Surname string
-	Name    string
+	Surname *fm.Token
+	Name    *fm.Token
+	Person  *fm.Person
 	Member  *Member
 	Family  *Family
 }
@@ -22,7 +23,8 @@ type Duplicate struct {
 type FamMem struct {
 	Family *Family
 	Member *Member
-	Node   *Node
+	Loc    fm.Loc
+	Token  *fm.Token
 }
 
 type (
