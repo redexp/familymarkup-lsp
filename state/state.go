@@ -393,7 +393,7 @@ func (root *Root) AddFamily(uri Uri, node *fm.Family) *Family {
 		root.Families[name] = family
 	}
 
-	root.AddNodeRef(family.Uri, &FamMem{Family: family, Loc: family.Node.Loc})
+	root.AddNodeRef(family.Uri, &FamMem{Family: family, Token: family.Node.Name})
 
 	return family
 }

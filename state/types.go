@@ -23,7 +23,6 @@ type Duplicate struct {
 type FamMem struct {
 	Family *Family
 	Member *Member
-	Loc    fm.Loc
 	Token  *fm.Token
 }
 

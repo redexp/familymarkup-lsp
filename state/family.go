@@ -91,7 +91,7 @@ func (family *Family) AddMemberName(person *fm.Person, name string, aliases []st
 	}
 
 	family.Members[name] = member
-	family.Root.AddNodeRef(family.Uri, &FamMem{Member: member, Loc: person.Loc})
+	family.Root.AddNodeRef(family.Uri, &FamMem{Member: member, Token: person.Name})
 
 	for _, alias := range aliases {
 		mem, exist = family.Members[alias]
