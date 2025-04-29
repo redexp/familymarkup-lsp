@@ -30,7 +30,7 @@ func DocumentHighlight(ctx *Ctx, params *proto.DocumentHighlightParams) (res []p
 
 	add := func(loc fm.Loc) {
 		res = append(res, proto.DocumentHighlight{
-			Range: *LocToRange(loc),
+			Range: LocToRange(loc),
 			Kind:  kind,
 		})
 	}

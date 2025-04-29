@@ -19,10 +19,10 @@ func References(ctx *Ctx, params *proto.ReferenceParams) (res []proto.Location, 
 
 	res = make([]proto.Location, 0)
 
-	for uri, loc := range GetReferencesIter(family, member) {
+	for uri, token := range GetReferencesIter(family, member) {
 		res = append(res, proto.Location{
 			URI:   uri,
-			Range: *LocToRange(loc),
+			Range: TokenToRange(token),
 		})
 	}
 
@@ -49,8 +49,8 @@ func References(ctx *Ctx, params *proto.ReferenceParams) (res []proto.Location, 
 	return
 }
 
-func GetReferencesIter(family *Family, member *Member) iter.Seq2[Uri, fm.Loc] {
-	return func(yield func(string, fm.Loc) bool) {
+func GetReferencesIter(family *Family, member *Member) iter.Seq2[Uri, *fm.Token] {
+	return func(yield func(string, *fm.Token) bool) {
 		if family == nil {
 			family = &Family{}
 		}
@@ -62,7 +62,7 @@ func GetReferencesIter(family *Family, member *Member) iter.Seq2[Uri, fm.Loc] {
 		for uri, nodes := range root.NodeRefs {
 			for _, item := range nodes {
 				if item.Family == family || item.Member == member {
-					if !yield(uri, item.Loc) {
+					if !yield(uri, item.Token) {
 						return
 					}
 				}

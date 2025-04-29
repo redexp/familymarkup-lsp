@@ -294,8 +294,8 @@ func TokensToStrings(tokens []*fm.Token) []string {
 	return list
 }
 
-func LocToRange(loc fm.Loc) *proto.Range {
-	return &proto.Range{
+func LocToRange(loc fm.Loc) proto.Range {
+	return proto.Range{
 		Start: Position{
 			Line:      uint32(loc.Start.Line),
 			Character: uint32(loc.Start.Char),
