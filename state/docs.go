@@ -222,3 +222,63 @@ func (doc *Doc) PrevNextTokens(token *fm.Token) (prev *fm.Token, next *fm.Token)
 
 	return
 }
+
+func (doc *Doc) PrevNextNonSpaceTokens(token *fm.Token) (prev *fm.Token, next *fm.Token) {
+	count := len(doc.Tokens)
+
+	if count <= 1 {
+		return
+	}
+
+	index := doc.TokenIndex(token)
+
+	for i := index - 1; i >= 0; i-- {
+		t := doc.Tokens[i]
+
+		if t.Type != fm.TokenSpace {
+			prev = t
+			break
+		}
+	}
+
+	for i := index + 1; i < count; i++ {
+		t := doc.Tokens[i]
+
+		if t.Type != fm.TokenSpace {
+			next = t
+			break
+		}
+	}
+
+	return
+}
+
+func (doc *Doc) GetTokenByPosition(pos *Position) *fm.Token {
+	offset, err := doc.PositionToByteIndex(pos)
+
+	if err != nil {
+		return nil
+	}
+
+	for _, token := range doc.Tokens {
+		if uint32(token.Offest) < offset {
+			continue
+		}
+
+		return token
+	}
+
+	return nil
+}
+
+func (doc *Doc) FindRelation(cb func(*fm.Relation) bool) *fm.Relation {
+	for _, f := range doc.Root.Families {
+		for _, r := range f.Relations {
+			if cb(r) {
+				return r
+			}
+		}
+	}
+
+	return nil
+}

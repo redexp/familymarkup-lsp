@@ -4,32 +4,15 @@ import (
 	. "github.com/redexp/familymarkup-lsp/state"
 	. "github.com/redexp/familymarkup-lsp/types"
 	. "github.com/redexp/familymarkup-lsp/utils"
+	fm "github.com/redexp/familymarkup-parser"
 	proto "github.com/tliron/glsp/protocol_3_16"
 )
 
 func Completion(ctx *Ctx, params *proto.CompletionParams) (res any, err error) {
-	uri, err := NormalizeUri(params.TextDocument.URI)
+	t, words, err := GetCompletionType(params.TextDocument.URI, &params.Position)
 
-	if err != nil {
+	if err != nil || t == "" {
 		return
-	}
-
-	err = root.UpdateDirty()
-
-	if err != nil {
-		return
-	}
-
-	doc, err := TempDoc(uri)
-
-	if err != nil {
-		return nil, err
-	}
-
-	t, nodes, err := GetTypeNode(doc, &params.Position)
-
-	if err != nil || t == "nil" {
-		return nil, err
 	}
 
 	// show names for surname
@@ -40,44 +23,38 @@ func Completion(ctx *Ctx, params *proto.CompletionParams) (res any, err error) {
 	list := make([]proto.CompletionItem, 0)
 	hash := make(map[string]bool)
 
-	for _, node := range nodes {
-		hash[ToString(node, doc)] = true
+	for _, word := range words {
+		hash[word] = true
 	}
 
-	add := func(name string) {
-		_, exist := hash[name]
+	kind := P(proto.CompletionItemKindVariable)
 
-		if exist {
-			return
-		}
+	add := func(names ...string) {
+		for _, name := range names {
+			_, exist := hash[name]
 
-		list = append(list, proto.CompletionItem{
-			Kind:  P(proto.CompletionItemKindVariable),
-			Label: name,
-		})
+			if exist {
+				continue
+			}
 
-		hash[name] = true
-	}
+			hash[name] = true
 
-	addAliases := func(aliases []string) {
-		if aliases == nil {
-			return
-		}
-
-		for _, alias := range aliases {
-			add(alias)
+			list = append(list, proto.CompletionItem{
+				Kind:  kind,
+				Label: name,
+			})
 		}
 	}
 
 	addFamily := func(family *Family) {
 		add(family.Name)
-		addAliases(family.Aliases)
+		add(family.Aliases...)
 	}
 
 	addMembers := func(family *Family) {
 		for member := range family.MembersIter() {
 			add(member.Name)
-			addAliases(member.Aliases)
+			add(member.Aliases...)
 		}
 	}
 
@@ -92,13 +69,13 @@ func Completion(ctx *Ctx, params *proto.CompletionParams) (res any, err error) {
 	}
 
 	if t == "| surname" || t == "name| surname" {
-		surname := nodes[0]
+		surname := words[0]
 
-		if len(nodes) > 1 {
-			surname = nodes[1]
+		if len(words) > 1 {
+			surname = words[1]
 		}
 
-		family := root.FindFamily(ToString(surname, doc))
+		family := root.FindFamily(surname)
 
 		if family != nil {
 			addMembers(family)
@@ -109,12 +86,24 @@ func Completion(ctx *Ctx, params *proto.CompletionParams) (res any, err error) {
 		t = "name"
 	}
 
-	if (t == "name |" || t == "name surname|") && IsNameDef(nodes[0].Parent()) {
+	doc, err := TempDoc(params.TextDocument.URI)
+
+	if err != nil {
+		return
+	}
+
+	line := int(params.Position.Line)
+
+	rel := doc.FindRelation(func(r *fm.Relation) bool {
+		return r.Start.Line <= line && line <= r.End.Line
+	})
+
+	if (t == "name |" || t == "name surname|") && rel != nil && rel.IsFamilyDef {
 		t = "surname"
 	}
 
 	if t == "name |" || t == "name surname|" {
-		name := ToString(nodes[0], doc)
+		name := words[0]
 
 		for member := range root.MembersIter() {
 			if member.HasName(name) {
@@ -139,16 +128,16 @@ func Completion(ctx *Ctx, params *proto.CompletionParams) (res any, err error) {
 
 	if t == "surname" {
 		for _, ref := range root.UnknownRefs {
-			if ref.Surname != "" {
-				add(ref.Surname)
+			if ref.Surname != nil {
+				add(ref.Surname.Text)
 			}
 		}
 	}
 
 	if t == "name" {
 		for _, ref := range root.UnknownRefs {
-			if ref.Name != "" {
-				add(ref.Name)
+			if ref.Name != nil {
+				add(ref.Name.Text)
 			}
 		}
 	}
@@ -156,102 +145,64 @@ func Completion(ctx *Ctx, params *proto.CompletionParams) (res any, err error) {
 	return list, nil
 }
 
-// GetTypeNode
+// GetCompletionType
 // "= |", []
-// "= label|", [Loc]
-// "name" || "surname", [Loc]
-// "name surname|", [Loc, Loc]
-// "name |", [Loc]
-// "name| surname", [Loc, Loc]
-// "| surname", [Loc]
-// "nil", []
-func GetTypeNode(doc *TextDocument, pos *Position) (t string, nodes []*Node, err error) {
-	prev, target, next, err := doc.GetClosestHighlightCaptureByPosition(pos)
+// "name| surname", [string, string]
+// "name |", [string]
+// "| surname", [string]
+// "= label|", [string]
+// "name surname|", [string, string]
+// "name" || "surname", [string]
+// "", []
+func GetCompletionType(uri Uri, pos *Position) (t string, words []string, err error) {
+	doc, err := TempDoc(uri)
 
 	if err != nil {
 		return
 	}
 
-	caps := []*QueryCapture{prev, target, next}
-	nodes = make([]*Node, 3)
-	line := uint(pos.Line)
+	token := doc.GetTokenByPosition(pos)
 
-	for i, cap := range caps {
-		if cap == nil || cap.Node.StartPosition().Row != line {
-			continue
-		}
-
-		nodes[i] = &cap.Node
-	}
-
-	if nodes[0] != nil && nodes[0].Kind() == "eq" {
-		if nodes[1] == nil && nodes[0].StartPosition().Row == uint(pos.Line) {
-			return "= |", []*Node{}, nil
-		}
-
-		if nodes[1] != nil && nodes[1].Kind() == "words" {
-			return "= label|", []*Node{nodes[1]}, nil
-		}
-	}
-
-	for i, node := range nodes {
-		if node == nil {
-			continue
-		}
-
-		nt := node.Kind()
-
-		if nt != "name" && nt != "surname" {
-			nodes[i] = nil
-			continue
-		}
-
-		parent := node.Parent()
-		parentType := ""
-		if parent != nil {
-			parentType = parent.Kind()
-		}
-
-		if parentType == "name_aliases" {
-			if i != 1 {
-				nodes[i] = nil
-				continue
-			}
-
-			return nt, []*Node{node}, nil
-		}
-	}
-
-	if nodes[0] != nil {
-		if nodes[1] != nil {
-			return "name surname|", nodes[0:2], nil
-		}
-
-		return "name |", nodes[0:1], nil
-	}
-
-	node := nodes[1]
-
-	if node != nil {
-		if nodes[2] != nil {
-			return "name| surname", nodes[1:3], nil
-		}
-
-		t = node.Kind()
-		p := node.Parent()
-		nodes = []*Node{node}
-
-		if p != nil && p.Kind() == "family_name" {
-			t = "surname"
-			return
-		}
-
+	if token == nil {
 		return
 	}
 
-	if nodes[2] != nil {
-		return "| surname", nodes[2:3], nil
+	prev, next := doc.PrevNextNonSpaceTokens(token)
+
+	mask := fm.TokenSpace | fm.TokenNewLine | fm.TokenEmptyLines
+	blank := token.Type&mask == 0
+
+	if blank && prev != nil && prev.SubType == fm.TokenEqual {
+		return "= |", []string{}, nil
 	}
 
-	return "nil", []*Node{}, nil
+	if blank && prev != nil && prev.Type == fm.TokenName && next != nil && next.Type == fm.TokenSurname {
+		return "name| surname", []string{prev.Text, next.Text}, nil
+	}
+
+	if blank && prev != nil && prev.Type == fm.TokenName {
+		return "name |", []string{prev.Text}, nil
+	}
+
+	if blank && next != nil && next.Type == fm.TokenSurname {
+		return "| surname", []string{next.Text}, nil
+	}
+
+	if token.Type == fm.TokenWord && prev != nil && prev.SubType == fm.TokenEqual {
+		return "= label|", []string{prev.Text}, nil
+	}
+
+	if token.Type == fm.TokenSurname && prev != nil && prev.Type == fm.TokenName {
+		return "name surname|", []string{prev.Text, token.Text}, nil
+	}
+
+	if token.Type == fm.TokenName {
+		return "name", []string{token.Text}, nil
+	}
+
+	if token.Type == fm.TokenSurname {
+		return "surname", []string{token.Text}, nil
+	}
+
+	return "", []string{}, nil
 }
