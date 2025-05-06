@@ -2,11 +2,11 @@ package providers
 
 import (
 	"fmt"
-
 	"github.com/mitchellh/mapstructure"
 	. "github.com/redexp/familymarkup-lsp/state"
 	. "github.com/redexp/familymarkup-lsp/types"
 	. "github.com/redexp/familymarkup-lsp/utils"
+	fm "github.com/redexp/familymarkup-parser"
 	proto "github.com/tliron/glsp/protocol_3_16"
 )
 
@@ -23,19 +23,20 @@ const (
 	CreateFamilyOnNewFile
 )
 
-func CodeAction(ctx *Ctx, params *proto.CodeActionParams) (any, error) {
+func CodeAction(_ *Ctx, params *proto.CodeActionParams) (res any, err error) {
 	if len(params.Context.Diagnostics) == 0 {
-		return nil, nil
+		return
 	}
 
 	uri, err := NormalizeUri(params.TextDocument.URI)
 
 	if err != nil {
-		return nil, err
+		return
 	}
 
 	list := make([]proto.CodeAction, 0)
 	tempDocs := make(Docs)
+	var doc *Doc
 	QuickFix := P(proto.CodeActionKindQuickFix)
 
 	add := func(items ...proto.CodeAction) {
@@ -48,33 +49,32 @@ func CodeAction(ctx *Ctx, params *proto.CodeActionParams) (any, error) {
 		}
 
 		var data DiagnosticData
-		err := mapstructure.Decode(d.Data, &data)
+		err = mapstructure.Decode(d.Data, &data)
 
 		if err != nil {
-			return nil, err
+			return
 		}
 
 		switch data.Type {
 		case UnknownFamilyError:
-			doc, err := tempDocs.Get(uri)
+			doc, err = tempDocs.Get(uri)
 
 			if err != nil {
-				return nil, err
+				return
 			}
 
-			node, err := doc.GetClosestNodeByPosition(&d.Range.Start)
+			family := doc.FindFamilyByRange(d.Range)
 
-			if err != nil {
-				return nil, err
+			if family == nil {
+				continue
 			}
 
-			name := ToString(node, doc)
-
-			family := GetClosestFamilyName(node)
+			// TODO: check maybe doc.GetTextByRange would be the same
+			token := doc.GetTokenByPosition(&d.Range.Start)
 
 			add(
 				proto.CodeAction{
-					Title:       L("create_family_after", name, ToString(family, doc)),
+					Title:       L("create_family_after", token.Text, family.Name.Text),
 					Kind:        QuickFix,
 					Diagnostics: []proto.Diagnostic{d},
 					Data: CodeActionData{
@@ -84,7 +84,7 @@ func CodeAction(ctx *Ctx, params *proto.CodeActionParams) (any, error) {
 					},
 				},
 				proto.CodeAction{
-					Title:       L("create_family_at_end", name),
+					Title:       L("create_family_at_end", token.Text),
 					Kind:        QuickFix,
 					Diagnostics: []proto.Diagnostic{d},
 					Data: CodeActionData{
@@ -94,7 +94,7 @@ func CodeAction(ctx *Ctx, params *proto.CodeActionParams) (any, error) {
 					},
 				},
 				proto.CodeAction{
-					Title:       L("create_family_file", name),
+					Title:       L("create_family_file", token.Text),
 					Kind:        QuickFix,
 					Diagnostics: []proto.Diagnostic{d},
 					Data: CodeActionData{
@@ -126,27 +126,34 @@ func CodeAction(ctx *Ctx, params *proto.CodeActionParams) (any, error) {
 
 			dups = append(dups, &Duplicate{Member: member})
 
+			doc, err = tempDocs.Get(family.Uri)
+
+			if err != nil {
+				return
+			}
+
 			for _, dup := range dups {
-				name := dup.Member.GetUniqName()
+				mem := dup.Member
+				name := mem.GetUniqName()
 
 				if name == "" {
 					continue
 				}
 
-				sources := GetClosestSources(dup.Member.Person)
+				rel := doc.FindRelationByRange(LocToRange(mem.Person.Loc))
 
-				if sources == nil {
+				if rel == nil {
 					continue
 				}
 
-				doc, err := tempDocs.Get(family.Uri)
+				source, err := doc.GetTextByLoc(rel.Sources.Loc)
 
 				if err != nil {
 					return nil, err
 				}
 
 				add(proto.CodeAction{
-					Title:       L("change_name_from_source", name, ToString(sources, doc)),
+					Title:       L("change_name_from_source", name, source),
 					Kind:        QuickFix,
 					Diagnostics: []proto.Diagnostic{d},
 					Data: CodeActionData{
@@ -186,8 +193,10 @@ func CodeActionResolve(ctx *Ctx, params *proto.CodeAction) (res *proto.CodeActio
 		return
 	}
 
-	start := params.Diagnostics[0].Range.Start
-	end := params.Diagnostics[0].Range.End
+	r := params.Diagnostics[0].Range
+
+	var doc *Doc
+	var token *fm.Token
 
 	res = &proto.CodeAction{
 		Edit: &proto.WorkspaceEdit{},
@@ -195,29 +204,29 @@ func CodeActionResolve(ctx *Ctx, params *proto.CodeAction) (res *proto.CodeActio
 
 	switch data.Type {
 	case UnknownFamilyError:
-		doc, err := TempDoc(data.Uri)
+		doc, err = TempDoc(data.Uri)
 
 		if err != nil {
-			return nil, err
+			return
 		}
 
-		node, err := doc.GetClosestNodeByPosition(&start)
+		token = doc.GetTokenByPosition(&r.Start)
 
-		if err != nil || node == nil {
-			return nil, err
+		if token == nil {
+			return
 		}
 
-		surname := ToString(node, doc)
+		surname := token.Text
 
 		text := fmt.Sprintf("%s\n\n", surname)
 
-		if IsNameRef(node.Parent()) {
-			name, _ := GetNameSurname(node.Parent())
-			text = fmt.Sprintf("%s? + ? =\n1. %s", text, ToString(name, doc))
-		} else if IsNewSurname(node) {
-			name := node.Parent().ChildByFieldName("name")
-			surnameNode := GetClosestFamilyName(node)
-			text = fmt.Sprintf("%s? + %s %s = ", text, ToString(name, doc), ToString(surnameNode, doc))
+		person := doc.FindPersonByRange(r)
+
+		if person != nil && !person.IsChild {
+			text = fmt.Sprintf("%s? + ? =\n1. %s", text, person.Name.Text)
+		} else if person != nil && person.IsChild && person.Surname == token {
+			f := doc.FindFamilyByRange(r)
+			text = fmt.Sprintf("%s? + %s %s = ", text, person.Name.Text, f.Name.Text)
 		}
 
 		if data.Mod == CreateFamilyOnNewFile {
@@ -247,49 +256,47 @@ func CodeActionResolve(ctx *Ctx, params *proto.CodeAction) (res *proto.CodeActio
 			return res, nil
 		}
 
-		var root *Node
+		var pos Position
 
 		switch data.Mod {
-		case CreateFamilyAfterCurrentFamily:
-			root = GetClosestNode(node, "family")
-
 		case CreateFamilyAtTheEndOfFile:
-			root = doc.Tree.RootNode()
+			pos = LocPosToPosition(doc.Root.End)
+
+		default:
+			f := doc.FindFamilyByRange(r)
+
+			if f != nil {
+				pos = LocPosToPosition(f.End)
+			}
 		}
 
-		pos, err := doc.PointToPosition(root.EndPosition())
-
-		if err != nil {
-			return nil, err
-		}
-
-		res.Edit.DocumentChanges = []any{createInserText(data.Uri, *pos, "\n\n"+text)}
+		res.Edit.DocumentChanges = []any{createInserText(data.Uri, pos, "\n\n"+text)}
 
 	case NameDuplicateWarning:
-		res.Edit.DocumentChanges = []any{createEdit(data.Uri, start, end, data.Name)}
+		res.Edit.DocumentChanges = []any{createEdit(data.Uri, r.Start, r.End, data.Name)}
 
 	case ChildWithoutRelationsInfo:
-		doc, err := TempDoc(data.Uri)
+		doc, err = TempDoc(data.Uri)
 
 		if err != nil {
-			return nil, err
+			return
 		}
 
-		node, err := doc.GetClosestNodeByPosition(&start)
+		token = doc.GetTokenByPosition(&r.Start)
 
-		if err != nil {
-			return nil, err
+		if token == nil {
+			return
 		}
 
-		root := GetClosestNode(node, "family")
+		f := doc.FindFamilyByRange(r)
 
-		pos, err := doc.PointToPosition(root.EndPosition())
-
-		if err != nil {
-			return nil, err
+		if f == nil {
+			return
 		}
 
-		res.Edit.DocumentChanges = []any{createInserText(data.Uri, *pos, fmt.Sprintf("\n\n%s + ? =\n", ToString(node, doc)))}
+		pos := LocPosToPosition(f.End)
+
+		res.Edit.DocumentChanges = []any{createInserText(data.Uri, pos, fmt.Sprintf("\n\n%s + ? =\n", token.Text))}
 	}
 
 	return res, nil

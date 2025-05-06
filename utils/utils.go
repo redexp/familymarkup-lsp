@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"errors"
 	proto "github.com/tliron/glsp/protocol_3_16"
 	"iter"
 	urlParser "net/url"
@@ -11,7 +10,6 @@ import (
 
 	. "github.com/redexp/familymarkup-lsp/types"
 	fm "github.com/redexp/familymarkup-parser"
-	familymarkup "github.com/redexp/tree-sitter-familymarkup"
 	sitter "github.com/tree-sitter/go-tree-sitter"
 )
 
@@ -19,8 +17,6 @@ type ParserWorker struct {
 	parser *sitter.Parser
 	busy   bool
 }
-
-var lang = familymarkup.GetLanguage()
 
 var FamilyExt = []string{"fml", "family"}
 var MarkdownExt = []string{"md", "mdx"}
@@ -115,10 +111,6 @@ func GetNodeByFields(node *Node, fields ...string) *Node {
 	return node
 }
 
-func GetClosestFamilyName(node *Node) *Node {
-	return GetNodeByFields(GetClosestNode(node, "family"), "name", "name")
-}
-
 func GetClosestSources(node *Node) *Node {
 	return GetClosestNode(node, "relation", "sources")
 }
@@ -138,22 +130,6 @@ func ToNameNode(node *Node) *Node {
 	}
 
 	return node
-}
-
-func RangeOverlaps(a *Range, b *Range) bool {
-	if a.End.Line < b.Start.Line || b.End.Line < a.Start.Line {
-		return false
-	}
-
-	if a.End.Line == b.Start.Line && a.End.Character <= b.Start.Character {
-		return false
-	}
-
-	if b.End.Line == a.Start.Line && b.End.Character <= a.Start.Character {
-		return false
-	}
-
-	return true
 }
 
 func IsFamilyName(node *Node) bool {
@@ -186,33 +162,6 @@ func IsFamilyRelation(rel *fm.Relation) bool {
 
 func P[T ~string | ~int32](src T) *T {
 	return &src
-}
-
-func CreateQuery(pattern string) (*sitter.Query, error) {
-	q, err := sitter.NewQuery(lang, pattern)
-
-	if err != nil {
-		return nil, errors.New(err.Message)
-	}
-
-	return q, nil
-}
-
-func QueryIter(q *sitter.Query, node *Node, text []byte) iter.Seq2[uint32, *Node] {
-	return func(yield func(uint32, *Node) bool) {
-		qc := sitter.NewQueryCursor()
-		defer qc.Close()
-
-		c := qc.Captures(q, node, text)
-
-		for match, index := c.Next(); match != nil; match, index = c.Next() {
-			cap := match.Captures[index]
-
-			if !yield(cap.Index, &cap.Node) {
-				return
-			}
-		}
-	}
 }
 
 func GetErrorNodesIter(root *Node) iter.Seq[*Node] {
@@ -266,24 +215,6 @@ func GetErrorNodesIter(root *Node) iter.Seq[*Node] {
 	}
 }
 
-func ChildrenIter(root *Node) iter.Seq[*Node] {
-	return func(yield func(*Node) bool) {
-		child := root.Child(0)
-
-		if child == nil || !yield(child) {
-			return
-		}
-
-		for {
-			child = child.NextSibling()
-
-			if child == nil || !yield(child) {
-				return
-			}
-		}
-	}
-}
-
 func TokensToStrings(tokens []*fm.Token) []string {
 	list := make([]string, len(tokens))
 
@@ -294,8 +225,8 @@ func TokensToStrings(tokens []*fm.Token) []string {
 	return list
 }
 
-func LocToRange(loc fm.Loc) proto.Range {
-	return proto.Range{
+func LocToRange(loc fm.Loc) Range {
+	return Range{
 		Start: Position{
 			Line:      uint32(loc.Start.Line),
 			Character: uint32(loc.Start.Char),
@@ -304,6 +235,33 @@ func LocToRange(loc fm.Loc) proto.Range {
 			Line:      uint32(loc.End.Line),
 			Character: uint32(loc.End.Char),
 		},
+	}
+}
+
+func RangeToLoc(r Range) fm.Loc {
+	return fm.Loc{
+		Start: fm.Position{
+			Line: int(r.Start.Line),
+			Char: int(r.Start.Character),
+		},
+		End: fm.Position{
+			Line: int(r.End.Line),
+			Char: int(r.End.Character),
+		},
+	}
+}
+
+func PositionToRange(pos Position) Range {
+	return Range{
+		Start: pos,
+		End:   pos,
+	}
+}
+
+func LocPosToPosition(pos fm.Position) Position {
+	return Position{
+		Line:      uint32(pos.Line),
+		Character: uint32(pos.Char),
 	}
 }
 

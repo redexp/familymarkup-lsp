@@ -50,6 +50,8 @@ github.com/redexp/familymarkup-parser v0.5.3 h1:hyB17l28XmRZN7aagU1E1IpUY6K6rLll
 github.com/redexp/familymarkup-parser v0.5.3/go.mod h1:cr8xMz9UGpPCfU306aaY3KuimXEpqha8lBuBmRiqQhU=
 github.com/redexp/familymarkup-parser v0.6.0 h1:CbgWjO3N690y2Wl8CH3WGnJLKc267MnVI/PEkOM5CJU=
 github.com/redexp/familymarkup-parser v0.6.0/go.mod h1:cr8xMz9UGpPCfU306aaY3KuimXEpqha8lBuBmRiqQhU=
+github.com/redexp/familymarkup-parser v0.7.0 h1:ajtPgco2W15gHYMUk4IkfUa9koC8/qTeD9JeDMHT6VI=
+github.com/redexp/familymarkup-parser v0.7.0/go.mod h1:cr8xMz9UGpPCfU306aaY3KuimXEpqha8lBuBmRiqQhU=
 github.com/redexp/textdocument v1.11.0 h1:EiMgOAjYE6caAAAVEUNSNjCHP2geGl/xvzK8gxDfgyM=
 github.com/redexp/textdocument v1.11.0/go.mod h1:O5uUstTBCbtzfDYFHW9UoUhNixPQFqXvSlG6UDhjkMs=
 github.com/redexp/textdocument v1.12.0 h1:zHDpFQs7zhiH/V+5KX9/irbTpU9Xda2h6dhWEW9zhi8=

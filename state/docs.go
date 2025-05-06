@@ -199,6 +199,11 @@ func (docs Docs) Get(uri Uri) (doc *Doc, err error) {
 	return
 }
 
+func (doc *Doc) GetTextByLoc(loc fm.Loc) (string, error) {
+	r := LocToRange(loc)
+	return doc.GetTextByRange(&r)
+}
+
 func (doc *Doc) TokenIndex(token *fm.Token) int {
 	return slices.Index(doc.Tokens, token)
 }
@@ -271,11 +276,67 @@ func (doc *Doc) GetTokenByPosition(pos *Position) *fm.Token {
 	return nil
 }
 
-func (doc *Doc) FindRelation(cb func(*fm.Relation) bool) *fm.Relation {
+func (doc *Doc) FindFamilyByRange(r Range) *fm.Family {
+	loc := RangeToLoc(r)
+
 	for _, f := range doc.Root.Families {
-		for _, r := range f.Relations {
-			if cb(r) {
-				return r
+		switch f.OverlapType(loc) {
+		case fm.OverlapAfter:
+			return nil
+		case fm.OverlapOuter:
+			return f
+		}
+	}
+
+	return nil
+}
+
+func (doc *Doc) FindRelationByRange(r Range) *fm.Relation {
+	loc := RangeToLoc(r)
+
+	for _, f := range doc.Root.Families {
+		for _, rel := range f.Relations {
+			switch rel.OverlapType(loc) {
+			case fm.OverlapAfter:
+				return nil
+			case fm.OverlapOuter:
+				return rel
+			}
+		}
+	}
+
+	return nil
+}
+
+func (doc *Doc) FindPersonByRange(r Range) *fm.Person {
+	loc := RangeToLoc(r)
+
+	for _, f := range doc.Root.Families {
+		for _, rel := range f.Relations {
+			for _, p := range rel.Sources.Persons {
+				switch p.OverlapType(loc) {
+				case fm.OverlapBefore:
+					continue
+				case fm.OverlapAfter:
+					return nil
+				default:
+					return p
+				}
+			}
+
+			if rel.Targets == nil {
+				continue
+			}
+
+			for _, p := range rel.Sources.Persons {
+				switch p.OverlapType(loc) {
+				case fm.OverlapBefore:
+					continue
+				case fm.OverlapAfter:
+					return nil
+				default:
+					return p
+				}
 			}
 		}
 	}

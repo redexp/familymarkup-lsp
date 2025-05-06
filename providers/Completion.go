@@ -8,7 +8,7 @@ import (
 	proto "github.com/tliron/glsp/protocol_3_16"
 )
 
-func Completion(ctx *Ctx, params *proto.CompletionParams) (res any, err error) {
+func Completion(_ *Ctx, params *proto.CompletionParams) (res any, err error) {
 	t, words, err := GetCompletionType(params.TextDocument.URI, &params.Position)
 
 	if err != nil || t == "" {
@@ -92,11 +92,7 @@ func Completion(ctx *Ctx, params *proto.CompletionParams) (res any, err error) {
 		return
 	}
 
-	line := int(params.Position.Line)
-
-	rel := doc.FindRelation(func(r *fm.Relation) bool {
-		return r.Start.Line <= line && line <= r.End.Line
-	})
+	rel := doc.FindRelationByRange(PositionToRange(params.Position))
 
 	if (t == "name |" || t == "name surname|") && rel != nil && rel.IsFamilyDef {
 		t = "surname"
