@@ -6,7 +6,7 @@ import (
 	proto "github.com/tliron/glsp/protocol_3_16"
 )
 
-func PrepareRename(ctx *Ctx, params *proto.PrepareRenameParams) (res any, err error) {
+func PrepareRename(_ *Ctx, params *proto.PrepareRenameParams) (res any, err error) {
 	famMem := root.GetFamMemByPosition(params.TextDocument.URI, params.Position)
 
 	if famMem == nil {
@@ -20,7 +20,7 @@ func PrepareRename(ctx *Ctx, params *proto.PrepareRenameParams) (res any, err er
 	return
 }
 
-func Rename(ctx *Ctx, params *proto.RenameParams) (res *proto.WorkspaceEdit, err error) {
+func Rename(_ *Ctx, params *proto.RenameParams) (res *proto.WorkspaceEdit, err error) {
 	uri, err := NormalizeUri(params.TextDocument.URI)
 
 	if err != nil {

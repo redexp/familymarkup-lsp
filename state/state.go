@@ -94,7 +94,12 @@ func (root *Root) SetFolders(folders []Uri) (err error) {
 
 	for item := range textTrees {
 		if item.MD {
-			root.AddUnknownFile(item.Uri)
+			err = root.AddUnknownFile(item.Uri)
+
+			if err != nil {
+				return
+			}
+
 			continue
 		}
 
@@ -229,12 +234,12 @@ func (root *Root) UpdateUnknownFiles() {
 	}
 }
 
-func (root *Root) UpdateDirty() error {
+func (root *Root) UpdateDirty() (err error) {
 	root.UpdateLock.Lock()
 	defer root.UpdateLock.Unlock()
 
 	if len(root.DirtyUris) == 0 {
-		return nil
+		return
 	}
 
 	uris := root.DirtyUris
@@ -268,7 +273,11 @@ func (root *Root) UpdateDirty() error {
 				}
 			}
 		} else {
-			root.AddUnknownFile(uri)
+			err = root.AddUnknownFile(uri)
+
+			if err != nil {
+				return
+			}
 		}
 	}
 
@@ -294,7 +303,11 @@ func (root *Root) UpdateDirty() error {
 				resetRefs(member.Refs)
 
 				if member.InfoUri != "" {
-					root.AddUnknownFile(member.InfoUri)
+					err = root.AddUnknownFile(member.InfoUri)
+
+					if err != nil {
+						return
+					}
 				}
 			}
 
@@ -321,6 +334,7 @@ func (root *Root) UpdateDirty() error {
 	}
 
 	tempDocs := make(Docs)
+	var doc *Doc
 
 	for uri, state := range uris {
 		delete(root.Labels, uri)
@@ -329,10 +343,10 @@ func (root *Root) UpdateDirty() error {
 			continue
 		}
 
-		doc, err := tempDocs.Get(uri)
+		doc, err = tempDocs.Get(uri)
 
 		if err != nil {
-			return err
+			return
 		}
 
 		root.Update(doc)
@@ -342,7 +356,7 @@ func (root *Root) UpdateDirty() error {
 	root.UpdateUnknownFiles()
 	root.Trigger(RootOnUpdate)
 
-	return nil
+	return
 }
 
 func (root *Root) AddFamily(uri Uri, node *fm.Family) *Family {
