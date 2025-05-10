@@ -5,7 +5,7 @@ import (
 )
 
 func TypeDefinition(_ *Ctx, params *proto.TypeDefinitionParams) (res any, err error) {
-	_, mem, _, err := getDefinition(params.TextDocument.URI, &params.Position)
+	_, mem, _, err := getDefinition(params.TextDocument.URI, params.Position)
 
 	if err != nil || mem == nil || mem.InfoUri == "" {
 		return
