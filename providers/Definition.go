@@ -9,7 +9,7 @@ import (
 	proto "github.com/tliron/glsp/protocol_3_16"
 )
 
-func Definition(ctx *Ctx, params *proto.DefinitionParams) (res any, err error) {
+func Definition(_ *Ctx, params *proto.DefinitionParams) (res any, err error) {
 	uri, err := NormalizeUri(params.TextDocument.URI)
 
 	if err != nil {

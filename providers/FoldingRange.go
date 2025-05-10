@@ -7,7 +7,7 @@ import (
 	proto "github.com/tliron/glsp/protocol_3_16"
 )
 
-func FoldingRange(ctx *Ctx, params *proto.FoldingRangeParams) (res []proto.FoldingRange, err error) {
+func FoldingRange(_ *Ctx, params *proto.FoldingRangeParams) (res []proto.FoldingRange, err error) {
 	uri, err := NormalizeUri(params.TextDocument.URI)
 
 	if err != nil {

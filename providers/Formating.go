@@ -13,15 +13,15 @@ import (
 	proto "github.com/tliron/glsp/protocol_3_16"
 )
 
-func DocFormating(ctx *Ctx, params *proto.DocumentFormattingParams) (list []proto.TextEdit, err error) {
+func DocFormating(_ *Ctx, params *proto.DocumentFormattingParams) (list []proto.TextEdit, err error) {
 	return prettify(params.TextDocument.URI, nil)
 }
 
-func RangeFormating(ctx *Ctx, params *proto.DocumentRangeFormattingParams) (list []proto.TextEdit, err error) {
+func RangeFormating(_ *Ctx, params *proto.DocumentRangeFormattingParams) (list []proto.TextEdit, err error) {
 	return prettify(params.TextDocument.URI, &params.Range)
 }
 
-func LineFormating(ctx *Ctx, params *proto.DocumentOnTypeFormattingParams) (list []proto.TextEdit, err error) {
+func LineFormating(_ *Ctx, params *proto.DocumentOnTypeFormattingParams) (list []proto.TextEdit, err error) {
 	pos := params.Position
 	line := pos.Line
 

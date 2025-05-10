@@ -25,7 +25,7 @@ func DocOpen(ctx *Ctx, params *proto.DidOpenTextDocumentParams) (err error) {
 	return
 }
 
-func DocClose(ctx *Ctx, params *proto.DidCloseTextDocumentParams) error {
+func DocClose(_ *Ctx, params *proto.DidCloseTextDocumentParams) error {
 	uri, err := NormalizeUri(params.TextDocument.URI)
 
 	if err != nil {

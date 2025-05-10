@@ -9,7 +9,7 @@ import (
 	proto "github.com/tliron/glsp/protocol_3_16"
 )
 
-func Hover(ctx *Ctx, params *proto.HoverParams) (h *proto.Hover, err error) {
+func Hover(_ *Ctx, params *proto.HoverParams) (h *proto.Hover, err error) {
 	uri, err := NormalizeUri(params.TextDocument.URI)
 
 	if err != nil {

@@ -10,7 +10,7 @@ import (
 	proto "github.com/tliron/glsp/protocol_3_16"
 )
 
-func References(ctx *Ctx, params *proto.ReferenceParams) (res []proto.Location, err error) {
+func References(_ *Ctx, params *proto.ReferenceParams) (res []proto.Location, err error) {
 	family, member, _, err := getDefinition(params.TextDocument.URI, params.Position)
 
 	if err != nil || (family == nil && member == nil) {

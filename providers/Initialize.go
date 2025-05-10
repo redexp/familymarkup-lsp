@@ -12,7 +12,7 @@ import (
 	proto "github.com/tliron/glsp/protocol_3_16"
 )
 
-func Initialize(ctx *Ctx, params *proto.InitializeParams) (any, error) {
+func Initialize(_ *Ctx, params *proto.InitializeParams) (any, error) {
 	root = CreateRoot(Debugf)
 
 	options, err := GetClientConfiguration(params.InitializationOptions)
@@ -115,17 +115,17 @@ func Initialize(ctx *Ctx, params *proto.InitializeParams) (any, error) {
 	return res, nil
 }
 
-func Initialized(ctx *Ctx, params *proto.InitializedParams) error {
+func Initialized(ctx *Ctx, _ *proto.InitializedParams) error {
 	diagnosticAllDocs(ctx)
 
 	return nil
 }
 
-func SetTrace(ctx *Ctx, params *proto.SetTraceParams) error {
+func SetTrace(_ *Ctx, _ *proto.SetTraceParams) error {
 	return nil
 }
 
-func CancelRequest(ctx *Ctx, params *proto.CancelParams) error {
+func CancelRequest(_ *Ctx, _ *proto.CancelParams) error {
 	return nil
 }
 

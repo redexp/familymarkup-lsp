@@ -12,14 +12,18 @@ import (
 	proto "github.com/tliron/glsp/protocol_3_16"
 )
 
-func DocSymbols(ctx *Ctx, params *proto.DocumentSymbolParams) (res any, err error) {
+func DocSymbols(_ *Ctx, params *proto.DocumentSymbolParams) (res any, err error) {
 	uri, err := NormalizeUri(params.TextDocument.URI)
 
 	if err != nil {
 		return
 	}
 
-	root.UpdateDirty()
+	err = root.UpdateDirty()
+
+	if err != nil {
+		return
+	}
 
 	doc, err := TempDoc(uri)
 
@@ -76,7 +80,7 @@ func DocSymbols(ctx *Ctx, params *proto.DocumentSymbolParams) (res any, err erro
 	return list, nil
 }
 
-func AllSymbols(ctx *Ctx, params *proto.WorkspaceSymbolParams) (list []WorkspaceSymbol, err error) {
+func AllSymbols(_ *Ctx, params *proto.WorkspaceSymbolParams) (list []WorkspaceSymbol, err error) {
 	parts := splitQuery(params.Query)
 	count := len(parts)
 
@@ -147,7 +151,7 @@ func AllSymbols(ctx *Ctx, params *proto.WorkspaceSymbolParams) (list []Workspace
 	return
 }
 
-func ResolveSymbol(ctx *Ctx, symbol *WorkspaceSymbol) (res *WorkspaceSymbolLocation, err error) {
+func ResolveSymbol(_ *Ctx, symbol *WorkspaceSymbol) (res *WorkspaceSymbolLocation, err error) {
 	res = &WorkspaceSymbolLocation{
 		SymbolInformation: proto.SymbolInformation{
 			Kind:          symbol.Kind,

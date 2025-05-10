@@ -46,7 +46,7 @@ func TreeFamilies(ctx *Ctx) ([]*TreeFamily, error) {
 	return list, nil
 }
 
-func TreeRelations(ctx *Ctx, loc *TreeItemLocation) (list []*TreeRelation, err error) {
+func TreeRelations(_ *Ctx, loc *TreeItemLocation) (list []*TreeRelation, err error) {
 	f, doc, err := getFamilyDoc(loc)
 
 	if err != nil {
@@ -75,7 +75,7 @@ func TreeRelations(ctx *Ctx, loc *TreeItemLocation) (list []*TreeRelation, err e
 	return
 }
 
-func TreeMembers(ctx *Ctx, loc *TreeItemLocation) (list []*TreeMember, err error) {
+func TreeMembers(_ *Ctx, loc *TreeItemLocation) (list []*TreeMember, err error) {
 	f, _, err := getFamilyDoc(loc)
 
 	if err != nil {
@@ -132,7 +132,7 @@ func TreeMembers(ctx *Ctx, loc *TreeItemLocation) (list []*TreeMember, err error
 	return
 }
 
-func TreeLocation(ctx *Ctx, params *TreeLocationParams) (pos *proto.Position, err error) {
+func TreeLocation(_ *Ctx, params *TreeLocationParams) (pos *proto.Position, err error) {
 	doc, err := TempDoc(params.URI)
 
 	if err != nil {

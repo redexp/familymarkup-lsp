@@ -11,7 +11,7 @@ type Tokens []proto.UInteger
 
 var tokensMap = make(map[string]Tokens)
 
-func SemanticTokensFull(ctx *Ctx, params *proto.SemanticTokensParams) (res *proto.SemanticTokens, err error) {
+func SemanticTokensFull(_ *Ctx, params *proto.SemanticTokensParams) (res *proto.SemanticTokens, err error) {
 	tokens, uri, err := getTokens(params.TextDocument.URI)
 
 	if err != nil {
@@ -27,7 +27,7 @@ func SemanticTokensFull(ctx *Ctx, params *proto.SemanticTokensParams) (res *prot
 	return
 }
 
-func SemanticTokensDelta(ctx *Ctx, params *proto.SemanticTokensDeltaParams) (res any, err error) {
+func SemanticTokensDelta(_ *Ctx, params *proto.SemanticTokensDeltaParams) (res any, err error) {
 	tokens, uri, err := getTokens(params.TextDocument.URI)
 
 	if err != nil {

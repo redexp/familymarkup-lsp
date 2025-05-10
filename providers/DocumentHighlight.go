@@ -6,7 +6,7 @@ import (
 	proto "github.com/tliron/glsp/protocol_3_16"
 )
 
-func DocumentHighlight(ctx *Ctx, params *proto.DocumentHighlightParams) (res []proto.DocumentHighlight, err error) {
+func DocumentHighlight(_ *Ctx, params *proto.DocumentHighlightParams) (res []proto.DocumentHighlight, err error) {
 	uri, err := NormalizeUri(params.TextDocument.URI)
 
 	if err != nil {
