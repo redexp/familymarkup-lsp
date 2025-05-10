@@ -5,13 +5,22 @@ import (
 	fm "github.com/redexp/familymarkup-parser"
 )
 
+type RefType int
+
+const (
+	RefTypeSurname RefType = 1 + iota
+	RefTypeName
+	RefTypeNameSurname
+	RefTypeOrigin
+)
+
 type Ref struct {
+	Type    RefType
 	Uri     Uri
 	Surname *fm.Token
-	Name    *fm.Token
 	Person  *fm.Person
-	Member  *Member
 	Family  *Family
+	Origin  *Member
 }
 
 type Duplicate struct {

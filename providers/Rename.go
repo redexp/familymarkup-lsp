@@ -81,43 +81,28 @@ func Rename(ctx *Ctx, params *proto.RenameParams) (res *proto.WorkspaceEdit, err
 		return res, nil
 	}
 
-	_, member, _, err := getDefinition(uri, &params.Position)
+	_, member, _, err := getDefinition(uri, params.Position)
 
 	if err != nil || member == nil {
 		return
 	}
 
 	refs := append(member.Refs, &Ref{
-		Uri: member.Family.Uri,
-		Loc: member.Person,
+		Uri:    member.Family.Uri,
+		Person: member.Person,
 	})
 
-	tempDocs := make(Docs)
 	changes := make(map[proto.DocumentUri][]proto.TextEdit)
 
 	for _, ref := range refs {
-		doc, err := tempDocs.Get(ref.Uri)
-
-		if err != nil {
-			return nil, err
-		}
-
 		edits, exist := changes[ref.Uri]
 
 		if !exist {
 			edits = make([]proto.TextEdit, 0)
 		}
 
-		node := ToNameNode(ref.Loc)
-
-		r, err := doc.NodeToRange(node)
-
-		if err != nil {
-			return nil, err
-		}
-
 		changes[ref.Uri] = append(edits, proto.TextEdit{
-			Range:   *r,
+			Range:   LocToRange(ref.Person.Loc),
 			NewText: params.NewName,
 		})
 	}

@@ -1,6 +1,7 @@
 package providers
 
 import (
+	fm "github.com/redexp/familymarkup-parser"
 	"time"
 
 	"github.com/bep/debounce"
@@ -12,7 +13,7 @@ import (
 
 type DocDebouncer struct {
 	Ctx      *Ctx
-	Docs     map[Uri]*TextDocument
+	Docs     Docs
 	Debounce func(func())
 }
 
@@ -29,18 +30,16 @@ type DiagnosticData struct {
 	Name    string `json:"name"`
 }
 
-func PublishDiagnostics(ctx *Ctx, uri Uri, doc *TextDocument) error {
+func PublishDiagnostics(ctx *Ctx, uri Uri, doc *Doc) (err error) {
 	if !supportDiagnostics {
 		return nil
 	}
-
-	var err error
 
 	if doc == nil {
 		doc, err = TempDoc(uri)
 
 		if err != nil {
-			return err
+			return
 		}
 	}
 
@@ -54,55 +53,57 @@ func PublishDiagnostics(ctx *Ctx, uri Uri, doc *TextDocument) error {
 	Warning := P(proto.DiagnosticSeverityWarning)
 	Info := P(proto.DiagnosticSeverityInformation)
 
-	for node := range GetErrorNodesIter(doc.Tree.RootNode()) {
-		r, err := doc.NodeToRange(node)
-
-		if err != nil {
-			return err
+	for _, token := range doc.Tokens {
+		if token.Type == fm.TokenInvalid || token.ErrType == fm.ErrUnexpected {
+			add(proto.Diagnostic{
+				Severity: Error,
+				Range:    TokenToRange(token),
+				Message:  L("syntax_error"),
+			})
 		}
-
-		add(proto.Diagnostic{
-			Severity: Error,
-			Range:    *r,
-			Message:  L("syntax_error"),
-		})
 	}
 
 	for _, ref := range root.UnknownRefs {
-		if ref.Uri != uri || ref.Member != nil {
+		if ref.Uri != uri {
 			continue
 		}
 
-		node := ref.Loc
-		message := L("unknown_person", ref.Name)
 		t := UnknownPersonError
 
-		if IsNameRef(node) {
-			f := root.FindFamily(ref.Surname)
-			nameNode, surnameNode := GetNameSurname(node)
+		var loc fm.Loc
+		var message string
 
-			if f == nil {
-				node = surnameNode
-				message = L("unknown_family", ref.Surname)
-				t = UnknownFamilyError
-			} else {
-				node = nameNode
-				message = L("unknown_person_in_family", f.Name, ToString(nameNode, doc))
-			}
-		} else if IsNewSurname(node) {
-			message = L("unknown_family", ref.Surname)
+		if ref.Surname != nil {
 			t = UnknownFamilyError
-		}
+			loc = ref.Surname.Loc()
+			message = L("unknown_family", ref.Surname.Text)
+		} else if ref.Person != nil {
+			p := ref.Person
 
-		r, err := doc.NodeToRange(node)
+			if p.Surname != nil {
+				f := root.FindFamily(p.Surname.Text)
 
-		if err != nil {
-			return err
+				if f == nil {
+					t = UnknownFamilyError
+					loc = p.Surname.Loc()
+					message = L("unknown_family", p.Surname.Text)
+				} else if !p.IsChild {
+					t = UnknownPersonError
+					loc = p.Name.Loc()
+					message = L("unknown_person_in_family", f.Name, p.Name.Text)
+				}
+			} else {
+				t = UnknownPersonError
+				loc = p.Name.Loc()
+				message = L("unknown_person", p.Name.Text)
+			}
+		} else {
+			continue
 		}
 
 		add(proto.Diagnostic{
 			Severity: Error,
-			Range:    *r,
+			Range:    LocToRange(loc),
 			Message:  message,
 			Data: DiagnosticData{
 				Type: t,
@@ -135,21 +136,20 @@ func PublishDiagnostics(ctx *Ctx, uri Uri, doc *TextDocument) error {
 		locations = make([]proto.DiagnosticRelatedInformation, len(dups))
 
 		for i, dup := range dups {
-			node := dup.Member.Person
-			r, err := doc.NodeToRange(node)
+			sources := dup.Member.Person.Relation.Sources
+
+			text, err := doc.GetTextByLoc(sources.Loc)
 
 			if err != nil {
 				return err
 			}
 
-			sources := GetClosestSources(node)
-
 			locations[i] = proto.DiagnosticRelatedInformation{
 				Location: proto.Location{
 					URI:   family.Uri,
-					Range: *r,
+					Range: LocToRange(dup.Member.Person.Loc),
 				},
-				Message: L("child_of_source", ToString(sources, doc)),
+				Message: L("child_of_source", text),
 			}
 		}
 
@@ -168,12 +168,6 @@ func PublishDiagnostics(ctx *Ctx, uri Uri, doc *TextDocument) error {
 					continue
 				}
 
-				r, err := doc.NodeToRange(ToNameNode(ref.Loc))
-
-				if err != nil {
-					return err
-				}
-
 				err = ensureLocations(family, name)
 
 				if err != nil {
@@ -182,7 +176,7 @@ func PublishDiagnostics(ctx *Ctx, uri Uri, doc *TextDocument) error {
 
 				add(proto.Diagnostic{
 					Severity:           Warning,
-					Range:              *r,
+					Range:              LocToRange(ref.Person.Loc),
 					Message:            L("duplicate_count_of_name", count, name),
 					RelatedInformation: locations,
 					Data: DiagnosticData{
@@ -197,25 +191,13 @@ func PublishDiagnostics(ctx *Ctx, uri Uri, doc *TextDocument) error {
 
 	if warnChildrenWithoutRelations {
 		for mem := range root.MembersIter() {
-			if mem.Family.Uri != uri || len(mem.Refs) > 0 || mem.Origin != nil || !IsNameDef(mem.Person.Parent()) {
+			if mem.Family.Uri != uri || len(mem.Refs) > 0 || mem.Origin != nil || !mem.Person.IsChild {
 				continue
-			}
-
-			d, err := tempDocs.Get(mem.Family.Uri)
-
-			if err != nil {
-				return err
-			}
-
-			r, err := d.NodeToRange(mem.Person)
-
-			if err != nil {
-				return err
 			}
 
 			add(proto.Diagnostic{
 				Severity: Info,
-				Range:    *r,
+				Range:    LocToRange(mem.Person.Loc),
 				Message:  L("child_without_relations", mem.Name, mem.Family.Name),
 				Data: DiagnosticData{
 					Type: ChildWithoutRelationsInfo,
@@ -234,11 +216,10 @@ func PublishDiagnostics(ctx *Ctx, uri Uri, doc *TextDocument) error {
 }
 
 var docDiagnostic = &DocDebouncer{
-	Docs:     make(map[Uri]*TextDocument),
 	Debounce: debounce.New(200 * time.Millisecond),
 }
 
-func (dd *DocDebouncer) Set(uri Uri, doc *TextDocument) {
+func (dd *DocDebouncer) Set(uri Uri, doc *Doc) {
 	d, ok := dd.Docs[uri]
 
 	if doc != nil || d == nil || !ok {
@@ -282,7 +263,7 @@ func diagnosticAllDocs(ctx *Ctx) {
 	}
 }
 
-func scheduleDiagnostic(ctx *Ctx, uri Uri, doc *TextDocument) {
+func scheduleDiagnostic(ctx *Ctx, uri Uri, doc *Doc) {
 	docDiagnostic.Ctx = ctx
 	docDiagnostic.Set(uri, doc)
 }

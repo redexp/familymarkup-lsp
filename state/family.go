@@ -62,11 +62,6 @@ func (family *Family) AddMember(person *fm.Person) *Member {
 
 	if person.Surname != nil {
 		surname = person.Surname.Text
-
-		family.Root.AddRef(&Ref{
-			Uri:     family.Uri,
-			Surname: person.Surname,
-		})
 	}
 
 	return family.AddMemberName(person, name, aliases, surname)

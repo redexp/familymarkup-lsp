@@ -116,36 +116,48 @@ func (root *Root) Update(doc *Doc) {
 		family = root.AddFamily(uri, f)
 
 		for _, rel := range f.Relations {
-			isFamily := IsFamilyRelation(rel)
-
-			if isFamily && rel.Label != nil {
+			if rel.IsFamilyDef && rel.Label != nil {
 				root.AddLabel(uri, rel.Label.Text)
 			}
 
-			relLists := []*fm.RelList{rel.Sources}
+			for person := range rel.PersonsIter() {
+				if person.Unknown != nil {
+					continue
+				}
 
-			if rel.Targets != nil && (rel.Arrow == nil || rel.Arrow.SubType != fm.TokenEqual) {
-				relLists = append(relLists, rel.Targets)
-			}
+				if person.Surname != nil {
+					root.AddRef(&Ref{
+						Type:    RefTypeSurname,
+						Uri:     uri,
+						Surname: person.Surname,
+					})
+				}
 
-			for _, relList := range relLists {
-				isSources := relList == rel.Sources
+				if !rel.IsFamilyDef || (person.Side == fm.SideSources && family.HasMember(person.Name.Text)) {
+					t := RefTypeName
 
-				for _, person := range relList.Persons {
-					if person.Unknown != nil {
-						continue
+					if person.Surname != nil {
+						t = RefTypeNameSurname
 					}
 
-					if !isFamily || (isSources && family.HasMember(person.Name.Text)) {
-						root.AddRef(&Ref{
-							Uri:    uri,
-							Person: person,
-							Family: family,
-						})
-						continue
-					}
+					root.AddRef(&Ref{
+						Type:   t,
+						Uri:    uri,
+						Person: person,
+						Family: family,
+					})
+					continue
+				}
 
-					family.AddMember(person)
+				mem := family.AddMember(person)
+
+				if person.Surname != nil {
+					// create a member in this surname
+					root.AddRef(&Ref{
+						Type:   RefTypeOrigin,
+						Uri:    uri,
+						Origin: mem,
+					})
 				}
 			}
 		}
@@ -163,41 +175,7 @@ func (root *Root) UpdateUnknownRefs() {
 	root.UnknownRefs = Refs{}
 
 	for _, ref := range list {
-		if ref.Surname == nil || ref.Member == nil {
-			continue
-		}
-
-		f := root.FindFamily(ref.Surname.Text)
-
-		if f == nil {
-			continue
-		}
-
-		origin := ref.Member
-		var person *fm.Person
-
-		// find the first ref of this member in that file (usually as mather in family relation)
-		for _, ref := range origin.Refs {
-			if ref.Uri == f.Uri {
-				person = ref.Person
-				break
-			}
-		}
-
-		if person == nil {
-			// leave the ref in an array
-			root.AddUnknownRef(ref)
-			continue
-		}
-
-		mem := f.AddMemberName(person, origin.Name, origin.Aliases, "")
-		mem.Origin = ref.Member
-	}
-
-	for _, ref := range list {
-		if ref.Member == nil {
-			root.AddRef(ref)
-		}
+		root.AddRef(ref)
 	}
 }
 
@@ -455,6 +433,7 @@ func (root *Root) RemoveFamily(f *Family) {
 				delete(nodes, key)
 
 				root.AddUnknownRef(&Ref{
+					Type:    RefTypeSurname,
 					Uri:     uri,
 					Surname: item.Token,
 				})
@@ -524,66 +503,98 @@ func (root *Root) FindMember(surname string, name string) (family *Family, membe
 }
 
 func (root *Root) AddRef(ref *Ref) {
-	surname := ""
-	name := ""
-	person := ref.Person
-
-	if ref.Surname != nil {
+	if ref.Type == RefTypeSurname {
 		f := root.FindFamily(ref.Surname.Text)
+
 		if f != nil {
 			root.AddNodeRef(ref.Uri, &FamMem{Family: f, Token: ref.Surname})
+		} else {
+			root.AddUnknownRef(ref)
 		}
 		return
 	}
 
-	if person == nil {
-		return
-	}
+	if ref.Type == RefTypeName || ref.Type == RefTypeNameSurname {
+		name := ref.Person.Name.Text
 
-	if person.Surname != nil {
-		surname = person.Surname.Text
-	}
+		var f *Family
 
-	if person.Name != nil {
-		name = person.Name.Text
-	}
+		if ref.Type == RefTypeName {
+			f = ref.Family
+		} else {
+			f = root.FindFamily(ref.Person.Surname.Text)
+		}
 
-	if ref.Name != nil {
-		name = ref.Name.Text
-	}
+		if f == nil {
+			return
+		}
 
-	f, mem := root.FindMember(surname, name)
+		mem := f.FindMember(name)
 
-	if mem == nil {
-		root.AddUnknownRef(ref)
-		return
-	}
+		if mem == nil {
+			root.AddUnknownRef(ref)
+			return
+		}
 
-	dups, exist := f.Duplicates[mem.NormalizeName(name)]
+		dups, exist := f.Duplicates[mem.NormalizeName(name)]
 
-	if exist && ref.Family != nil {
-		for _, dup := range dups {
-			if dup.Member.Surname == "" {
-				continue
+		if exist && ref.Family != nil {
+			for _, dup := range dups {
+				if dup.Member.Surname == "" {
+					continue
+				}
+
+				fam := root.FindFamily(dup.Member.Surname)
+
+				if fam == ref.Family {
+					mem = dup.Member
+					break
+				}
 			}
+		}
 
-			fam := root.FindFamily(dup.Member.Surname)
+		mem.Refs = append(mem.Refs, ref)
 
-			if fam == ref.Family {
-				mem = dup.Member
+		root.AddNodeRef(ref.Uri, &FamMem{Member: mem, Token: ref.Person.Name})
+
+		if ref.Type == RefTypeNameSurname {
+			root.AddNodeRef(ref.Uri, &FamMem{Family: f, Token: ref.Person.Surname})
+		}
+	}
+
+	if ref.Type == RefTypeOrigin {
+		origin := ref.Origin
+
+		f := root.FindFamily(origin.Surname)
+
+		if f == nil {
+			root.AddUnknownRef(&Ref{
+				Type:    RefTypeSurname,
+				Uri:     ref.Uri,
+				Surname: ref.Person.Surname,
+			})
+
+			root.AddUnknownRef(ref)
+			return
+		}
+
+		var person *fm.Person
+
+		// find the first oRef of this member in that file (usually as mather in family relation)
+		for _, oRef := range origin.Refs {
+			if oRef.Uri == f.Uri {
+				person = oRef.Person
 				break
 			}
 		}
-	}
 
-	mem.Refs = append(mem.Refs, ref)
+		if person == nil {
+			root.AddUnknownRef(ref)
+			return
+		}
 
-	if person.Surname != nil {
-		root.AddNodeRef(ref.Uri, &FamMem{Family: f, Token: person.Surname})
-	}
-
-	if person.Name != nil {
-		root.AddNodeRef(ref.Uri, &FamMem{Member: mem, Token: person.Name})
+		mem := f.AddMemberName(person, origin.Name, origin.Aliases, "")
+		mem.Origin = origin
 	}
 }
 
