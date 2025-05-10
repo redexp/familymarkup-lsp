@@ -132,8 +132,8 @@ func Completion(_ *Ctx, params *proto.CompletionParams) (res any, err error) {
 
 	if t == "name" {
 		for _, ref := range root.UnknownRefs {
-			if ref.Name != nil {
-				add(ref.Name.Text)
+			if ref.Person != nil {
+				add(ref.Person.Name.Text)
 			}
 		}
 	}
