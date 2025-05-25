@@ -2,13 +2,13 @@ package providers
 
 import (
 	"fmt"
+	familymarkup "github.com/redexp/tree-sitter-familymarkup"
 	"slices"
 	"strings"
 
 	. "github.com/redexp/familymarkup-lsp/state"
 	. "github.com/redexp/familymarkup-lsp/utils"
 	"github.com/redexp/textdocument"
-	familymarkup "github.com/redexp/tree-sitter-familymarkup"
 	proto "github.com/tliron/glsp/protocol_3_16"
 )
 
@@ -18,7 +18,12 @@ func Initialize(_ *Ctx, params *proto.InitializeParams) (any, error) {
 	options, err := GetClientConfiguration(params.InitializationOptions)
 
 	if err == nil {
-		SetLocale(options.Locale)
+		err = SetLocale(options.Locale)
+
+		if err != nil {
+			return nil, err
+		}
+
 		warnChildrenWithoutRelations = options.WarnChildrenWithoutRelations
 	}
 
