@@ -5,14 +5,14 @@ import (
 )
 
 func TypeDefinition(_ *Ctx, params *proto.TypeDefinitionParams) (res any, err error) {
-	_, mem, _, err := getDefinition(params.TextDocument.URI, params.Position)
+	fa, err := getDefinition(params.TextDocument.URI, params.Position)
 
-	if err != nil || mem == nil || mem.InfoUri == "" {
+	if err != nil || fa == nil || fa.Member == nil || fa.Member.InfoUri == "" {
 		return
 	}
 
 	return proto.Location{
-		URI: mem.InfoUri,
+		URI: fa.Member.InfoUri,
 		Range: proto.Range{
 			Start: proto.Position{
 				Line:      0,

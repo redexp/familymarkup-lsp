@@ -569,10 +569,10 @@ func (root *Root) AddRef(ref *Ref) {
 
 		mem.Refs = append(mem.Refs, ref)
 
-		root.AddNodeRef(ref.Uri, &FamMem{Member: mem, Token: ref.Person.Name})
+		root.AddNodeRef(ref.Uri, &FamMem{Member: mem, Person: ref.Person, Token: ref.Person.Name})
 
 		if ref.Type == RefTypeNameSurname {
-			root.AddNodeRef(ref.Uri, &FamMem{Family: f, Token: ref.Person.Surname})
+			root.AddNodeRef(ref.Uri, &FamMem{Family: f, Person: ref.Person, Token: ref.Person.Surname})
 		}
 	}
 

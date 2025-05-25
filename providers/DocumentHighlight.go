@@ -19,9 +19,9 @@ func DocumentHighlight(_ *Ctx, params *proto.DocumentHighlightParams) (res []pro
 		return
 	}
 
-	family, member, _, err := getDefinition(uri, params.Position)
+	fa, err := getDefinition(uri, params.Position)
 
-	if err != nil {
+	if err != nil || fa == nil {
 		return
 	}
 
@@ -34,6 +34,8 @@ func DocumentHighlight(_ *Ctx, params *proto.DocumentHighlightParams) (res []pro
 			Kind:  kind,
 		})
 	}
+
+	family, member, _ := fa.Spread()
 
 	if family != nil && family.Uri == uri {
 		add(family.Node.Loc)

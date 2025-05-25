@@ -32,6 +32,7 @@ type Duplicate struct {
 type FamMem struct {
 	Family *Family
 	Member *Member
+	Person *fm.Person
 	Token  *fm.Token
 }
 
@@ -43,3 +44,7 @@ type (
 	Refs       []*Ref
 	Listeners  map[string][]func()
 )
+
+func (famMem *FamMem) Spread() (*Family, *Member, *fm.Token) {
+	return famMem.Family, famMem.Member, famMem.Token
+}

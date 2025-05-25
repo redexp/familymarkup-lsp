@@ -81,9 +81,9 @@ func Rename(_ *Ctx, params *proto.RenameParams) (res *proto.WorkspaceEdit, err e
 		return res, nil
 	}
 
-	_, member, _, err := getDefinition(uri, params.Position)
+	fa, err := getDefinition(uri, params.Position)
 
-	if err != nil || member == nil {
+	if err != nil || fa == nil || fa.Member == nil {
 		return
 	}
 

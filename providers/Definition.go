@@ -16,11 +16,13 @@ func Definition(_ *Ctx, params *proto.DefinitionParams) (res any, err error) {
 		return
 	}
 
-	family, member, source, err := getDefinition(uri, params.Position)
+	famMem, err := getDefinition(uri, params.Position)
 
-	if err != nil {
+	if err != nil || famMem == nil {
 		return
 	}
+
+	family, member, source := famMem.Spread()
 
 	var target *fm.Token
 
@@ -42,7 +44,7 @@ func Definition(_ *Ctx, params *proto.DefinitionParams) (res any, err error) {
 	}, nil
 }
 
-func getDefinition(uri Uri, pos Position) (family *Family, member *Member, token *fm.Token, err error) {
+func getDefinition(uri Uri, pos Position) (famMem *FamMem, err error) {
 	uri, err = NormalizeUri(uri)
 
 	if err != nil {
@@ -52,18 +54,10 @@ func getDefinition(uri Uri, pos Position) (family *Family, member *Member, token
 	err = root.UpdateDirty()
 
 	if err != nil {
-		LogDebug("getDefinition UpdateDirty %s", err)
-	}
-
-	famMem := root.GetFamMemByPosition(uri, pos)
-
-	if famMem == nil {
 		return
 	}
 
-	family = famMem.Family
-	member = famMem.Member
-	token = famMem.Token
+	famMem = root.GetFamMemByPosition(uri, pos)
 
 	return
 }

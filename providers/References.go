@@ -11,11 +11,13 @@ import (
 )
 
 func References(_ *Ctx, params *proto.ReferenceParams) (res []proto.Location, err error) {
-	family, member, _, err := getDefinition(params.TextDocument.URI, params.Position)
+	fa, err := getDefinition(params.TextDocument.URI, params.Position)
 
-	if err != nil || (family == nil && member == nil) {
+	if err != nil || fa == nil {
 		return
 	}
+
+	family, member, _ := fa.Spread()
 
 	res = make([]proto.Location, 0)
 

@@ -58,6 +58,8 @@ github.com/redexp/familymarkup-parser v0.8.0 h1:m+KDZeieE2tPFq8yPITcQe0EPjNGRPWp
 github.com/redexp/familymarkup-parser v0.8.0/go.mod h1:cr8xMz9UGpPCfU306aaY3KuimXEpqha8lBuBmRiqQhU=
 github.com/redexp/familymarkup-parser v0.8.1 h1:XE3BOTom2JhQIesOrOSwvFGEQKb2y4RSD5JoLkiQzWE=
 github.com/redexp/familymarkup-parser v0.8.1/go.mod h1:cr8xMz9UGpPCfU306aaY3KuimXEpqha8lBuBmRiqQhU=
+github.com/redexp/familymarkup-parser v0.9.0 h1:dwGsM9VGtfMgzqeHibonCae+kxJJKmqRF9ivmRp+RSg=
+github.com/redexp/familymarkup-parser v0.9.0/go.mod h1:cr8xMz9UGpPCfU306aaY3KuimXEpqha8lBuBmRiqQhU=
 github.com/redexp/textdocument v1.11.0 h1:EiMgOAjYE6caAAAVEUNSNjCHP2geGl/xvzK8gxDfgyM=
 github.com/redexp/textdocument v1.11.0/go.mod h1:O5uUstTBCbtzfDYFHW9UoUhNixPQFqXvSlG6UDhjkMs=
 github.com/redexp/textdocument v1.12.0 h1:zHDpFQs7zhiH/V+5KX9/irbTpU9Xda2h6dhWEW9zhi8=
@@ -73,6 +75,8 @@ github.com/segmentio/ksuid v1.0.4 h1:sBo2BdShXjmcugAMwjugoGUdUV0pcxY5mW4xKRn3v4c
 github.com/segmentio/ksuid v1.0.4/go.mod h1:/XUiZBD3kVx5SmUOl55voK5yeAbBNNIed+2O73XgrPE=
 github.com/sourcegraph/jsonrpc2 v0.2.0 h1:KjN/dC4fP6aN9030MZCJs9WQbTOjWHhrtKVpzzSrr/U=
 github.com/sourcegraph/jsonrpc2 v0.2.0/go.mod h1:ZafdZgk/axhT1cvZAPOhw+95nz2I/Ra5qMlU4gTRwIo=
+github.com/sourcegraph/jsonrpc2 v0.2.1 h1:2GtljixMQYUYCmIg7W9aF2dFmniq/mOr2T9tFRh6zSQ=
+github.com/sourcegraph/jsonrpc2 v0.2.1/go.mod h1:ZafdZgk/axhT1cvZAPOhw+95nz2I/Ra5qMlU4gTRwIo=
 github.com/spf13/pflag v1.0.5 h1:iy+VFUOCP1a+8yFto/drg2CJ5u0yRoB7fZw3DKv/JXA=
 github.com/spf13/pflag v1.0.5/go.mod h1:McXfInJRrz4CZXVZOBLb0bTZqETkiAhM9Iw0y3An2Bg=
 github.com/spf13/pflag v1.0.6 h1:jFzHGLGAlb3ruxLB8MhbI6A8+AQX/2eW4qeyNZXNp2o=

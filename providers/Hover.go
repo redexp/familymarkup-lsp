@@ -2,6 +2,7 @@ package providers
 
 import (
 	"fmt"
+	fm "github.com/redexp/familymarkup-parser"
 	"strings"
 
 	. "github.com/redexp/familymarkup-lsp/state"
@@ -16,17 +17,19 @@ func Hover(_ *Ctx, params *proto.HoverParams) (h *proto.Hover, err error) {
 		return
 	}
 
-	f, m, target, err := getDefinition(uri, params.Position)
+	fa, err := getDefinition(uri, params.Position)
 
-	if err != nil || (f == nil && m == nil) {
+	if err != nil || fa == nil {
 		return
 	}
 
-	if f == nil && m != nil {
+	f, m, target := fa.Spread()
+
+	if f == nil {
 		f = m.Family
 	}
 
-	if m != nil && IsNameDef(target.Parent()) {
+	if m != nil && fa.Person != nil && fa.Person.IsChild {
 		return
 	}
 
@@ -34,7 +37,7 @@ func Hover(_ *Ctx, params *proto.HoverParams) (h *proto.Hover, err error) {
 	aliases := f.Aliases
 
 	if m != nil {
-		if m.Person.Parent().Kind() == "sources" {
+		if m.Person.Side == fm.SideSources {
 			return
 		}
 
@@ -51,43 +54,24 @@ func Hover(_ *Ctx, params *proto.HoverParams) (h *proto.Hover, err error) {
 	}
 
 	if m != nil {
-		sources := GetClosestSources(m.Person)
-		doc, err := TempDoc(f.Uri)
+		sources := m.Person.Relation.Sources
 
-		if err != nil {
-			return nil, err
-		}
-
-		message += " - " + L("child_of_source", ToString(sources, doc))
+		message += " - " + L("child_of_source", sources.Format())
 	}
 
-	doc, err := TempDoc(uri)
+	r := TokenToRange(target)
 
-	if err != nil {
-		return
-	}
-
-	if IsNameRef(target.Parent()) {
-		target = target.Parent()
-	}
-
-	r, err := doc.NodeToRange(target)
-
-	Debugf("%s", message)
-
-	if err != nil {
-		return
+	if fa.Person != nil && !fa.Person.IsChild {
+		r = LocToRange(fa.Person.Loc)
 	}
 
 	h = &proto.Hover{
-		Range: r,
+		Range: &r,
 		Contents: proto.MarkupContent{
 			Kind:  proto.MarkupKindMarkdown,
 			Value: fmt.Sprintf("```fml\n%s\n```", message),
 		},
 	}
-
-	Debugf(message)
 
 	return
 }
