@@ -101,7 +101,7 @@ func TestTokensDelta(t *testing.T) {
 	}
 
 	for i, it := range list {
-		st, del, ins := getTokensDelta(it.prev, it.tokens)
+		st, del, ins := deltaSemanticTokens(it.prev, it.tokens)
 
 		if st != it.st || del != it.del || slices.Compare(ins, it.ins) != 0 {
 			t.Errorf("test %d, st: %d, del: %d, ins: %v", i+1, st, del, ins)
