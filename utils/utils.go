@@ -2,7 +2,6 @@ package utils
 
 import (
 	proto "github.com/tliron/glsp/protocol_3_16"
-	"iter"
 	urlParser "net/url"
 	"path/filepath"
 	"slices"
@@ -10,13 +9,7 @@ import (
 
 	. "github.com/redexp/familymarkup-lsp/types"
 	fm "github.com/redexp/familymarkup-parser"
-	sitter "github.com/tree-sitter/go-tree-sitter"
 )
-
-type ParserWorker struct {
-	parser *sitter.Parser
-	busy   bool
-}
 
 var FamilyExt = []string{"fml", "family"}
 var MarkdownExt = []string{"md", "mdx"}
@@ -111,27 +104,6 @@ func GetNodeByFields(node *Node, fields ...string) *Node {
 	return node
 }
 
-func GetClosestSources(node *Node) *Node {
-	return GetClosestNode(node, "relation", "sources")
-}
-
-func GetNameSurname(name_ref *Node) (name *Node, surname *Node) {
-	name = name_ref.NamedChild(0)
-	surname = name_ref.NamedChild(1)
-
-	return
-}
-
-func ToNameNode(node *Node) *Node {
-	if IsNameRef(node) {
-		name, _ := GetNameSurname(node)
-
-		return name
-	}
-
-	return node
-}
-
 func IsFamilyName(node *Node) bool {
 	return node != nil && node.Kind() == "family_name"
 }
@@ -140,79 +112,12 @@ func IsNameAliases(node *Node) bool {
 	return node != nil && node.Kind() == "name_aliases"
 }
 
-func IsNameRef(node *Node) bool {
-	return node != nil && node.Kind() == "name_ref"
-}
-
 func IsNameDef(node *Node) bool {
 	return node != nil && node.Kind() == "name_def"
 }
 
-func IsNewSurname(node *Node) bool {
-	if node == nil {
-		return false
-	}
-
-	return node.Kind() == "surname" && node.Parent().Kind() == "name_def"
-}
-
-func IsFamilyRelation(rel *fm.Relation) bool {
-	return rel.Arrow != nil && rel.Arrow.SubType == fm.TokenEqual
-}
-
 func P[T ~string | ~int32](src T) *T {
 	return &src
-}
-
-func GetErrorNodesIter(root *Node) iter.Seq[*Node] {
-	return func(yield func(*Node) bool) {
-		if !root.HasError() {
-			return
-		}
-
-		c := root.Walk()
-		defer c.Close()
-
-		active := true
-		var traverse func()
-
-		traverse = func() {
-			if !active {
-				return
-			}
-
-			node := c.Node()
-
-			if node.IsError() {
-				active = yield(node)
-				return
-			}
-
-			if !node.HasError() {
-				return
-			}
-
-			if !c.GotoFirstChild() {
-				return
-			}
-
-			for {
-				traverse()
-
-				if !active {
-					return
-				}
-
-				if !c.GotoNextSibling() {
-					break
-				}
-			}
-
-			c.GotoParent()
-		}
-
-		traverse()
-	}
 }
 
 func TokensToStrings(tokens []*fm.Token) []string {
