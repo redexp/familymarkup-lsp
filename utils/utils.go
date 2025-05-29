@@ -104,10 +104,6 @@ func GetNodeByFields(node *Node, fields ...string) *Node {
 	return node
 }
 
-func IsFamilyName(node *Node) bool {
-	return node != nil && node.Kind() == "family_name"
-}
-
 func IsNameAliases(node *Node) bool {
 	return node != nil && node.Kind() == "name_aliases"
 }

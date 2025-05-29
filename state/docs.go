@@ -149,14 +149,6 @@ func UriFileExist(uri Uri) bool {
 	return !info.IsDir()
 }
 
-func ToString(node *Node, doc *Doc) string {
-	if node == nil {
-		return ""
-	}
-
-	return node.Utf8Text([]byte(doc.Text))
-}
-
 func GetText(uri Uri) (text string, err error) {
 	uri, err = NormalizeUri(uri)
 
@@ -276,9 +268,7 @@ func (doc *Doc) GetTokenByPosition(pos *Position) *fm.Token {
 	return nil
 }
 
-func (doc *Doc) FindFamilyByRange(r Range) *fm.Family {
-	loc := RangeToLoc(r)
-
+func (doc *Doc) FindFamilyByLoc(loc fm.Loc) *fm.Family {
 	for _, f := range doc.Root.Families {
 		switch f.OverlapType(loc) {
 		case fm.OverlapAfter:
@@ -289,6 +279,10 @@ func (doc *Doc) FindFamilyByRange(r Range) *fm.Family {
 	}
 
 	return nil
+}
+
+func (doc *Doc) FindFamilyByRange(r Range) *fm.Family {
+	return doc.FindFamilyByLoc(RangeToLoc(r))
 }
 
 func (doc *Doc) FindRelationByRange(r Range) *fm.Relation {

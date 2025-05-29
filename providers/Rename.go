@@ -33,21 +33,17 @@ func Rename(_ *Ctx, params *proto.RenameParams) (res *proto.WorkspaceEdit, err e
 		return
 	}
 
-	node, err := doc.GetClosestNodeByPosition(&params.Position)
+	token := doc.GetTokenByPosition(&params.Position)
 
-	if err != nil || node == nil {
+	if token == nil {
 		return
 	}
 
 	res = &proto.WorkspaceEdit{}
 
-	if IsFamilyName(node.Parent()) {
-		r, err := doc.NodeToRange(node)
+	f := doc.FindFamilyByLoc(token.Loc())
 
-		if err != nil {
-			return nil, err
-		}
-
+	if f != nil && f.Name.IsEqual(token) {
 		res.DocumentChanges = []any{
 			proto.TextDocumentEdit{
 				TextDocument: proto.OptionalVersionedTextDocumentIdentifier{
@@ -57,14 +53,14 @@ func Rename(_ *Ctx, params *proto.RenameParams) (res *proto.WorkspaceEdit, err e
 				},
 				Edits: []any{
 					proto.TextEdit{
-						Range:   *r,
+						Range:   TokenToRange(token),
 						NewText: params.NewName,
 					},
 				},
 			},
 		}
 
-		if IsUriName(uri, ToString(node, doc)) {
+		if IsUriName(uri, token.Text) {
 			newUri, err := RenameUri(uri, params.NewName)
 
 			if err != nil {
@@ -78,7 +74,7 @@ func Rename(_ *Ctx, params *proto.RenameParams) (res *proto.WorkspaceEdit, err e
 			})
 		}
 
-		return res, nil
+		return
 	}
 
 	fa, err := getDefinition(uri, params.Position)
@@ -86,6 +82,8 @@ func Rename(_ *Ctx, params *proto.RenameParams) (res *proto.WorkspaceEdit, err e
 	if err != nil || fa == nil || fa.Member == nil {
 		return
 	}
+
+	member := fa.Member
 
 	refs := append(member.Refs, &Ref{
 		Uri:    member.Family.Uri,
