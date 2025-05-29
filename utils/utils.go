@@ -76,42 +76,6 @@ func IsMarkdownUri(uri Uri) bool {
 	return slices.Contains(MarkdownExt, Ext(uri))
 }
 
-func GetClosestNode(node *Node, parentType string, fields ...string) *Node {
-	for node != nil && node.Kind() != parentType {
-		node = node.Parent()
-	}
-
-	if node != nil && len(fields) > 0 {
-		return GetNodeByFields(node, fields...)
-	}
-
-	return node
-}
-
-func GetNodeByFields(node *Node, fields ...string) *Node {
-	if node == nil {
-		return nil
-	}
-
-	for _, field := range fields {
-		node = node.ChildByFieldName(field)
-
-		if node == nil {
-			return nil
-		}
-	}
-
-	return node
-}
-
-func IsNameAliases(node *Node) bool {
-	return node != nil && node.Kind() == "name_aliases"
-}
-
-func IsNameDef(node *Node) bool {
-	return node != nil && node.Kind() == "name_def"
-}
-
 func P[T ~string | ~int32](src T) *T {
 	return &src
 }

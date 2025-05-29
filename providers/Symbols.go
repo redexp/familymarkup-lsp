@@ -25,12 +25,6 @@ func DocSymbols(_ *Ctx, params *proto.DocumentSymbolParams) (res any, err error)
 		return
 	}
 
-	doc, err := TempDoc(uri)
-
-	if err != nil {
-		return
-	}
-
 	list := make([]proto.DocumentSymbol, 0)
 
 	for f := range root.FamilyIter() {
@@ -38,39 +32,23 @@ func DocSymbols(_ *Ctx, params *proto.DocumentSymbolParams) (res any, err error)
 			continue
 		}
 
-		r, err := doc.NodeToRange(GetClosestNode(f.Node, "family"))
-
-		if err != nil {
-			return nil, err
-		}
-
-		sr, err := doc.NodeToRange(f.Node)
-
-		if err != nil {
-			return nil, err
-		}
-
 		symbol := proto.DocumentSymbol{
 			Kind:           proto.SymbolKindNamespace,
 			Name:           f.Name,
-			Range:          *r,
-			SelectionRange: *sr,
+			Range:          LocToRange(f.Node.Loc),
+			SelectionRange: LocToRange(f.Node.Name.Loc()),
 			Children:       make([]proto.DocumentSymbol, 0),
 		}
 
 		for mem := range f.MembersIter() {
-			r, err := doc.NodeToRange(mem.Person)
-
-			if err != nil {
-				return nil, err
-			}
+			r := LocToRange(mem.Person.Loc)
 
 			symbol.Children = append(symbol.Children, proto.DocumentSymbol{
 				Kind:           proto.SymbolKindConstant,
 				Name:           mem.Name,
 				Detail:         P(fmt.Sprintf("%s %s", f.Name, mem.Name)),
-				Range:          *r,
-				SelectionRange: *r,
+				Range:          r,
+				SelectionRange: r,
 			})
 		}
 
@@ -160,46 +138,36 @@ func ResolveSymbol(_ *Ctx, symbol *WorkspaceSymbol) (res *WorkspaceSymbolLocatio
 		},
 	}
 
-	getFamily := func(name string) (*Family, *TextDocument, error) {
+	getFamily := func(name string) (*Family, error) {
 		f, exist := root.Families[name]
 
 		if !exist {
-			return nil, nil, fmt.Errorf("family not found")
+			return nil, fmt.Errorf("family not found")
 		}
 
-		doc, err := TempDoc(f.Uri)
-
-		if err != nil {
-			return nil, nil, err
-		}
-
-		return f, doc, nil
+		return f, nil
 	}
+
+	var f *Family
 
 	switch symbol.Kind {
 	case proto.SymbolKindNamespace:
-		f, doc, err := getFamily(symbol.Name)
+		f, err = getFamily(symbol.Name)
 
 		if err != nil {
-			return nil, err
-		}
-
-		r, err := doc.NodeToRange(f.Node)
-
-		if err != nil {
-			return nil, err
+			return
 		}
 
 		res.Location = proto.Location{
 			URI:   f.Uri,
-			Range: *r,
+			Range: LocToRange(f.Node.Loc),
 		}
 
 	case proto.SymbolKindConstant:
-		f, doc, err := getFamily(*symbol.ContainerName)
+		f, err = getFamily(*symbol.ContainerName)
 
 		if err != nil {
-			return nil, err
+			return
 		}
 
 		parts := strings.Split(symbol.Name, " ")
@@ -211,15 +179,9 @@ func ResolveSymbol(_ *Ctx, symbol *WorkspaceSymbol) (res *WorkspaceSymbolLocatio
 			return nil, fmt.Errorf("member not found")
 		}
 
-		r, err := doc.NodeToRange(mem.Person)
-
-		if err != nil {
-			return nil, err
-		}
-
 		res.Location = proto.Location{
 			URI:   f.Uri,
-			Range: *r,
+			Range: LocToRange(mem.Person.Loc),
 		}
 	}
 
