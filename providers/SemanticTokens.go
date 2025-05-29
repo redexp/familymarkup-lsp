@@ -89,7 +89,9 @@ func CreateLegend(list []string) (legend *LegendType) {
 	types := make([]string, 0)
 	modifiers := make([]string, 0)
 
-	legend.Map = make(map[string]Tokens)
+	legend = &LegendType{
+		Map: make(map[string]Tokens),
+	}
 
 	for _, name := range list {
 		parts := strings.Split(name, ".")

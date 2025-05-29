@@ -5,7 +5,6 @@ import (
 	fm "github.com/redexp/familymarkup-parser"
 	"strings"
 
-	. "github.com/redexp/familymarkup-lsp/state"
 	. "github.com/redexp/familymarkup-lsp/utils"
 	proto "github.com/tliron/glsp/protocol_3_16"
 )
