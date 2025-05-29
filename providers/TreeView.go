@@ -12,7 +12,6 @@ import (
 	. "github.com/redexp/familymarkup-lsp/state"
 	. "github.com/redexp/familymarkup-lsp/types"
 	. "github.com/redexp/familymarkup-lsp/utils"
-	proto "github.com/tliron/glsp/protocol_3_16"
 )
 
 var treeContext *Ctx
@@ -132,19 +131,6 @@ func TreeMembers(_ *Ctx, loc *TreeItemLocation) (list []*TreeMember, err error) 
 	return
 }
 
-func TreeLocation(_ *Ctx, params *TreeLocationParams) (pos *proto.Position, err error) {
-	doc, err := TempDoc(params.URI)
-
-	if err != nil {
-		return
-	}
-
-	return doc.PointToPosition(Point{
-		Row:    uint(params.Row),
-		Column: uint(params.Column),
-	})
-}
-
 func TreeReload() {
 	treeContext.Notify("tree/reload", nil)
 }
@@ -191,7 +177,6 @@ type TreeHandlers struct {
 	TreeFamilies  TreeFamiliesFunc
 	TreeRelations TreeRelationsFunc
 	TreeMembers   TreeMembersFunc
-	TreeLocation  TreeLocationFunc
 }
 
 func (req *TreeHandlers) Handle(ctx *Ctx) (res any, validMethod bool, validParams bool, err error) {
@@ -219,14 +204,6 @@ func (req *TreeHandlers) Handle(ctx *Ctx) (res any, validMethod bool, validParam
 			res, err = req.TreeMembers(ctx, &params)
 		}
 
-	case TreeLocationMethod:
-		validMethod = true
-
-		var params TreeLocationParams
-		if err = json.Unmarshal(ctx.Params, &params); err == nil {
-			validParams = true
-			res, err = req.TreeLocation(ctx, &params)
-		}
 	}
 
 	return
@@ -281,16 +258,4 @@ type TreeMember struct {
 
 	Name    string   `json:"name"`
 	Aliases []string `json:"aliases,omitempty"`
-}
-
-// TreeLocation
-
-const TreeLocationMethod = "tree/location"
-
-type TreeLocationFunc func(ctx *Ctx, params *TreeLocationParams) (*proto.Position, error)
-
-type TreeLocationParams struct {
-	TreeItemPoint
-
-	URI Uri `json:"uri"`
 }

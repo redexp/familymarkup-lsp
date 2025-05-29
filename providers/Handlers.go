@@ -46,7 +46,6 @@ func NewTreeHandlers() *TreeHandlers {
 		TreeFamilies:  TreeFamilies,
 		TreeRelations: TreeRelations,
 		TreeMembers:   TreeMembers,
-		TreeLocation:  TreeLocation,
 	}
 }
 
