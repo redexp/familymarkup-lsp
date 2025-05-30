@@ -2,15 +2,13 @@ package providers
 
 import (
 	"fmt"
-	fm "github.com/redexp/familymarkup-parser"
-	"regexp"
-	"strconv"
-	"strings"
-
 	. "github.com/redexp/familymarkup-lsp/state"
 	. "github.com/redexp/familymarkup-lsp/types"
 	. "github.com/redexp/familymarkup-lsp/utils"
+	fm "github.com/redexp/familymarkup-parser"
 	proto "github.com/tliron/glsp/protocol_3_16"
+	"strconv"
+	"strings"
 )
 
 func DocFormating(_ *Ctx, params *proto.DocumentFormattingParams) (list []proto.TextEdit, err error) {
@@ -349,22 +347,17 @@ func addNewLineNum(uri Uri, pos *Position) (list []proto.TextEdit, err error) {
 		return
 	}
 
-	text, err := doc.GetTextOnLine(pos.Line - 1)
+	tokens := doc.GetTrimTokensByLine(int(pos.Line - 1))
+	count := len(tokens)
+	var first *fm.Token
+	var last *fm.Token
 
-	if err != nil {
-		return
+	if count > 0 {
+		first = tokens[0]
+		last = tokens[count-1]
 	}
 
-	textLen := uint32(len(text))
-	text = strings.TrimSpace(text)
-
-	match, err := regexp.MatchString("^\\d+\\.?$", text)
-
-	if err != nil {
-		return
-	}
-
-	if match {
+	if first != nil && first.Type == fm.TokenNum {
 		list = append(list, proto.TextEdit{
 			Range: Range{
 				Start: Position{
@@ -373,7 +366,7 @@ func addNewLineNum(uri Uri, pos *Position) (list []proto.TextEdit, err error) {
 				},
 				End: Position{
 					Line:      pos.Line - 1,
-					Character: textLen,
+					Character: uint32(last.EndChar()),
 				},
 			},
 			NewText: "",
@@ -382,76 +375,80 @@ func addNewLineNum(uri Uri, pos *Position) (list []proto.TextEdit, err error) {
 		return
 	}
 
-	exp := regexp.MustCompile(`^(\d+)\.? `)
+	replaceNums := func(line uint32, index int) {
+		p := doc.FindPersonByLine(int(line))
 
-	replaceNums := func(line uint32, index uint) {
-		for {
-			text, err := doc.GetTextOnLine(line)
+		if p == nil || p.Side != fm.SideTargets {
+			return
+		}
+
+		for _, item := range p.Relation.Targets.Persons {
+			if item.Index < p.Index {
+				continue
+			}
+
+			token := item.Num
+
+			if token == nil {
+				index++
+				continue
+			}
+
+			num, err := numToInt(token)
 
 			if err != nil {
 				return
 			}
 
-			match := exp.FindStringSubmatch(text)
-
-			if len(match) == 0 {
-				return
-			}
-
-			num, err := strconv.Atoi(match[1])
-
-			if err != nil {
-				return
-			}
-
-			if num != int(index) {
+			if num != index {
 				list = append(list, proto.TextEdit{
 					Range: Range{
 						Start: Position{
-							Line:      line,
+							Line:      uint32(token.Line),
 							Character: 0,
 						},
 						End: Position{
-							Line:      line,
-							Character: uint32(len(match[0])),
+							Line:      uint32(token.Line),
+							Character: uint32(token.EndChar()),
 						},
 					},
 					NewText: fmt.Sprintf("%d. ", index),
 				})
 			}
 
-			line++
 			index++
 		}
 	}
 
-	match, err = regexp.MatchString(`=[\p{Ll}'" ]*$`, text)
+	if last != nil && (last.SubType == fm.TokenEqual || last.Type == fm.TokenWord) {
+		hasEq := last.SubType == fm.TokenEqual
 
-	if err != nil {
+		if last.Type == fm.TokenWord {
+			prev, _ := doc.PrevNextNonSpaceTokens(last)
+
+			hasEq = prev != nil && prev.SubType == fm.TokenEqual
+		}
+
+		if hasEq {
+			list = append(list, proto.TextEdit{
+				Range: Range{
+					Start: *pos,
+					End:   *pos,
+				},
+				NewText: "1. ",
+			})
+
+			replaceNums(pos.Line+1, 2)
+
+			return
+		}
+	}
+
+	if first == nil || first.Type != fm.TokenNum {
 		return
 	}
 
-	if match {
-		list = append(list, proto.TextEdit{
-			Range: Range{
-				Start: *pos,
-				End:   *pos,
-			},
-			NewText: "1. ",
-		})
-
-		replaceNums(pos.Line+1, 2)
-
-		return
-	}
-
-	result := exp.FindStringSubmatch(text)
-
-	if len(result) == 0 {
-		return
-	}
-
-	num, err := strconv.Atoi(result[1])
+	num, err := numToInt(first)
 
 	if err != nil {
 		return
@@ -465,7 +462,11 @@ func addNewLineNum(uri Uri, pos *Position) (list []proto.TextEdit, err error) {
 		NewText: fmt.Sprintf("%d. ", num+1),
 	})
 
-	replaceNums(pos.Line+1, uint(num+2))
+	replaceNums(pos.Line+1, num+2)
 
 	return
+}
+
+func numToInt(num *fm.Token) (int, error) {
+	return strconv.Atoi(strings.TrimSuffix(num.Text, "."))
 }

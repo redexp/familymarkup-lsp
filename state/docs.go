@@ -5,6 +5,7 @@ import (
 	"iter"
 	"os"
 	"slices"
+	"strings"
 	"sync"
 
 	. "github.com/redexp/familymarkup-lsp/types"
@@ -191,6 +192,24 @@ func (docs Docs) Get(uri Uri) (doc *Doc, err error) {
 	return
 }
 
+func (doc *Doc) GetTextByLine(line int) string {
+	var b strings.Builder
+
+	for _, token := range doc.Tokens {
+		if token.Line < line {
+			continue
+		}
+
+		if token.Line > line {
+			break
+		}
+
+		b.WriteString(token.Text)
+	}
+
+	return b.String()
+}
+
 func (doc *Doc) GetTextByLoc(loc fm.Loc) (string, error) {
 	r := LocToRange(loc)
 	return doc.GetTextByRange(&r)
@@ -198,6 +217,68 @@ func (doc *Doc) GetTextByLoc(loc fm.Loc) (string, error) {
 
 func (doc *Doc) TokenIndex(token *fm.Token) int {
 	return slices.Index(doc.Tokens, token)
+}
+
+func (doc *Doc) GetTokensByLine(line int) (tokens []*fm.Token) {
+	start := -1
+	end := -1
+
+	for i, token := range doc.Tokens {
+		if token.Line < line {
+			continue
+		}
+
+		if token.Line > line {
+			end = i
+			break
+		}
+
+		if start == -1 {
+			start = i
+		}
+	}
+
+	if start == -1 {
+		return
+	}
+
+	if end == -1 {
+		return doc.Tokens[start:]
+	}
+
+	return doc.Tokens[start:end]
+}
+
+func (doc *Doc) GetTrimTokensByLine(line int) (tokens []*fm.Token) {
+	tokens = doc.GetTokensByLine(line)
+	count := len(tokens)
+
+	if count == 0 {
+		return
+	}
+
+	start := 0
+	end := count
+
+	for _, token := range tokens {
+		if token.Type == fm.TokenSpace {
+			start++
+		} else {
+			break
+		}
+	}
+
+	for i := count - 1; i >= 0; i-- {
+		token := tokens[i]
+
+		if token.Type == fm.TokenSpace {
+			end--
+		} else {
+			break
+		}
+	}
+
+	return tokens[start:end]
 }
 
 func (doc *Doc) PrevNextTokens(token *fm.Token) (prev *fm.Token, next *fm.Token) {
@@ -336,4 +417,15 @@ func (doc *Doc) FindPersonByRange(r Range) *fm.Person {
 	}
 
 	return nil
+}
+
+func (doc *Doc) FindPersonByLine(line int) *fm.Person {
+	return doc.FindPersonByRange(Range{
+		Start: Position{
+			Line: uint32(line),
+		},
+		End: Position{
+			Line: uint32(line),
+		},
+	})
 }
