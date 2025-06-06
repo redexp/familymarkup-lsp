@@ -7,10 +7,7 @@ import (
 const (
 	FileCreate = uint8(iota)
 	FileChange
-	FileRename
 	FileDelete
-	FileOpen
-	FileClose
 )
 
 type UriSet map[Uri]uint8

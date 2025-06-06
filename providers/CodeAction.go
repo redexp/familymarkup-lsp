@@ -146,11 +146,7 @@ func CodeAction(_ *Ctx, params *proto.CodeActionParams) (res any, err error) {
 					continue
 				}
 
-				source, err := doc.GetTextByLoc(rel.Sources.Loc)
-
-				if err != nil {
-					return nil, err
-				}
+				source := doc.GetTextByLoc(rel.Sources.Loc)
 
 				add(proto.CodeAction{
 					Title:       L("change_name_from_source", name, source),
@@ -248,7 +244,7 @@ func CodeActionResolve(ctx *Ctx, params *proto.CodeAction) (res *proto.CodeActio
 
 			res.Edit.DocumentChanges = []any{
 				createFile,
-				createInserText(newUri, pos, text),
+				createInsertText(newUri, pos, text),
 			}
 
 			scheduleDiagnostic(ctx, data.Uri, nil)
@@ -270,7 +266,7 @@ func CodeActionResolve(ctx *Ctx, params *proto.CodeAction) (res *proto.CodeActio
 			}
 		}
 
-		res.Edit.DocumentChanges = []any{createInserText(data.Uri, pos, "\n\n"+text)}
+		res.Edit.DocumentChanges = []any{createInsertText(data.Uri, pos, "\n\n"+text)}
 
 	case NameDuplicateWarning:
 		res.Edit.DocumentChanges = []any{createEdit(data.Uri, r.Start, r.End, data.Name)}
@@ -296,7 +292,7 @@ func CodeActionResolve(ctx *Ctx, params *proto.CodeAction) (res *proto.CodeActio
 
 		pos := LocPosToPosition(f.End)
 
-		res.Edit.DocumentChanges = []any{createInserText(data.Uri, pos, fmt.Sprintf("\n\n%s + ? =\n", token.Text))}
+		res.Edit.DocumentChanges = []any{createInsertText(data.Uri, pos, fmt.Sprintf("\n\n%s + ? =\n", token.Text))}
 	}
 
 	return res, nil
@@ -319,6 +315,6 @@ func createEdit(uri Uri, start proto.Position, end proto.Position, text string) 
 	}
 }
 
-func createInserText(uri Uri, pos proto.Position, text string) proto.TextDocumentEdit {
+func createInsertText(uri Uri, pos proto.Position, text string) proto.TextDocumentEdit {
 	return createEdit(uri, pos, pos, text)
 }

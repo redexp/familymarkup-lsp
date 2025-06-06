@@ -57,11 +57,7 @@ func TreeRelations(_ *Ctx, loc *TreeItemLocation) (list []*TreeRelation, err err
 	for _, rel := range f.Node.Relations {
 		r := LocToRange(rel.Sources.Loc)
 
-		label, err := doc.GetTextByRange(&r)
-
-		if err != nil {
-			return nil, err
-		}
+		label := doc.GetTextByRange(r)
 
 		list = append(list, &TreeRelation{
 			TreeItemPoint: toTreeItemPoint(rel.Loc),

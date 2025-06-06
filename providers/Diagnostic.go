@@ -138,11 +138,7 @@ func PublishDiagnostics(ctx *Ctx, uri Uri, doc *Doc) (err error) {
 		for i, dup := range dups {
 			sources := dup.Member.Person.Relation.Sources
 
-			text, err := doc.GetTextByLoc(sources.Loc)
-
-			if err != nil {
-				return err
-			}
+			text := doc.GetTextByLoc(sources.Loc)
 
 			locations[i] = proto.DiagnosticRelatedInformation{
 				Location: proto.Location{

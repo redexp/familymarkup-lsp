@@ -150,3 +150,11 @@ func TokenToRange(token *fm.Token) proto.Range {
 		End:   TokenEndToPosition(token),
 	}
 }
+
+func Slice(text string, start, end int) string {
+	return string([]rune(text)[start:end])
+}
+
+func SliceToEnd(text string, start int) string {
+	return string([]rune(text)[start:])
+}

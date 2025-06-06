@@ -100,11 +100,7 @@ func prettify(uri Uri, r *Range) (list []proto.TextEdit, err error) {
 	}
 
 	check := func(edit proto.TextEdit) (err error) {
-		text, err := doc.GetTextByRange(&edit.Range)
-
-		if err != nil {
-			return
-		}
+		text := doc.GetTextByRange(edit.Range)
 
 		if text != edit.NewText {
 			add(edit)
@@ -265,7 +261,7 @@ func prettify(uri Uri, r *Range) (list []proto.TextEdit, err error) {
 				for _, sep := range relList.Separators {
 					prev, next := doc.PrevNextTokens(sep)
 
-					switch sep.Type {
+					switch sep.SubType {
 					case fm.TokenComma:
 						if prev != nil && prev.Type == fm.TokenSpace {
 							add(proto.TextEdit{
@@ -324,7 +320,7 @@ func prettify(uri Uri, r *Range) (list []proto.TextEdit, err error) {
 					})
 				}
 
-				if next != nil && next.Line == rel.Arrow.Line && next.Type != fm.TokenSpace && next.SubType != fm.TokenNewLine {
+				if next != nil && next.Line == rel.Arrow.Line && next.Type != fm.TokenSpace && next.SubType != fm.TokenNL {
 					add(proto.TextEdit{
 						Range: Range{
 							Start: TokenEndToPosition(rel.Arrow),

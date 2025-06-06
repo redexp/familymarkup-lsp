@@ -31,7 +31,7 @@ func compareNames(a []rune, b []rune) uint {
 	bl := float64(len(b))
 	max := uint(math.Max(al, bl))
 	min := uint(math.Min(al, bl))
-	diff := uint(max - min)
+	diff := max - min
 
 	if diff > 2 {
 		return diff

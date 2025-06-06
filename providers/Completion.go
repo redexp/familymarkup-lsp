@@ -165,7 +165,7 @@ func GetCompletionType(uri Uri, pos *Position) (t string, words []string, err er
 
 	prev, next := doc.PrevNextNonSpaceTokens(token)
 
-	mask := fm.TokenSpace | fm.TokenNewLine | fm.TokenEmptyLines
+	mask := fm.TokenSpace | fm.TokenNewLine | fm.TokenEmptyLine
 	blank := token.Type&mask == 0
 
 	if blank && prev != nil && prev.SubType == fm.TokenEqual {

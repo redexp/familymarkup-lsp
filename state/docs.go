@@ -10,15 +10,15 @@ import (
 
 	. "github.com/redexp/familymarkup-lsp/types"
 	. "github.com/redexp/familymarkup-lsp/utils"
-	"github.com/redexp/textdocument"
 )
 
 type Doc struct {
-	*TextDocument
-
 	Uri    Uri
+	Text   string
 	Tokens []*fm.Token
 	Root   *fm.Root
+
+	TokensByLines map[int][]*fm.Token
 }
 
 type Docs map[Uri]*Doc
@@ -27,12 +27,10 @@ var documents sync.Map
 
 func CreateDoc(uri Uri, text string) *Doc {
 	doc := &Doc{
-		TextDocument: textdocument.NewTextDocument(text),
-		Uri:          uri,
-		Tokens:       fm.Lexer(text),
+		Uri: uri,
 	}
 
-	doc.Root = fm.ParseTokens(doc.Tokens)
+	doc.SetText(text)
 
 	return doc
 }
@@ -192,27 +190,67 @@ func (docs Docs) Get(uri Uri) (doc *Doc, err error) {
 	return
 }
 
-func (doc *Doc) GetTextByLine(line int) string {
-	var b strings.Builder
+func (doc *Doc) SetText(text string) {
+	doc.Text = text
+	doc.Tokens = fm.Lexer(text)
+	doc.Root = fm.ParseTokens(doc.Tokens)
+
+	doc.TokensByLines = make(map[int][]*fm.Token)
 
 	for _, token := range doc.Tokens {
-		if token.Line < line {
-			continue
-		}
+		doc.TokensByLines[token.Line] = append(doc.TokensByLines[token.Line], token)
+	}
+}
 
-		if token.Line > line {
-			break
-		}
+func (doc *Doc) GetTextByLine(line int) string {
+	tokens, ok := doc.TokensByLines[line]
 
+	if !ok {
+		return ""
+	}
+
+	var b strings.Builder
+
+	for _, token := range tokens {
 		b.WriteString(token.Text)
 	}
 
 	return b.String()
 }
 
-func (doc *Doc) GetTextByLoc(loc fm.Loc) (string, error) {
-	r := LocToRange(loc)
-	return doc.GetTextByRange(&r)
+func (doc *Doc) GetTextByRange(r Range) string {
+	return doc.GetTextByLoc(RangeToLoc(r))
+}
+
+func (doc *Doc) GetTextByLoc(loc fm.Loc) string {
+	var s strings.Builder
+
+	for i := loc.Start.Line; i <= loc.End.Line; i++ {
+		tokens, ok := doc.TokensByLines[i]
+
+		if !ok {
+			continue
+		}
+
+		for _, token := range tokens {
+			switch loc.OverlapType(token.Loc()) {
+			case fm.OverlapBefore:
+				return s.String()
+			case fm.OverlapAfter:
+				continue
+			case fm.OverlapByStart:
+				s.WriteString(SliceToEnd(token.Text, loc.Start.Char-token.Char))
+			case fm.OverlapOuter:
+				s.WriteString(token.Text)
+			case fm.OverlapInner:
+				s.WriteString(Slice(token.Text, loc.Start.Char-token.Char, loc.End.Char-token.Char))
+			case fm.OverlapByEnd:
+				s.WriteString(Slice(token.Text, 0, loc.End.Char-token.Char))
+			}
+		}
+	}
+
+	return s.String()
 }
 
 func (doc *Doc) TokenIndex(token *fm.Token) int {
@@ -332,18 +370,19 @@ func (doc *Doc) PrevNextNonSpaceTokens(token *fm.Token) (prev *fm.Token, next *f
 }
 
 func (doc *Doc) GetTokenByPosition(pos *Position) *fm.Token {
-	offset, err := doc.PositionToByteIndex(pos)
+	line := int(pos.Line)
+	char := int(pos.Character)
 
-	if err != nil {
+	tokens, ok := doc.TokensByLines[line]
+
+	if !ok {
 		return nil
 	}
 
-	for _, token := range doc.Tokens {
-		if uint32(token.Offest) < offset {
-			continue
+	for _, token := range tokens {
+		if token.IsOnPosition(line, char) {
+			return token
 		}
-
-		return token
 	}
 
 	return nil
