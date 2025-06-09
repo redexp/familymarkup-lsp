@@ -78,10 +78,9 @@ func TreeMembers(_ *Ctx, loc *TreeItemLocation) (list []*TreeMember, err error) 
 	}
 
 	var relationNode *fm.Relation
-	row := int(loc.Row)
 
 	for _, rel := range f.Node.Relations {
-		if rel.Start.Line == row {
+		if rel.Start.Line == loc.Line {
 			relationNode = rel
 			break
 		}
@@ -141,10 +140,8 @@ func getFamilyDoc(loc *TreeItemLocation) (f *Family, doc *Doc, err error) {
 	dups, exist := root.Duplicates[loc.FamilyName]
 
 	if exist {
-		row := int(loc.Row)
-
 		for _, dup := range dups {
-			if dup.Family.Node.Start.Line == row {
+			if dup.Family.Node.Start.Line == loc.Line {
 				f = dup.Family
 				return
 			}
@@ -226,7 +223,7 @@ type TreeRelationsFunc func(ctx *Ctx, loc *TreeItemLocation) ([]*TreeRelation, e
 type TreeItemLocation struct {
 	URI        Uri    `json:"uri"`
 	FamilyName string `json:"family_name"`
-	Row        uint32 `json:"row"`
+	Line       int    `json:"line"`
 }
 
 type TreeRelation struct {
