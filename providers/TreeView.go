@@ -22,7 +22,7 @@ func TreeFamilies(ctx *Ctx) ([]*TreeFamily, error) {
 
 	for f := range root.FamilyIter() {
 		list = append(list, &TreeFamily{
-			TreeItemPoint: toTreeItemPoint(f.Node.Loc),
+			Position: f.Node.Start,
 
 			URI:     f.Uri,
 			Name:    f.Name,
@@ -60,7 +60,7 @@ func TreeRelations(_ *Ctx, loc *TreeItemLocation) (list []*TreeRelation, err err
 		label := doc.GetTextByRange(r)
 
 		list = append(list, &TreeRelation{
-			TreeItemPoint: toTreeItemPoint(rel.Loc),
+			Position: rel.Loc.Start,
 
 			Label: label,
 			Arrow: rel.Arrow.Text,
@@ -101,7 +101,7 @@ func TreeMembers(_ *Ctx, loc *TreeItemLocation) (list []*TreeMember, err error) 
 
 	add := func(person *fm.Person, name string, aliases []string) {
 		list = append(list, &TreeMember{
-			TreeItemPoint: toTreeItemPoint(person.Loc),
+			Position: person.Start,
 
 			Name:    name,
 			Aliases: aliases,
@@ -160,13 +160,6 @@ func getFamilyDoc(loc *TreeItemLocation) (f *Family, doc *Doc, err error) {
 	return
 }
 
-func toTreeItemPoint(loc fm.Loc) TreeItemPoint {
-	return TreeItemPoint{
-		Row:    uint32(loc.Start.Line),
-		Column: uint32(loc.Start.Char),
-	}
-}
-
 // TreeHandler
 
 type TreeHandlers struct {
@@ -206,8 +199,8 @@ func (req *TreeHandlers) Handle(ctx *Ctx) (res any, validMethod bool, validParam
 }
 
 type TreeItemPoint struct {
-	Row    uint32 `json:"row"`
-	Column uint32 `json:"column"`
+	Line uint32 `json:"line"`
+	Char uint32 `json:"char"`
 }
 
 // TreeFamilies
@@ -217,7 +210,7 @@ const TreeFamiliesMethod = "tree/families"
 type TreeFamiliesFunc func(ctx *Ctx) ([]*TreeFamily, error)
 
 type TreeFamily struct {
-	TreeItemPoint
+	fm.Position
 
 	URI     Uri      `json:"uri"`
 	Name    string   `json:"name"`
@@ -237,7 +230,7 @@ type TreeItemLocation struct {
 }
 
 type TreeRelation struct {
-	TreeItemPoint
+	fm.Position
 
 	Label string `json:"label"`
 	Arrow string `json:"arrow"`
@@ -250,7 +243,7 @@ const TreeMembersMethod = "tree/members"
 type TreeMembersFunc func(ctx *Ctx, loc *TreeItemLocation) ([]*TreeMember, error)
 
 type TreeMember struct {
-	TreeItemPoint
+	fm.Position
 
 	Name    string   `json:"name"`
 	Aliases []string `json:"aliases,omitempty"`
