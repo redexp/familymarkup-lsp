@@ -54,18 +54,12 @@ func DocChange(ctx *Ctx, params *proto.DidChangeTextDocumentParams) error {
 	}
 
 	for _, wrap := range params.ContentChanges {
-		var err error
-
 		switch change := wrap.(type) {
 		case proto.TextDocumentContentChangeEventWhole:
 			doc.SetText(change.Text)
 
 		case proto.TextDocumentContentChangeEvent:
-			err = doc.Change(change)
-		}
-
-		if err != nil {
-			return err
+			doc.Change(change)
 		}
 	}
 
