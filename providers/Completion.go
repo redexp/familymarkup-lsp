@@ -9,7 +9,7 @@ import (
 )
 
 func Completion(_ *Ctx, params *proto.CompletionParams) (res any, err error) {
-	t, words, err := GetCompletionType(params.TextDocument.URI, &params.Position)
+	t, words, err := GetCompletionType(params.TextDocument.URI, params.Position)
 
 	if err != nil || t == "" {
 		return
@@ -150,7 +150,7 @@ func Completion(_ *Ctx, params *proto.CompletionParams) (res any, err error) {
 // "name surname|", [string, string]
 // "name" || "surname", [string]
 // "", []
-func GetCompletionType(uri Uri, pos *Position) (t string, words []string, err error) {
+func GetCompletionType(uri Uri, pos Position) (t string, words []string, err error) {
 	doc, err := TempDoc(uri)
 
 	if err != nil {

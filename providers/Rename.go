@@ -33,7 +33,7 @@ func Rename(_ *Ctx, params *proto.RenameParams) (res *proto.WorkspaceEdit, err e
 		return
 	}
 
-	token := doc.GetTokenByPosition(&params.Position)
+	token := doc.GetTokenByPosition(params.Position)
 
 	if token == nil {
 		return

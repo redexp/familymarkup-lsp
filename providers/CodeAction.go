@@ -70,7 +70,7 @@ func CodeAction(_ *Ctx, params *proto.CodeActionParams) (res any, err error) {
 			}
 
 			// TODO: check maybe doc.GetTextByRange would be the same
-			token := doc.GetTokenByPosition(&d.Range.Start)
+			token := doc.GetTokenByPosition(d.Range.Start)
 
 			add(
 				proto.CodeAction{
@@ -206,7 +206,7 @@ func CodeActionResolve(ctx *Ctx, params *proto.CodeAction) (res *proto.CodeActio
 			return
 		}
 
-		token = doc.GetTokenByPosition(&r.Start)
+		token = doc.GetTokenByPosition(r.Start)
 
 		if token == nil {
 			return
@@ -278,7 +278,7 @@ func CodeActionResolve(ctx *Ctx, params *proto.CodeAction) (res *proto.CodeActio
 			return
 		}
 
-		token = doc.GetTokenByPosition(&r.Start)
+		token = doc.GetTokenByPosition(r.Start)
 
 		if token == nil {
 			return

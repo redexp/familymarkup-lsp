@@ -2,6 +2,7 @@ package state
 
 import (
 	fm "github.com/redexp/familymarkup-parser"
+	proto "github.com/tliron/glsp/protocol_3_16"
 	"iter"
 	"os"
 	"slices"
@@ -202,6 +203,14 @@ func (doc *Doc) SetText(text string) {
 	}
 }
 
+func (doc *Doc) Change(e proto.TextDocumentContentChangeEvent) {
+	start := doc.PosToOffset(e.Range.Start)
+	end := doc.PosToOffset(e.Range.End)
+	text := doc.Text[0:start] + e.Text + doc.Text[end:]
+
+	doc.SetText(text)
+}
+
 func (doc *Doc) GetTextByLine(line int) string {
 	tokens, ok := doc.TokensByLines[line]
 
@@ -369,7 +378,7 @@ func (doc *Doc) PrevNextNonSpaceTokens(token *fm.Token) (prev *fm.Token, next *f
 	return
 }
 
-func (doc *Doc) GetTokenByPosition(pos *Position) *fm.Token {
+func (doc *Doc) GetTokenByPosition(pos Position) *fm.Token {
 	line := int(pos.Line)
 	char := int(pos.Character)
 
@@ -386,6 +395,30 @@ func (doc *Doc) GetTokenByPosition(pos *Position) *fm.Token {
 	}
 
 	return nil
+}
+
+func (doc *Doc) PosToOffset(pos Position) int {
+	line := int(pos.Line)
+	char := int(pos.Character)
+
+	list, ok := doc.TokensByLines[line]
+
+	if !ok {
+		return len(doc.Text)
+	}
+
+	for _, token := range list {
+		if token.EndChar() < char {
+			continue
+		}
+
+		return token.Offest + len(Slice(token.Text, 0, char-token.Char))
+	}
+
+	count := len(list)
+	last := list[count-1]
+
+	return last.End()
 }
 
 func (doc *Doc) FindFamilyByLoc(loc fm.Loc) *fm.Family {
