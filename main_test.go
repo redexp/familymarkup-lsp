@@ -46,6 +46,7 @@ func TestSemanticTokensFull(t *testing.T) {
 
 	if res == nil || res.Data == nil {
 		t.Errorf("res is nil")
+		return
 	}
 
 	if len(res.Data) != 5*18 {
