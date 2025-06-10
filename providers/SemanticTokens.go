@@ -1,11 +1,12 @@
 package providers
 
 import (
-	fm "github.com/redexp/familymarkup-parser"
 	"slices"
 	"sort"
 	"strings"
 	"sync"
+
+	fm "github.com/redexp/familymarkup-parser"
 
 	. "github.com/redexp/familymarkup-lsp/types"
 	. "github.com/redexp/familymarkup-lsp/utils"
@@ -254,7 +255,7 @@ func getSemanticTokens(docUri string) (result Tokens, uri string, err error) {
 
 		result[i*5] = proto.UInteger(deltaLine)
 		result[i*5+1] = proto.UInteger(deltaStartChar)
-		result[i*5+2] = proto.UInteger(token.Length)
+		result[i*5+2] = proto.UInteger(token.CharsNum)
 		result[i*5+3] = t
 		result[i*5+4] = m
 

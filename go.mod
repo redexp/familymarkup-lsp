@@ -5,7 +5,7 @@ go 1.24.2
 require (
 	github.com/bep/debounce v1.2.1
 	github.com/mitchellh/mapstructure v1.5.0
-	github.com/redexp/familymarkup-parser v0.10.0
+	github.com/redexp/familymarkup-parser v0.10.1
 	github.com/spf13/pflag v1.0.6
 	github.com/tliron/commonlog v0.2.19
 	github.com/tliron/glsp v0.2.2

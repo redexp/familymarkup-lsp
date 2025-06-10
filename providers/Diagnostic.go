@@ -1,8 +1,9 @@
 package providers
 
 import (
-	fm "github.com/redexp/familymarkup-parser"
 	"time"
+
+	fm "github.com/redexp/familymarkup-parser"
 
 	"github.com/bep/debounce"
 	. "github.com/redexp/familymarkup-lsp/state"
@@ -213,6 +214,7 @@ func PublishDiagnostics(ctx *Ctx, uri Uri, doc *Doc) (err error) {
 
 var docDiagnostic = &DocDebouncer{
 	Debounce: debounce.New(200 * time.Millisecond),
+	Docs:     make(Docs),
 }
 
 func (dd *DocDebouncer) Set(uri Uri, doc *Doc) {

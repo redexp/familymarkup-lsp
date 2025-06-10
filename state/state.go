@@ -136,17 +136,18 @@ func (root *Root) Update(doc *Doc) {
 						Uri:     uri,
 						Surname: person.Surname,
 					})
-				}
-
-				if !rel.IsFamilyDef || (person.Side == fm.SideSources && family.HasMember(person.Name.Text)) {
-					t := RefTypeName
-
-					if person.Surname != nil {
-						t = RefTypeNameSurname
-					}
 
 					root.AddRef(&Ref{
-						Type:   t,
+						Type:   RefTypeNameSurname,
+						Uri:    uri,
+						Person: person,
+						Family: family,
+					})
+				}
+
+				if !rel.IsFamilyDef || (person.Side == fm.SideSources && person.Surname == nil && family.HasMember(person.Name.Text)) {
+					root.AddRef(&Ref{
+						Type:   RefTypeName,
 						Uri:    uri,
 						Person: person,
 						Family: family,
@@ -156,7 +157,7 @@ func (root *Root) Update(doc *Doc) {
 
 				mem := family.AddMember(person)
 
-				if person.Surname != nil {
+				if person.IsChild && person.Surname != nil {
 					// create a member in this surname
 					root.AddRef(&Ref{
 						Type:   RefTypeOrigin,
@@ -585,7 +586,7 @@ func (root *Root) AddRef(ref *Ref) {
 			root.AddUnknownRef(&Ref{
 				Type:    RefTypeSurname,
 				Uri:     ref.Uri,
-				Surname: ref.Person.Surname,
+				Surname: origin.Person.Surname,
 			})
 
 			root.AddUnknownRef(ref)
@@ -747,5 +748,5 @@ func (root *Root) OnUpdate(cb func()) {
 }
 
 func TokenToPosString(token *fm.Token) string {
-	return fmt.Sprintf("%d:%d", token.Offest, token.End())
+	return fmt.Sprintf("%d:%d", token.Line, token.Char)
 }
