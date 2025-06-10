@@ -353,7 +353,7 @@ func addNewLineNum(uri Uri, pos *Position) (list []proto.TextEdit, err error) {
 		last = tokens[count-1]
 	}
 
-	if first != nil && first.Type == fm.TokenNum {
+	if first != nil && first.Type == fm.TokenNum && count == 1 {
 		list = append(list, proto.TextEdit{
 			Range: Range{
 				Start: Position{
