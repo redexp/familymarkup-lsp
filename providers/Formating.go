@@ -361,11 +361,11 @@ func addNewLineNum(uri Uri, pos *Position) (list []proto.TextEdit, err error) {
 					Character: 0,
 				},
 				End: Position{
-					Line:      pos.Line - 1,
-					Character: uint32(last.EndChar()),
+					Line:      pos.Line,
+					Character: 0,
 				},
 			},
-			NewText: "",
+			NewText: "\n",
 		})
 
 		return
