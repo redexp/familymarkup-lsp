@@ -38,7 +38,7 @@ func DocumentHighlight(_ *Ctx, params *proto.DocumentHighlightParams) (res []pro
 	family, member, _ := fa.Spread()
 
 	if family != nil && family.Uri == uri {
-		add(family.Node.Loc)
+		add(family.Node.Name.Loc())
 	}
 
 	if member != nil && member.Family.Uri == uri {
