@@ -19,7 +19,7 @@ type Doc struct {
 	Tokens []*fm.Token
 	Root   *fm.Root
 
-	TokensByLines map[int][]*fm.Token
+	TokensByLine map[int][]*fm.Token
 }
 
 type Docs map[Uri]*Doc
@@ -196,10 +196,10 @@ func (doc *Doc) SetText(text string) {
 	doc.Tokens = fm.Lexer(text)
 	doc.Root = fm.ParseTokens(doc.Tokens)
 
-	doc.TokensByLines = make(map[int][]*fm.Token)
+	doc.TokensByLine = make(map[int][]*fm.Token)
 
 	for _, token := range doc.Tokens {
-		doc.TokensByLines[token.Line] = append(doc.TokensByLines[token.Line], token)
+		doc.TokensByLine[token.Line] = append(doc.TokensByLine[token.Line], token)
 	}
 }
 
@@ -212,7 +212,7 @@ func (doc *Doc) Change(e proto.TextDocumentContentChangeEvent) {
 }
 
 func (doc *Doc) GetTextByLine(line int) string {
-	tokens, ok := doc.TokensByLines[line]
+	tokens, ok := doc.TokensByLine[line]
 
 	if !ok {
 		return ""
@@ -235,7 +235,7 @@ func (doc *Doc) GetTextByLoc(loc fm.Loc) string {
 	var s strings.Builder
 
 	for i := loc.Start.Line; i <= loc.End.Line; i++ {
-		tokens, ok := doc.TokensByLines[i]
+		tokens, ok := doc.TokensByLine[i]
 
 		if !ok {
 			continue
@@ -266,38 +266,13 @@ func (doc *Doc) TokenIndex(token *fm.Token) int {
 	return slices.Index(doc.Tokens, token)
 }
 
-func (doc *Doc) GetTokensByLine(line int) (tokens []*fm.Token) {
-	start := -1
-	end := -1
-
-	for i, token := range doc.Tokens {
-		if token.Line < line {
-			continue
-		}
-
-		if token.Line > line {
-			end = i
-			break
-		}
-
-		if start == -1 {
-			start = i
-		}
-	}
-
-	if start == -1 {
-		return
-	}
-
-	if end == -1 {
-		return doc.Tokens[start:]
-	}
-
-	return doc.Tokens[start:end]
-}
-
 func (doc *Doc) GetTrimTokensByLine(line int) (tokens []*fm.Token) {
-	tokens = doc.GetTokensByLine(line)
+	tokens, ok := doc.TokensByLine[line]
+
+	if !ok {
+		return []*fm.Token{}
+	}
+
 	count := len(tokens)
 
 	if count == 0 {
@@ -318,7 +293,7 @@ func (doc *Doc) GetTrimTokensByLine(line int) (tokens []*fm.Token) {
 	for i := count - 1; i >= 0; i-- {
 		token := tokens[i]
 
-		if token.Type == fm.TokenSpace {
+		if token.Type == fm.TokenSpace || token.SubType == fm.TokenNL {
 			end--
 		} else {
 			break
@@ -382,7 +357,7 @@ func (doc *Doc) GetTokenByPosition(pos Position) *fm.Token {
 	line := int(pos.Line)
 	char := int(pos.Character)
 
-	tokens, ok := doc.TokensByLines[line]
+	tokens, ok := doc.TokensByLine[line]
 
 	if !ok {
 		return nil
@@ -401,7 +376,7 @@ func (doc *Doc) PosToOffset(pos Position) int {
 	line := int(pos.Line)
 	char := int(pos.Character)
 
-	list, ok := doc.TokensByLines[line]
+	list, ok := doc.TokensByLine[line]
 
 	if !ok {
 		return len(doc.Text)
