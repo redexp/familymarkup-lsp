@@ -113,6 +113,10 @@ func TreeMembers(_ *Ctx, loc *TreeItemLocation) (list []*TreeMember, err error) 
 			continue
 		}
 
+		if person.Name == nil {
+			continue
+		}
+
 		mem := root.GetMemberByUriToken(f.Uri, person.Name)
 
 		if mem != nil {

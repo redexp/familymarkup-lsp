@@ -126,7 +126,7 @@ func (root *Root) Update(doc *Doc) {
 			}
 
 			for person := range rel.PersonsIter() {
-				if person.Unknown != nil {
+				if person.Unknown != nil || person.Name == nil {
 					continue
 				}
 
