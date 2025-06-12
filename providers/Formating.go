@@ -68,31 +68,14 @@ func prettify(uri Uri, r *Range) (list []proto.TextEdit, err error) {
 		return
 	}
 
-	validRange := func(rng *Range) bool {
-		if r == nil {
-			return true
-		}
+	loc := doc.Root.Loc
 
-		start := rng.Start
-		end := rng.End
-
-		if r.Start.Line < start.Line && end.Line < r.End.Line {
-			return true
-		}
-
-		if r.Start.Line == start.Line && start.Character < r.Start.Character {
-			return false
-		}
-
-		if r.End.Line == end.Line && r.End.Character <= end.Character {
-			return false
-		}
-
-		return true
+	if r != nil {
+		loc = RangeToLoc(*r)
 	}
 
 	add := func(item proto.TextEdit) {
-		if !validRange(&item.Range) {
+		if !loc.Overlaps(RangeToLoc(item.Range)) {
 			return
 		}
 
@@ -110,19 +93,6 @@ func prettify(uri Uri, r *Range) (list []proto.TextEdit, err error) {
 	}
 
 	checkNameAliases := func(name *fm.Token, aliases []*fm.Token) (err error) {
-		if name != nil && name.Type == fm.TokenSurname && name.Char != 0 {
-			add(proto.TextEdit{
-				Range: Range{
-					Start: Position{
-						Line:      uint32(name.Line),
-						Character: 0,
-					},
-					End: TokenToPosition(name),
-				},
-				NewText: "",
-			})
-		}
-
 		if aliases == nil {
 			return
 		}
@@ -198,7 +168,42 @@ func prettify(uri Uri, r *Range) (list []proto.TextEdit, err error) {
 		return
 	}
 
+	for i := loc.Start.Line; i <= loc.End.Line; i++ {
+		tokens, ok := doc.TokensByLine[i]
+
+		if !ok {
+			continue
+		}
+
+		count := len(tokens)
+
+		if count <= 1 {
+			continue
+		}
+
+		first := tokens[0]
+		next := tokens[1]
+
+		if first.Type != fm.TokenSpace {
+			continue
+		}
+
+		if next.Type == fm.TokenName || next.Type == fm.TokenNum {
+			add(proto.TextEdit{
+				Range:   TokenToRange(first),
+				NewText: "",
+			})
+		}
+	}
+
 	for _, family := range doc.Root.Families {
+		switch family.Loc.OverlapType(loc) {
+		case fm.OverlapBefore:
+			continue
+		case fm.OverlapAfter:
+			return
+		}
+
 		err = checkNameAliases(family.Name, family.Aliases)
 
 		if err != nil {
@@ -206,6 +211,13 @@ func prettify(uri Uri, r *Range) (list []proto.TextEdit, err error) {
 		}
 
 		for _, rel := range family.Relations {
+			switch rel.Loc.OverlapType(loc) {
+			case fm.OverlapBefore:
+				continue
+			case fm.OverlapAfter:
+				return
+			}
+
 			for _, relList := range []*fm.RelList{rel.Sources, rel.Targets} {
 				if relList == nil {
 					continue
@@ -313,7 +325,7 @@ func prettify(uri Uri, r *Range) (list []proto.TextEdit, err error) {
 				if prev != nil && prev.Type != fm.TokenSpace {
 					add(proto.TextEdit{
 						Range: Range{
-							Start: TokenToPosition(prev),
+							Start: TokenEndToPosition(prev),
 							End:   TokenToPosition(rel.Arrow),
 						},
 						NewText: " ",
