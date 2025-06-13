@@ -137,12 +137,14 @@ func (root *Root) Update(doc *Doc) {
 						Surname: person.Surname,
 					})
 
-					root.AddRef(&Ref{
-						Type:   RefTypeNameSurname,
-						Uri:    uri,
-						Person: person,
-						Family: family,
-					})
+					if !person.IsChild {
+						root.AddRef(&Ref{
+							Type:   RefTypeNameSurname,
+							Uri:    uri,
+							Person: person,
+							Family: family,
+						})
+					}
 				}
 
 				if !rel.IsFamilyDef || (person.Side == fm.SideSources && person.Surname == nil && family.HasMember(person.Name.Text)) {
@@ -691,6 +693,14 @@ func (root *Root) FindFolder(uri Uri) Uri {
 }
 
 func (root *Root) AddUnknownRef(ref *Ref) {
+	if ref.Type == RefTypeSurname {
+		for _, u := range root.UnknownRefs {
+			if u.Surname == ref.Surname {
+				return
+			}
+		}
+	}
+
 	root.UnknownRefs = append(root.UnknownRefs, ref)
 }
 
