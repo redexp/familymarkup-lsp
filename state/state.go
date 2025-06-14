@@ -14,6 +14,7 @@ import (
 
 type Root struct {
 	Folders      UriSet
+	Docs         Docs
 	Families     Families
 	Duplicates   Duplicates
 	NodeRefs     NodeRefs
@@ -30,6 +31,7 @@ type Root struct {
 func CreateRoot(logger func(string, ...any)) *Root {
 	return &Root{
 		Folders:      make(UriSet),
+		Docs:         make(Docs),
 		Families:     make(Families),
 		Duplicates:   make(Duplicates),
 		NodeRefs:     make(NodeRefs),
@@ -65,7 +67,7 @@ func (root *Root) SetFolders(folders []Uri) (err error) {
 
 	go func() {
 		for uri := range root.Folders {
-			WalkFiles(uri, AllExt, func(uri Uri, ext string) error {
+			_ = WalkFiles(uri, AllExt, func(uri Uri, ext string) error {
 				if slices.Contains(MarkdownExt, ext) {
 					textTrees <- TextTree{
 						Uri: uri,
@@ -112,7 +114,45 @@ func (root *Root) SetFolders(folders []Uri) (err error) {
 	return
 }
 
+func (root *Root) OpenDoc(uri Uri) (doc *Doc, err error) {
+	doc, ok := root.Docs[uri]
+
+	if ok {
+		doc.Open = true
+		return
+	}
+
+	text, err := GetText(uri)
+
+	if err != nil {
+		return
+	}
+
+	root.OpenDocText(uri, text)
+
+	return
+}
+
+func (root *Root) OpenDocText(uri Uri, text string) *Doc {
+	doc := CreateDoc(uri, text)
+	doc.Open = true
+
+	root.Update(doc)
+
+	return doc
+}
+
+func (root *Root) CloseDoc(uri Uri) {
+	doc, ok := root.Docs[uri]
+
+	if ok {
+		doc.Open = false
+	}
+}
+
 func (root *Root) Update(doc *Doc) {
+	root.Docs[doc.Uri] = doc
+
 	uri := doc.Uri
 
 	var family *Family
@@ -249,6 +289,7 @@ func (root *Root) UpdateDirty() (err error) {
 	root.DirtyUris = UriSet{}
 	root.UnknownRefs = filterRefs(root.UnknownRefs, uris)
 
+	// update markdown files
 	for uri, state := range uris {
 		if !IsMarkdownUri(uri) {
 			continue
@@ -336,20 +377,14 @@ func (root *Root) UpdateDirty() (err error) {
 		}
 	}
 
-	tempDocs := make(Docs)
 	var doc *Doc
 
 	for uri, state := range uris {
 		delete(root.Labels, uri)
 
 		if state == FileDelete {
+			delete(root.Docs, uri)
 			continue
-		}
-
-		doc, err = tempDocs.Get(uri)
-
-		if err != nil {
-			return
 		}
 
 		root.Update(doc)

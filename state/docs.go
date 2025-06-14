@@ -1,21 +1,19 @@
 package state
 
 import (
+	. "github.com/redexp/familymarkup-lsp/types"
+	. "github.com/redexp/familymarkup-lsp/utils"
 	fm "github.com/redexp/familymarkup-parser"
 	proto "github.com/tliron/glsp/protocol_3_16"
-	"iter"
 	"os"
 	"slices"
 	"strings"
-	"sync"
-
-	. "github.com/redexp/familymarkup-lsp/types"
-	. "github.com/redexp/familymarkup-lsp/utils"
 )
 
 type Doc struct {
 	Uri    Uri
 	Text   string
+	Open   bool
 	Tokens []*fm.Token
 	Root   *fm.Root
 
@@ -23,8 +21,6 @@ type Doc struct {
 }
 
 type Docs map[Uri]*Doc
-
-var documents sync.Map
 
 func CreateDoc(uri Uri, text string) *Doc {
 	doc := &Doc{
@@ -46,92 +42,6 @@ func CreateDocFromUri(uri Uri) (doc *Doc, err error) {
 	doc = CreateDoc(uri, text)
 
 	return
-}
-
-func GetDoc(uri Uri) *Doc {
-	value, ok := documents.Load(uri)
-
-	if !ok {
-		return nil
-	}
-
-	return value.(*Doc)
-}
-
-func (root *Root) OpenDoc(uri Uri) (doc *Doc, err error) {
-	uri, err = NormalizeUri(uri)
-
-	if err != nil {
-		return
-	}
-
-	doc = GetDoc(uri)
-
-	if doc != nil {
-		return
-	}
-
-	text, err := GetText(uri)
-
-	if err != nil {
-		return
-	}
-
-	return root.OpenDocText(uri, text)
-}
-
-func (root *Root) OpenDocText(uri Uri, text string) (doc *Doc, err error) {
-	doc = CreateDoc(uri, text)
-
-	documents.Store(uri, doc)
-
-	return
-}
-
-func GetOpenDocsIter() iter.Seq2[Uri, *Doc] {
-	return func(yield func(Uri, *Doc) bool) {
-		documents.Range(func(key, value any) bool {
-			return yield(key.(Uri), value.(*Doc))
-		})
-	}
-}
-
-func CloseDoc(uri Uri) {
-	doc := GetDoc(uri)
-
-	if doc == nil {
-		return
-	}
-
-	documents.Delete(uri)
-}
-
-func RemoveDoc(uri Uri) error {
-	uri, err := NormalizeUri(uri)
-
-	if err != nil {
-		return err
-	}
-
-	CloseDoc(uri)
-
-	return nil
-}
-
-func TempDoc(uri Uri) (doc *Doc, err error) {
-	uri, err = NormalizeUri(uri)
-
-	if err != nil {
-		return
-	}
-
-	doc = GetDoc(uri)
-
-	if doc != nil {
-		return
-	}
-
-	return CreateDocFromUri(uri)
 }
 
 func UriFileExist(uri Uri) bool {
@@ -169,24 +79,6 @@ func GetText(uri Uri) (text string, err error) {
 	}
 
 	text = string(bytes)
-
-	return
-}
-
-func (docs Docs) Get(uri Uri) (doc *Doc, err error) {
-	doc = docs[uri]
-
-	if doc != nil {
-		return
-	}
-
-	doc, err = TempDoc(uri)
-
-	if err != nil {
-		return
-	}
-
-	docs[uri] = doc
 
 	return
 }

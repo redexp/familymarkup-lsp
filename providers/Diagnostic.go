@@ -14,7 +14,7 @@ import (
 
 type DocDebouncer struct {
 	Ctx      *Ctx
-	Docs     Docs
+	Uris     UriSet
 	Debounce func(func())
 }
 
@@ -31,17 +31,15 @@ type DiagnosticData struct {
 	Name    string `json:"name"`
 }
 
-func PublishDiagnostics(ctx *Ctx, uri Uri, doc *Doc) (err error) {
+func PublishDiagnostics(ctx *Ctx, uri Uri) (err error) {
 	if !supportDiagnostics {
-		return nil
+		return
 	}
 
-	if doc == nil {
-		doc, err = TempDoc(uri)
+	doc, ok := root.Docs[uri]
 
-		if err != nil {
-			return
-		}
+	if !ok {
+		return
 	}
 
 	list := make([]proto.Diagnostic, 0)
@@ -64,41 +62,42 @@ func PublishDiagnostics(ctx *Ctx, uri Uri, doc *Doc) (err error) {
 		}
 	}
 
-	for _, ref := range root.UnknownRefs {
+	refs := root.UnknownRefs
+
+	for _, ref := range refs {
 		if ref.Uri != uri {
 			continue
 		}
 
-		t := UnknownPersonError
-
+		var t uint8
 		var loc fm.Loc
 		var message string
 
-		if ref.Surname != nil {
+		p := ref.Person
+
+		switch ref.Type {
+		case RefTypeSurname:
 			t = UnknownFamilyError
 			loc = ref.Surname.Loc()
 			message = L("unknown_family", ref.Surname.Text)
-		} else if ref.Person != nil {
-			p := ref.Person
 
-			if p.Surname != nil {
-				f := root.FindFamily(p.Surname.Text)
+		case RefTypeName:
+			t = UnknownPersonError
+			loc = p.Name.Loc()
+			message = L("unknown_person", p.Name.Text)
 
-				if f == nil {
-					t = UnknownFamilyError
-					loc = p.Surname.Loc()
-					message = L("unknown_family", p.Surname.Text)
-				} else if !p.IsChild {
-					t = UnknownPersonError
-					loc = p.Name.Loc()
-					message = L("unknown_person_in_family", f.Name, p.Name.Text)
-				}
-			} else {
-				t = UnknownPersonError
-				loc = p.Name.Loc()
-				message = L("unknown_person", p.Name.Text)
+		case RefTypeNameSurname:
+			f := root.FindFamily(p.Surname.Text)
+
+			if f == nil {
+				continue
 			}
-		} else {
+
+			t = UnknownPersonError
+			loc = p.Name.Loc()
+			message = L("unknown_person_in_family", f.Name, p.Name.Text)
+
+		default:
 			continue
 		}
 
@@ -112,9 +111,6 @@ func PublishDiagnostics(ctx *Ctx, uri Uri, doc *Doc) (err error) {
 		})
 	}
 
-	tempDocs := make(Docs)
-	tempDocs[uri] = doc
-
 	var locations []proto.DiagnosticRelatedInformation
 
 	ensureLocations := func(family *Family, name string) error {
@@ -122,7 +118,7 @@ func PublishDiagnostics(ctx *Ctx, uri Uri, doc *Doc) (err error) {
 			return nil
 		}
 
-		doc, err := tempDocs.Get(family.Uri)
+		doc, err := GetDoc(family.Uri)
 
 		if err != nil {
 			return err
@@ -194,7 +190,7 @@ func PublishDiagnostics(ctx *Ctx, uri Uri, doc *Doc) (err error) {
 
 			add(proto.Diagnostic{
 				Severity: Info,
-				Range:    LocToRange(mem.Person.Loc),
+				Range:    TokenToRange(mem.Person.Name),
 				Message:  L("child_without_relations", mem.Name, mem.Family.Name),
 				Data: DiagnosticData{
 					Type: ChildWithoutRelationsInfo,
@@ -205,7 +201,7 @@ func PublishDiagnostics(ctx *Ctx, uri Uri, doc *Doc) (err error) {
 
 	ctx.Notify(proto.ServerTextDocumentPublishDiagnostics, proto.PublishDiagnosticsParams{
 		URI: uri,
-		// TODO add version
+		// TODO: add version
 		Diagnostics: list,
 	})
 
@@ -214,30 +210,25 @@ func PublishDiagnostics(ctx *Ctx, uri Uri, doc *Doc) (err error) {
 
 var docDiagnostic = &DocDebouncer{
 	Debounce: debounce.New(200 * time.Millisecond),
-	Docs:     make(Docs),
+	Uris:     make(UriSet),
 }
 
-func (dd *DocDebouncer) Set(uri Uri, doc *Doc) {
-	d, ok := dd.Docs[uri]
-
-	if doc != nil || d == nil || !ok {
-		dd.Docs[uri] = doc
-	}
-
+func (dd *DocDebouncer) Set(uri Uri) {
+	dd.Uris.Set(uri)
 	dd.Debounce(dd.Flush)
 }
 
 func (dd *DocDebouncer) Flush() {
-	root.UpdateDirty()
+	_ = root.UpdateDirty()
 
-	for uri, doc := range dd.Docs {
-		delete(dd.Docs, uri)
+	for uri := range dd.Uris {
+		dd.Uris.Remove(uri)
 
 		if !IsFamilyUri(uri) || !UriFileExist(uri) {
 			continue
 		}
 
-		err := PublishDiagnostics(docDiagnostic.Ctx, uri, doc)
+		err := PublishDiagnostics(docDiagnostic.Ctx, uri)
 
 		if err != nil {
 			LogDebug("Diagnostic error: %s", err.Error())
@@ -248,20 +239,24 @@ func (dd *DocDebouncer) Flush() {
 func diagnosticOpenDocs(ctx *Ctx) {
 	docDiagnostic.Ctx = ctx
 
-	for uri, doc := range GetOpenDocsIter() {
-		docDiagnostic.Set(uri, doc)
+	for uri, doc := range root.Docs {
+		if !doc.Open {
+			continue
+		}
+
+		docDiagnostic.Set(uri)
 	}
 }
 
 func diagnosticAllDocs(ctx *Ctx) {
 	docDiagnostic.Ctx = ctx
 
-	for uri := range GetOpenDocsIter() {
-		docDiagnostic.Set(uri, nil)
+	for uri := range root.Docs {
+		docDiagnostic.Set(uri)
 	}
 }
 
-func scheduleDiagnostic(ctx *Ctx, uri Uri, doc *Doc) {
+func scheduleDiagnostic(ctx *Ctx, uri Uri) {
 	docDiagnostic.Ctx = ctx
-	docDiagnostic.Set(uri, doc)
+	docDiagnostic.Set(uri)
 }

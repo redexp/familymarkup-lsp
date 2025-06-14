@@ -135,7 +135,7 @@ func TreeReload() {
 }
 
 func getFamilyDoc(loc *TreeItemLocation) (f *Family, doc *Doc, err error) {
-	doc, err = TempDoc(loc.URI)
+	doc, err = GetDoc(loc.URI)
 
 	if err != nil {
 		return

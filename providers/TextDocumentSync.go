@@ -14,13 +14,9 @@ func DocOpen(ctx *Ctx, params *proto.DidOpenTextDocumentParams) (err error) {
 		return
 	}
 
-	doc, err := root.OpenDocText(uri, params.TextDocument.Text)
+	root.OpenDocText(uri, params.TextDocument.Text)
 
-	if err != nil {
-		return
-	}
-
-	scheduleDiagnostic(ctx, uri, doc)
+	scheduleDiagnostic(ctx, uri)
 
 	return
 }
@@ -32,7 +28,7 @@ func DocClose(_ *Ctx, params *proto.DidCloseTextDocumentParams) error {
 		return err
 	}
 
-	CloseDoc(uri)
+	root.CloseDoc(uri)
 
 	return nil
 }
@@ -88,10 +84,22 @@ func DocRename(ctx *Ctx, params *proto.RenameFilesParams) error {
 	defer root.UpdateLock.Unlock()
 
 	for _, file := range params.Files {
-		err := RemoveDoc(file.OldURI)
+		oldUri, err := NormalizeUri(file.OldURI)
 
 		if err != nil {
 			return err
+		}
+
+		newUri, err := NormalizeUri(file.NewURI)
+
+		if err != nil {
+			return err
+		}
+
+		doc, ok := root.Docs[oldUri]
+
+		if ok {
+			root.Docs[newUri] = doc
 		}
 
 		err = setDirtyUri(ctx, file.OldURI, FileDelete)
@@ -112,27 +120,21 @@ func DocRename(ctx *Ctx, params *proto.RenameFilesParams) error {
 	return nil
 }
 
-func DocDelete(ctx *Ctx, params *proto.DeleteFilesParams) error {
+func DocDelete(ctx *Ctx, params *proto.DeleteFilesParams) (err error) {
 	root.UpdateLock.Lock()
 	defer root.UpdateLock.Unlock()
 
 	for _, file := range params.Files {
-		err := RemoveDoc(file.URI)
-
-		if err != nil {
-			return err
-		}
-
 		err = setDirtyUri(ctx, file.URI, FileDelete)
 
 		if err != nil {
-			return err
+			return
 		}
 	}
 
 	diagnosticOpenDocs(ctx)
 
-	return nil
+	return
 }
 
 func setDirtyUri(ctx *Ctx, uri Uri, state uint8) error {
@@ -144,7 +146,7 @@ func setDirtyUri(ctx *Ctx, uri Uri, state uint8) error {
 
 	if IsFamilyUri(uri) || IsMarkdownUri(uri) {
 		root.DirtyUris.SetState(uri, state)
-		scheduleDiagnostic(ctx, uri, nil)
+		scheduleDiagnostic(ctx, uri)
 	}
 
 	return nil

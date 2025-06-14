@@ -1,7 +1,6 @@
 package providers
 
 import (
-	. "github.com/redexp/familymarkup-lsp/state"
 	. "github.com/redexp/familymarkup-lsp/utils"
 	fm "github.com/redexp/familymarkup-parser"
 	proto "github.com/tliron/glsp/protocol_3_16"
@@ -14,7 +13,7 @@ func FoldingRange(_ *Ctx, params *proto.FoldingRangeParams) (res []proto.Folding
 		return
 	}
 
-	doc, err := TempDoc(uri)
+	doc, err := GetDoc(uri)
 
 	if err != nil {
 		return

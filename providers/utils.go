@@ -2,6 +2,9 @@ package providers
 
 import (
 	"encoding/json"
+	. "github.com/redexp/familymarkup-lsp/state"
+	. "github.com/redexp/familymarkup-lsp/types"
+	. "github.com/redexp/familymarkup-lsp/utils"
 	"strings"
 )
 
@@ -26,4 +29,16 @@ func LogDebug(msg string, data any) {
 
 func Debugf(msg string, args ...any) {
 	server.Log.Debugf(msg, args...)
+}
+
+func GetDoc(uri Uri) (doc *Doc, err error) {
+	uri, err = NormalizeUri(uri)
+
+	if err != nil {
+		return
+	}
+
+	doc = root.Docs[uri]
+
+	return
 }

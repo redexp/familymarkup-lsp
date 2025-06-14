@@ -35,7 +35,6 @@ func CodeAction(_ *Ctx, params *proto.CodeActionParams) (res any, err error) {
 	}
 
 	list := make([]proto.CodeAction, 0)
-	tempDocs := make(Docs)
 	var doc *Doc
 	QuickFix := P(proto.CodeActionKindQuickFix)
 
@@ -57,7 +56,7 @@ func CodeAction(_ *Ctx, params *proto.CodeActionParams) (res any, err error) {
 
 		switch data.Type {
 		case UnknownFamilyError:
-			doc, err = tempDocs.Get(uri)
+			doc, err = GetDoc(uri)
 
 			if err != nil {
 				return
@@ -126,7 +125,7 @@ func CodeAction(_ *Ctx, params *proto.CodeActionParams) (res any, err error) {
 
 			dups = append(dups, &Duplicate{Member: member})
 
-			doc, err = tempDocs.Get(family.Uri)
+			doc, err = GetDoc(family.Uri)
 
 			if err != nil {
 				return
@@ -200,7 +199,7 @@ func CodeActionResolve(ctx *Ctx, params *proto.CodeAction) (res *proto.CodeActio
 
 	switch data.Type {
 	case UnknownFamilyError:
-		doc, err = TempDoc(data.Uri)
+		doc, err = GetDoc(data.Uri)
 
 		if err != nil {
 			return
@@ -247,7 +246,8 @@ func CodeActionResolve(ctx *Ctx, params *proto.CodeAction) (res *proto.CodeActio
 				createInsertText(newUri, pos, text),
 			}
 
-			scheduleDiagnostic(ctx, data.Uri, nil)
+			// TODO: check to normalize data.Uri
+			scheduleDiagnostic(ctx, data.Uri)
 
 			return res, nil
 		}
@@ -272,7 +272,7 @@ func CodeActionResolve(ctx *Ctx, params *proto.CodeAction) (res *proto.CodeActio
 		res.Edit.DocumentChanges = []any{createEdit(data.Uri, r.Start, r.End, data.Name)}
 
 	case ChildWithoutRelationsInfo:
-		doc, err = TempDoc(data.Uri)
+		doc, err = GetDoc(data.Uri)
 
 		if err != nil {
 			return

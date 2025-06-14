@@ -2,7 +2,6 @@ package providers
 
 import (
 	"fmt"
-	. "github.com/redexp/familymarkup-lsp/state"
 	. "github.com/redexp/familymarkup-lsp/types"
 	. "github.com/redexp/familymarkup-lsp/utils"
 	fm "github.com/redexp/familymarkup-parser"
@@ -62,7 +61,7 @@ func LineFormating(_ *Ctx, params *proto.DocumentOnTypeFormattingParams) (list [
 }
 
 func prettify(uri Uri, r *Range) (list []proto.TextEdit, err error) {
-	doc, err := TempDoc(uri)
+	doc, err := GetDoc(uri)
 
 	if err != nil {
 		return
@@ -349,7 +348,7 @@ func prettify(uri Uri, r *Range) (list []proto.TextEdit, err error) {
 }
 
 func addNewLineNum(uri Uri, pos *Position) (list []proto.TextEdit, err error) {
-	doc, err := TempDoc(uri)
+	doc, err := GetDoc(uri)
 
 	if err != nil {
 		return

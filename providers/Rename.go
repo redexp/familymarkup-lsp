@@ -27,7 +27,7 @@ func Rename(_ *Ctx, params *proto.RenameParams) (res *proto.WorkspaceEdit, err e
 		return
 	}
 
-	doc, err := TempDoc(uri)
+	doc, err := GetDoc(uri)
 
 	if err != nil {
 		return
