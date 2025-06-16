@@ -54,6 +54,16 @@ func (family *Family) FindMember(name string) (mem *Member) {
 	return nil
 }
 
+func (family *Family) FindMemberByPerson(person *fm.Person) *Member {
+	for member := range family.MembersIter() {
+		if member.Person == person {
+			return member
+		}
+	}
+
+	return nil
+}
+
 func (family *Family) AddMember(person *fm.Person) *Member {
 	name := person.Name.Text
 	aliases := TokensToStrings(person.Aliases)

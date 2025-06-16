@@ -664,7 +664,13 @@ func (root *Root) AddRef(ref *Ref) {
 			return
 		}
 
-		mem := f.AddMemberName(person, origin.Name, origin.Aliases, "")
+		mem := f.FindMemberByPerson(person)
+
+		if mem == nil {
+			root.AddUnknownRef(ref)
+			return
+		}
+
 		mem.Origin = origin
 	}
 }
