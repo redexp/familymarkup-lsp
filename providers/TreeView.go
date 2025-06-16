@@ -199,11 +199,6 @@ func (req *TreeHandlers) Handle(ctx *Ctx) (res any, validMethod bool, validParam
 	return
 }
 
-type TreeItemPoint struct {
-	Line uint32 `json:"line"`
-	Char uint32 `json:"char"`
-}
-
 // TreeFamilies
 
 const TreeFamiliesMethod = "tree/families"
