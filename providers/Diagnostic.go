@@ -183,19 +183,21 @@ func PublishDiagnostics(ctx *Ctx, uri Uri) (err error) {
 	}
 
 	if warnChildrenWithoutRelations {
-		for mem := range root.MembersIter() {
-			if mem.Family.Uri != uri || len(mem.Refs) > 0 || mem.Origin != nil || !mem.Person.IsChild {
-				continue
-			}
+		for _, f := range root.FindFamiliesByUri(uri) {
+			for mem := range f.MembersIter() {
+				if len(mem.Refs) > 0 || mem.Origin != nil || !mem.Person.IsChild {
+					continue
+				}
 
-			add(proto.Diagnostic{
-				Severity: Info,
-				Range:    TokenToRange(mem.Person.Name),
-				Message:  L("child_without_relations", mem.Name, mem.Family.Name),
-				Data: DiagnosticData{
-					Type: ChildWithoutRelationsInfo,
-				},
-			})
+				add(proto.Diagnostic{
+					Severity: Info,
+					Range:    TokenToRange(mem.Person.Name),
+					Message:  L("child_without_relations", mem.Name, mem.Family.Name),
+					Data: DiagnosticData{
+						Type: ChildWithoutRelationsInfo,
+					},
+				})
+			}
 		}
 	}
 
