@@ -2,6 +2,7 @@ package providers
 
 import (
 	"fmt"
+	. "github.com/redexp/familymarkup-lsp/state"
 	. "github.com/redexp/familymarkup-lsp/types"
 	. "github.com/redexp/familymarkup-lsp/utils"
 	fm "github.com/redexp/familymarkup-parser"
@@ -19,6 +20,12 @@ func RangeFormating(_ *Ctx, params *proto.DocumentRangeFormattingParams) (list [
 }
 
 func LineFormating(_ *Ctx, params *proto.DocumentOnTypeFormattingParams) (list []proto.TextEdit, err error) {
+	doc, err := GetDoc(params.TextDocument.URI)
+
+	if err != nil {
+		return nil, err
+	}
+
 	pos := params.Position
 	line := pos.Line
 
@@ -37,6 +44,14 @@ func LineFormating(_ *Ctx, params *proto.DocumentOnTypeFormattingParams) (list [
 
 	if newLine {
 		r.Start.Line--
+
+		edit := removeNumOnly(doc, int(line)-1)
+
+		if edit != nil {
+			list = append(list, *edit)
+
+			return
+		}
 	}
 
 	list, err = prettify(params.TextDocument.URI, r)
@@ -46,7 +61,7 @@ func LineFormating(_ *Ctx, params *proto.DocumentOnTypeFormattingParams) (list [
 	}
 
 	if newLine {
-		edits, err := addNewLineNum(params.TextDocument.URI, &pos)
+		edits, err := addNewLineNum(doc, &pos)
 
 		if err != nil {
 			return nil, err
@@ -347,13 +362,36 @@ func prettify(uri Uri, r *Range) (list []proto.TextEdit, err error) {
 	return
 }
 
-func addNewLineNum(uri Uri, pos *Position) (list []proto.TextEdit, err error) {
-	doc, err := GetDoc(uri)
+func removeNumOnly(doc *Doc, line int) *proto.TextEdit {
+	tokens := doc.GetTrimTokensByLine(line)
+	count := len(tokens)
 
-	if err != nil {
-		return
+	if count != 1 {
+		return nil
 	}
 
+	first := tokens[0]
+
+	if first.Type != fm.TokenNum {
+		return nil
+	}
+
+	return &proto.TextEdit{
+		Range: Range{
+			Start: Position{
+				Line:      uint32(first.Line),
+				Character: 0,
+			},
+			End: Position{
+				Line:      uint32(first.Line + 1),
+				Character: 0,
+			},
+		},
+		NewText: "\n",
+	}
+}
+
+func addNewLineNum(doc *Doc, pos *Position) (list []proto.TextEdit, err error) {
 	tokens := doc.GetTrimTokensByLine(int(pos.Line - 1))
 	count := len(tokens)
 	var first *fm.Token
@@ -362,24 +400,6 @@ func addNewLineNum(uri Uri, pos *Position) (list []proto.TextEdit, err error) {
 	if count > 0 {
 		first = tokens[0]
 		last = tokens[count-1]
-	}
-
-	if first != nil && first.Type == fm.TokenNum && count == 1 {
-		list = append(list, proto.TextEdit{
-			Range: Range{
-				Start: Position{
-					Line:      pos.Line - 1,
-					Character: 0,
-				},
-				End: Position{
-					Line:      pos.Line,
-					Character: 0,
-				},
-			},
-			NewText: "\n",
-		})
-
-		return
 	}
 
 	replaceNums := func(line uint32, index int) {
