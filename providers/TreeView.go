@@ -100,7 +100,7 @@ func TreeMembers(_ *Ctx, loc *TreeItemLocation) (list []*TreeMember, err error) 
 
 	add := func(person *fm.Person, name string, aliases []string) {
 		list = append(list, &TreeMember{
-			Position: person.Start,
+			Position: person.Name.Loc().Start,
 
 			Name:    name,
 			Aliases: aliases,
