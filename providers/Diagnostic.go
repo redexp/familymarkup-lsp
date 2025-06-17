@@ -169,7 +169,7 @@ func PublishDiagnostics(ctx *Ctx, uri Uri) (err error) {
 
 				add(proto.Diagnostic{
 					Severity:           Warning,
-					Range:              LocToRange(ref.Person.Loc),
+					Range:              TokenToRange(ref.Person.Name),
 					Message:            L("duplicate_count_of_name", count, name),
 					RelatedInformation: locations,
 					Data: DiagnosticData{
