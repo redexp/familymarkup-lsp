@@ -203,9 +203,7 @@ func (root *Root) Update(doc *Doc) {
 							Family: family,
 						})
 					}
-				}
-
-				if !rel.IsFamilyDef || (person.Side == fm.SideSources && person.Surname == nil && family.HasMember(person.Name.Text)) {
+				} else if !rel.IsFamilyDef || (person.Side == fm.SideSources && family.HasMember(person.Name.Text)) {
 					root.AddRef(&Ref{
 						Type:   RefTypeName,
 						Uri:    uri,
