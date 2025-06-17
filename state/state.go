@@ -226,8 +226,6 @@ func (root *Root) Update(doc *Doc) {
 			}
 		}
 	}
-
-	root.UpdateUnknownRefs()
 }
 
 func (root *Root) UpdateUnknownRefs() {
