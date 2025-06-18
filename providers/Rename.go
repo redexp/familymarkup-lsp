@@ -33,25 +33,21 @@ func Rename(_ *Ctx, params *proto.RenameParams) (res *proto.WorkspaceEdit, err e
 		return
 	}
 
-	doc, err := GetDoc(uri)
+	famMem := root.GetFamMemByPosition(uri, params.Position)
 
-	if err != nil {
-		return
-	}
-
-	token := doc.GetTokenByPosition(params.Position)
-
-	if token == nil {
+	if famMem == nil {
 		return
 	}
 
 	res = &proto.WorkspaceEdit{}
 
-	f := doc.FindFamilyByLoc(token.Loc())
+	f := famMem.Family
 
-	if f != nil && f.Name.IsEqual(token) {
-		res.DocumentChanges = []any{
-			proto.TextDocumentEdit{
+	if f != nil {
+		edits := make([]any, 0)
+
+		for uri, token := range f.GetRefsIter() {
+			edits = append(edits, proto.TextDocumentEdit{
 				TextDocument: proto.OptionalVersionedTextDocumentIdentifier{
 					TextDocumentIdentifier: proto.TextDocumentIdentifier{
 						URI: uri,
@@ -63,33 +59,33 @@ func Rename(_ *Ctx, params *proto.RenameParams) (res *proto.WorkspaceEdit, err e
 						NewText: params.NewName,
 					},
 				},
-			},
+			})
 		}
 
-		if IsUriName(uri, token.Text) {
+		if IsUriName(uri, f.Name) {
 			newUri, err := RenameUri(uri, params.NewName)
 
 			if err != nil {
 				return nil, err
 			}
 
-			res.DocumentChanges = append(res.DocumentChanges, proto.RenameFile{
+			edits = append(edits, proto.RenameFile{
 				Kind:   "rename",
 				OldURI: uri,
 				NewURI: newUri,
 			})
 		}
 
+		res.DocumentChanges = edits
+
 		return
 	}
 
-	fa, err := getDefinition(uri, params.Position)
+	member := famMem.Member
 
-	if err != nil || fa == nil || fa.Member == nil {
+	if member == nil {
 		return
 	}
-
-	member := fa.Member
 
 	refs := append(member.Refs, &Ref{
 		Uri:    member.Family.Uri,

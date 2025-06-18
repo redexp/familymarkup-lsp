@@ -146,3 +146,19 @@ func (family *Family) NamesIter() iter.Seq[string] {
 		}
 	}
 }
+
+func (family *Family) GetRefsIter() iter.Seq2[Uri, *fm.Token] {
+	return func(yield func(Uri, *fm.Token) bool) {
+		for uri, refs := range family.Root.NodeRefs {
+			for _, famMem := range refs {
+				if famMem.Family != family {
+					continue
+				}
+
+				if !yield(uri, famMem.Token) {
+					return
+				}
+			}
+		}
+	}
+}
