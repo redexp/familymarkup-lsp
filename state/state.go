@@ -719,13 +719,27 @@ func (root *Root) GetFamMemByPosition(uri Uri, pos Position) *FamMem {
 	line := int(pos.Line)
 	char := int(pos.Character)
 
+	var endFamMem *FamMem
+
 	for _, famMem := range nodesMap {
-		if famMem.Token.IsOnPosition(line, char) {
+		token := famMem.Token
+
+		if token.Line != line {
+			continue
+		}
+
+		end := token.EndChar()
+
+		if token.Char <= char && char < end {
 			return famMem
+		}
+
+		if char == end {
+			endFamMem = famMem
 		}
 	}
 
-	return nil
+	return endFamMem
 }
 
 func (root *Root) GetMemberByUriToken(uri Uri, token *fm.Token) *Member {

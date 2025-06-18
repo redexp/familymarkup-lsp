@@ -7,7 +7,13 @@ import (
 )
 
 func PrepareRename(_ *Ctx, params *proto.PrepareRenameParams) (res any, err error) {
-	famMem := root.GetFamMemByPosition(params.TextDocument.URI, params.Position)
+	uri, err := NormalizeUri(params.TextDocument.URI)
+
+	if err != nil {
+		return
+	}
+
+	famMem := root.GetFamMemByPosition(uri, params.Position)
 
 	if famMem == nil {
 		return
@@ -100,7 +106,7 @@ func Rename(_ *Ctx, params *proto.RenameParams) (res *proto.WorkspaceEdit, err e
 		}
 
 		changes[ref.Uri] = append(edits, proto.TextEdit{
-			Range:   LocToRange(ref.Person.Loc),
+			Range:   TokenToRange(ref.Person.Name),
 			NewText: params.NewName,
 		})
 	}
