@@ -57,6 +57,7 @@ func getDefinition(uri Uri, pos Position) (famMem *FamMem, err error) {
 		return
 	}
 
+	// TODO: change famMem to Member.Origin
 	famMem = root.GetFamMemByPosition(uri, pos)
 
 	return
