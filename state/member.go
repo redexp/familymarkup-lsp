@@ -13,7 +13,6 @@ type Member struct {
 	Name    string
 	Aliases []string
 	Surname string
-	Refs    Refs
 	InfoUri Uri
 	Family  *Family
 	Origin  *Member
@@ -69,4 +68,28 @@ func (member *Member) NormalizeName(name string) (res string) {
 	}
 
 	return
+}
+
+func (member *Member) GetRefsIter() iter.Seq2[Uri, *fm.Person] {
+	return func(yield func(Uri, *fm.Person) bool) {
+		for uri, refs := range member.Family.Root.NodeRefs {
+			for _, famMem := range refs {
+				if famMem.Member != member {
+					continue
+				}
+
+				if !yield(uri, famMem.Person) {
+					return
+				}
+			}
+		}
+	}
+}
+
+func (member *Member) HasRef() bool {
+	for range member.GetRefsIter() {
+		return true
+	}
+
+	return false
 }

@@ -215,12 +215,12 @@ func (root *Root) Update(doc *Doc) {
 
 				mem := family.AddMember(person)
 
-				if person.IsChild && person.Surname != nil {
-					// create a member in this surname
+				// maybe mother and need find her origin member
+				if rel.IsFamilyDef && person.Side == fm.SideSources && person.Surname != nil {
 					root.AddRef(&Ref{
 						Type:   RefTypeOrigin,
 						Uri:    uri,
-						Origin: mem,
+						Member: mem,
 					})
 				}
 			}
@@ -345,21 +345,9 @@ func (root *Root) UpdateDirty() (err error) {
 		}
 	}
 
-	resetRefs := func(refs Refs) {
-		for _, ref := range refs {
-			if uris.Has(ref.Uri) {
-				continue
-			}
-
-			root.AddUnknownRef(ref)
-		}
-	}
-
 	for family := range root.FamilyIter() {
 		if uris.Has(family.Uri) {
 			for member := range family.MembersIter() {
-				resetRefs(member.Refs)
-
 				if member.InfoUri != "" {
 					err = root.AddUnknownFile(member.InfoUri)
 
@@ -372,10 +360,6 @@ func (root *Root) UpdateDirty() (err error) {
 			root.RemoveFamily(family)
 
 			continue
-		}
-
-		for member := range family.MembersIter() {
-			member.Refs = filterRefs(member.Refs, uris)
 		}
 	}
 
@@ -621,8 +605,6 @@ func (root *Root) AddRef(ref *Ref) {
 			}
 		}
 
-		mem.Refs = append(mem.Refs, ref)
-
 		root.AddNodeRef(ref.Uri, &FamMem{Member: mem, Person: ref.Person, Token: ref.Person.Name})
 
 		if ref.Type == RefTypeNameSurname {
@@ -630,41 +612,30 @@ func (root *Root) AddRef(ref *Ref) {
 		}
 
 	case RefTypeOrigin:
-		origin := ref.Origin
+		mem := ref.Member
 
-		f := root.FindFamily(origin.Surname)
+		f := root.FindFamily(mem.Surname)
 
 		if f == nil {
-			root.AddUnknownRef(&Ref{
-				Type:    RefTypeSurname,
-				Uri:     ref.Uri,
-				Surname: origin.Person.Surname,
-			})
-
 			root.AddUnknownRef(ref)
 			return
 		}
 
-		var person *fm.Person
+		origin := f.FindMember(mem.Name)
 
-		// find the first oRef of this member in that file (usually as mather in family relation)
-		for _, oRef := range origin.Refs {
-			if oRef.Uri == f.Uri {
-				person = oRef.Person
-				break
+		if origin == nil {
+			root.AddUnknownRef(ref)
+			return
+		}
+
+		dups, ok := f.Duplicates[mem.Name]
+
+		if ok {
+			for _, dup := range dups {
+				if dup.Member.Surname != "" && IsEqNames(mem.Surname, dup.Member.Surname) {
+					origin = dup.Member
+				}
 			}
-		}
-
-		if person == nil {
-			root.AddUnknownRef(ref)
-			return
-		}
-
-		mem := f.FindMemberByPerson(person)
-
-		if mem == nil {
-			root.AddUnknownRef(ref)
-			return
 		}
 
 		mem.Origin = origin
@@ -679,16 +650,6 @@ func (root *Root) AddNodeRef(uri Uri, famMem *FamMem) {
 	}
 
 	pos := TokenToPosString(famMem.Token) // TODO: replace with [line][char]
-
-	_, exist = root.NodeRefs[uri][pos]
-
-	if exist {
-		return
-	}
-
-	if famMem.Member != nil && famMem.Member.Origin != nil {
-		famMem = &FamMem{Member: famMem.Member.Origin}
-	}
 
 	root.NodeRefs[uri][pos] = famMem
 }

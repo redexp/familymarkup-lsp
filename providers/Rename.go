@@ -1,8 +1,8 @@
 package providers
 
 import (
-	. "github.com/redexp/familymarkup-lsp/state"
 	. "github.com/redexp/familymarkup-lsp/utils"
+	fm "github.com/redexp/familymarkup-parser"
 	proto "github.com/tliron/glsp/protocol_3_16"
 )
 
@@ -87,27 +87,26 @@ func Rename(_ *Ctx, params *proto.RenameParams) (res *proto.WorkspaceEdit, err e
 		return
 	}
 
-	refs := append(member.Refs, &Ref{
-		Uri:    member.Family.Uri,
-		Person: member.Person,
-	})
+	res.Changes = make(map[proto.DocumentUri][]proto.TextEdit)
 
-	changes := make(map[proto.DocumentUri][]proto.TextEdit)
-
-	for _, ref := range refs {
-		edits, exist := changes[ref.Uri]
+	addMem := func(uri string, person *fm.Person) {
+		edits, exist := res.Changes[uri]
 
 		if !exist {
 			edits = make([]proto.TextEdit, 0)
 		}
 
-		changes[ref.Uri] = append(edits, proto.TextEdit{
-			Range:   TokenToRange(ref.Person.Name),
+		res.Changes[uri] = append(edits, proto.TextEdit{
+			Range:   TokenToRange(person.Name),
 			NewText: params.NewName,
 		})
 	}
 
-	res.Changes = changes
+	addMem(member.Family.Uri, member.Person)
+
+	for uri, person := range member.GetRefsIter() {
+		addMem(uri, person)
+	}
 
 	return
 }

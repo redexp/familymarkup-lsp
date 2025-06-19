@@ -20,7 +20,7 @@ type Ref struct {
 	Surname *fm.Token
 	Person  *fm.Person
 	Family  *Family
-	Origin  *Member
+	Member  *Member
 }
 
 type Duplicate struct {
