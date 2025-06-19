@@ -99,7 +99,9 @@ func DocRename(ctx *Ctx, params *proto.RenameFilesParams) error {
 		doc, ok := root.Docs[oldUri]
 
 		if ok {
-			root.Docs[newUri] = doc
+			newDoc := *doc
+			newDoc.Uri = newUri
+			root.Docs[newUri] = &newDoc
 		}
 
 		err = setDirtyUri(ctx, file.OldURI, FileDelete)
