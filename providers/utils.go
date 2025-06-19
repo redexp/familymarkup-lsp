@@ -32,6 +32,7 @@ func Debugf(msg string, args ...any) {
 }
 
 func GetDoc(uri Uri) (doc *Doc, err error) {
+	// TODO: replace normalize
 	uri, err = NormalizeUri(uri)
 
 	if err != nil {
