@@ -46,6 +46,10 @@ func compareNames(a []rune, b []rune) uint {
 	return diff
 }
 
+func IsEqNames(a string, b string) bool {
+	return compareNames([]rune(a), []rune(b)) <= 2
+}
+
 func WalkFiles(uri Uri, extensions []string, cb func(Uri, string) error) (err error) {
 	rootPath, err := UriToPath(uri)
 
