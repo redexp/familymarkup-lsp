@@ -74,16 +74,10 @@ func (family *Family) AddMember(person *fm.Person) *Member {
 		surname = person.Surname.Text
 	}
 
-	return family.AddMemberName(person, name, aliases, surname)
-}
-
-func (family *Family) AddMemberName(person *fm.Person, name string, aliases []string, surname string) *Member {
 	mem, exist := family.Members[name]
 
 	if exist {
-		addDuplicate(family.Duplicates, name, &Duplicate{
-			Member: mem,
-		})
+		family.AddDuplicate(name, mem)
 	}
 
 	member := &Member{
@@ -91,7 +85,6 @@ func (family *Family) AddMemberName(person *fm.Person, name string, aliases []st
 		Aliases: aliases,
 		Surname: surname,
 		Person:  person,
-		Refs:    make([]*Ref, 0),
 		Family:  family,
 	}
 
@@ -102,15 +95,19 @@ func (family *Family) AddMemberName(person *fm.Person, name string, aliases []st
 		mem, exist = family.Members[alias]
 
 		if exist {
-			addDuplicate(family.Duplicates, alias, &Duplicate{
-				Member: mem,
-			})
+			family.AddDuplicate(alias, mem)
 		}
 
 		family.Members[alias] = member
 	}
 
 	return member
+}
+
+func (family *Family) AddDuplicate(name string, member *Member) {
+	addDuplicate(family.Duplicates, name, &Duplicate{
+		Member: member,
+	})
 }
 
 func (family *Family) MembersIter() iter.Seq[*Member] {
