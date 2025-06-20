@@ -29,7 +29,7 @@ func init() {
 	lsp.LogOnly(*logOnly)
 
 	if *logClear && logFile != nil {
-		os.Truncate(*logFile, 0)
+		_ = os.Truncate(*logFile, 0)
 	}
 
 	commonlog.Configure(*logLevel, logFile)
@@ -45,13 +45,17 @@ func main() {
 
 	webSocketPort, err := pflag.CommandLine.GetInt("web-socket")
 
-	if webSocketPort > 0 {
-		if err != nil {
-			panic(err)
-		}
+	if err != nil {
+		panic(err)
+	}
 
-		server.RunWebSocket(fmt.Sprintf("127.0.0.1:%d", webSocketPort))
+	if webSocketPort > 0 {
+		err = server.RunWebSocket(fmt.Sprintf("127.0.0.1:%d", webSocketPort))
 	} else {
-		server.RunStdio()
+		err = server.RunStdio()
+	}
+
+	if err != nil {
+		panic(err)
 	}
 }
