@@ -145,15 +145,13 @@ func (family *Family) NamesIter() iter.Seq[string] {
 
 func (family *Family) GetRefsIter() iter.Seq2[*Ref, Uri] {
 	return func(yield func(*Ref, Uri) bool) {
-		for uri, refs := range family.Root.NodeRefs {
-			for _, ref := range refs {
-				if ref.Family != family {
-					continue
-				}
+		for ref, uri := range family.Root.RefsIter() {
+			if ref.Family != family {
+				continue
+			}
 
-				if !yield(ref, uri) {
-					return
-				}
+			if !yield(ref, uri) {
+				return
 			}
 		}
 	}

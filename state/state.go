@@ -452,18 +452,27 @@ func (root *Root) RemoveFamily(f *Family) {
 
 	for uri, refs := range root.NodeRefs {
 		for pos, ref := range refs {
-			if ref.Family == f {
-				delete(refs, pos)
+			switch ref.Type {
+			case RefTypeName, RefTypeNameSurname:
+				if _, ok := set[ref.Member]; ok {
+					delete(refs, pos)
+					ref.Member = nil
+					root.AddUnknownRef(ref)
+				}
 
-				ref.Family = nil
+			case RefTypeSurname:
+				if ref.Family == f {
+					delete(refs, pos)
+					ref.Family = nil
+					root.AddUnknownRef(ref)
+				}
 
-				root.AddUnknownRef(ref)
-			} else if _, ok := set[ref.Member]; ok {
-				delete(refs, pos)
-
-				ref.Member = nil
-
-				root.AddUnknownRef(ref)
+			case RefTypeOrigin:
+				if _, ok := set[ref.Member.Origin]; ok {
+					delete(refs, pos)
+					ref.Member.Origin = nil
+					root.AddUnknownRef(ref)
+				}
 			}
 		}
 
@@ -733,6 +742,18 @@ func (root *Root) AddLabel(uri Uri, label string) {
 	}
 
 	root.Labels[uri] = append(list, label)
+}
+
+func (root *Root) RefsIter() iter.Seq2[*Ref, Uri] {
+	return func(yield func(*Ref, Uri) bool) {
+		for uri, refs := range root.NodeRefs {
+			for _, ref := range refs {
+				if !yield(ref, uri) {
+					return
+				}
+			}
+		}
+	}
 }
 
 func (root *Root) Trigger(event string) {

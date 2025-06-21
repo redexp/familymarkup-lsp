@@ -72,14 +72,12 @@ func (member *Member) NormalizeName(name string) (res string) {
 
 func (member *Member) GetRefsIter() iter.Seq2[*Ref, Uri] {
 	return func(yield func(*Ref, Uri) bool) {
-		for uri, refs := range member.Family.Root.NodeRefs {
-			for _, ref := range refs {
-				mem := ref.Member
+		for ref, uri := range member.Family.Root.RefsIter() {
+			mem := ref.Member
 
-				if mem != nil && (mem == member || (ref.Type == RefTypeOrigin && mem.Origin == member)) {
-					if !yield(ref, uri) {
-						return
-					}
+			if mem != nil && (mem == member || (ref.Type == RefTypeOrigin && mem.Origin == member)) {
+				if !yield(ref, uri) {
+					return
 				}
 			}
 		}
