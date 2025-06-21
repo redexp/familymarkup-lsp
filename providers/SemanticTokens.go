@@ -148,10 +148,10 @@ func getSemanticTokens(docUri string) (result Tokens, uri string, err error) {
 		return
 	}
 
-	doc, err := root.OpenDoc(uri)
+	doc, ok := root.Docs[uri]
 
-	if err != nil {
-		return
+	if !ok {
+		return make(Tokens, 0), uri, nil
 	}
 
 	type Item struct {

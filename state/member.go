@@ -70,25 +70,51 @@ func (member *Member) NormalizeName(name string) (res string) {
 	return
 }
 
-func (member *Member) GetRefsIter() iter.Seq2[Uri, *fm.Person] {
-	return func(yield func(Uri, *fm.Person) bool) {
+func (member *Member) GetRefsIter() iter.Seq2[*Ref, Uri] {
+	return func(yield func(*Ref, Uri) bool) {
 		for uri, refs := range member.Family.Root.NodeRefs {
-			for _, famMem := range refs {
-				if famMem.Member != member {
-					continue
-				}
+			for _, ref := range refs {
+				mem := ref.Member
 
-				if !yield(uri, famMem.Person) {
-					return
+				if mem != nil && (mem == member || (ref.Type == RefTypeOrigin && mem.Origin == member)) {
+					if !yield(ref, uri) {
+						return
+					}
 				}
 			}
 		}
 	}
 }
 
+func (member *Member) GetAllRefsIter() iter.Seq2[*Ref, Uri] {
+	return func(yield func(*Ref, Uri) bool) {
+		for ref, uri := range member.GetRefsIter() {
+			if !yield(ref, uri) {
+				return
+			}
+		}
+
+		if member.Origin == nil {
+			return
+		}
+
+		for ref, uri := range member.Origin.GetRefsIter() {
+			if ref.Type == RefTypeOrigin && ref.Member == member {
+				continue
+			}
+
+			if !yield(ref, uri) {
+				return
+			}
+		}
+	}
+}
+
 func (member *Member) HasRef() bool {
-	for range member.GetRefsIter() {
-		return true
+	for ref := range member.GetRefsIter() {
+		if ref.Person != member.Person {
+			return true
+		}
 	}
 
 	return false

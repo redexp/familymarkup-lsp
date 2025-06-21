@@ -16,25 +16,32 @@ func Definition(_ *Ctx, params *proto.DefinitionParams) (res any, err error) {
 		return
 	}
 
-	famMem, err := getDefinition(uri, params.Position)
+	ref, err := getDefinition(uri, params.Position)
 
-	if err != nil || famMem == nil {
+	if err != nil || ref == nil {
 		return
 	}
 
-	family, member, source := famMem.Spread()
+	f, mem, source := ref.Spread()
 
 	var target *fm.Token
 
-	if member != nil {
-		target = member.Person.Name
-		uri = member.Family.Uri
-	} else if family != nil {
-		target = family.Node.Name
-		uri = family.Uri
+	switch ref.Type {
+	case RefTypeName, RefTypeNameSurname:
+		uri = mem.Family.Uri
+		target = mem.Person.Name
+
+	case RefTypeSurname:
+		uri = f.Uri
+		target = f.Node.Name
+
+	case RefTypeOrigin:
+		origin := mem.Origin
+		uri = origin.Family.Uri
+		target = origin.Person.Name
 	}
 
-	if target == nil || target.IsEqual(source) {
+	if target == nil || target == source {
 		return
 	}
 
@@ -44,7 +51,7 @@ func Definition(_ *Ctx, params *proto.DefinitionParams) (res any, err error) {
 	}, nil
 }
 
-func getDefinition(uri Uri, pos Position) (famMem *FamMem, err error) {
+func getDefinition(uri Uri, pos Position) (ref *Ref, err error) {
 	uri, err = NormalizeUri(uri)
 
 	if err != nil {
@@ -57,8 +64,7 @@ func getDefinition(uri Uri, pos Position) (famMem *FamMem, err error) {
 		return
 	}
 
-	// TODO: change famMem to Member.Origin
-	famMem = root.GetFamMemByPosition(uri, pos)
+	ref = root.GetRefByPosition(uri, pos)
 
 	return
 }

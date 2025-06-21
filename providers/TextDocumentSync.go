@@ -2,7 +2,6 @@ package providers
 
 import (
 	. "github.com/redexp/familymarkup-lsp/state"
-	. "github.com/redexp/familymarkup-lsp/types"
 	. "github.com/redexp/familymarkup-lsp/utils"
 	proto "github.com/tliron/glsp/protocol_3_16"
 )
@@ -14,75 +13,66 @@ func DocOpen(ctx *Ctx, params *proto.DidOpenTextDocumentParams) (err error) {
 		return
 	}
 
-	root.OpenDocText(uri, params.TextDocument.Text)
+	text := params.TextDocument.Text
+
+	if doc, ok := root.Docs[uri]; ok && doc.Text == text {
+		doc.Open = true
+		return
+	}
+
+	root.DirtyUris.SetText(uri, UriOpen, text)
 
 	scheduleDiagnostic(ctx, uri)
 
 	return
 }
 
-func DocClose(_ *Ctx, params *proto.DidCloseTextDocumentParams) error {
+func DocClose(_ *Ctx, params *proto.DidCloseTextDocumentParams) (err error) {
 	uri, err := NormalizeUri(params.TextDocument.URI)
 
 	if err != nil {
-		return err
+		return
 	}
 
 	root.CloseDoc(uri)
 
-	return nil
+	return
 }
 
-func DocChange(ctx *Ctx, params *proto.DidChangeTextDocumentParams) error {
-	root.UpdateLock.Lock()
-	defer root.UpdateLock.Unlock()
-
+func DocChange(ctx *Ctx, params *proto.DidChangeTextDocumentParams) (err error) {
 	uri, err := NormalizeUri(params.TextDocument.URI)
 
 	if err != nil {
-		return err
-	}
-
-	doc, err := root.OpenDoc(uri)
-
-	if err != nil {
-		return err
+		return
 	}
 
 	for _, wrap := range params.ContentChanges {
 		switch change := wrap.(type) {
 		case proto.TextDocumentContentChangeEventWhole:
-			doc.SetText(change.Text)
+			root.DirtyUris.SetText(uri, UriChange, change.Text)
 
 		case proto.TextDocumentContentChangeEvent:
-			doc.Change(change)
+			if change.Range == nil {
+				root.DirtyUris.SetText(uri, UriChange, change.Text)
+				continue
+			}
+
+			doc, ok := root.Docs[uri]
+
+			if !ok {
+				continue
+			}
+
+			root.DirtyUris.ChangeText(doc, change.Range, change.Text)
 		}
 	}
 
-	return setDirtyUri(ctx, uri, FileChange)
-}
+	scheduleDiagnostic(ctx, uri)
 
-func DocCreate(ctx *Ctx, params *proto.CreateFilesParams) error {
-	root.UpdateLock.Lock()
-	defer root.UpdateLock.Unlock()
-
-	for _, file := range params.Files {
-		err := setDirtyUri(ctx, file.URI, FileCreate)
-
-		if err != nil {
-			return err
-		}
-	}
-
-	diagnosticOpenDocs(ctx)
-
-	return nil
+	return
 }
 
 func DocRename(ctx *Ctx, params *proto.RenameFilesParams) error {
-	root.UpdateLock.Lock()
-	defer root.UpdateLock.Unlock()
-
 	for _, file := range params.Files {
 		oldUri, err := NormalizeUri(file.OldURI)
 
@@ -98,56 +88,29 @@ func DocRename(ctx *Ctx, params *proto.RenameFilesParams) error {
 
 		doc, ok := root.Docs[oldUri]
 
-		if ok {
-			newDoc := *doc
-			newDoc.Uri = newUri
-			root.Docs[newUri] = &newDoc
+		if !ok {
+			continue
 		}
 
-		err = setDirtyUri(ctx, file.OldURI, FileDelete)
+		root.DirtyUris.Set(oldUri, UriDelete)
+		root.DirtyUris.SetText(newUri, UriCreate, doc.Text)
 
-		if err != nil {
-			return err
-		}
-
-		err = setDirtyUri(ctx, file.NewURI, FileCreate)
-
-		if err != nil {
-			return err
-		}
+		scheduleDiagnostic(ctx, newUri)
 	}
-
-	diagnosticOpenDocs(ctx)
 
 	return nil
 }
 
-func DocDelete(ctx *Ctx, params *proto.DeleteFilesParams) (err error) {
-	root.UpdateLock.Lock()
-	defer root.UpdateLock.Unlock()
-
+func DocDelete(ctx *Ctx, params *proto.DeleteFilesParams) error {
 	for _, file := range params.Files {
-		err = setDirtyUri(ctx, file.URI, FileDelete)
+		uri, err := NormalizeUri(file.URI)
 
 		if err != nil {
-			return
+			return err
 		}
-	}
 
-	diagnosticOpenDocs(ctx)
+		root.DirtyUris.Set(uri, UriDelete)
 
-	return
-}
-
-func setDirtyUri(ctx *Ctx, uri Uri, state uint8) error {
-	uri, err := NormalizeUri(uri)
-
-	if err != nil {
-		return err
-	}
-
-	if IsFamilyUri(uri) || IsMarkdownUri(uri) {
-		root.DirtyUris.SetState(uri, state)
 		scheduleDiagnostic(ctx, uri)
 	}
 

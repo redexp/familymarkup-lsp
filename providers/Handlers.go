@@ -13,7 +13,6 @@ func NewProtocolHandlers() *protocol.Handler {
 		TextDocumentDidOpen:                 DocOpen,
 		TextDocumentDidChange:               DocChange,
 		TextDocumentDidClose:                DocClose,
-		WorkspaceDidCreateFiles:             DocCreate,
 		WorkspaceDidRenameFiles:             DocRename,
 		WorkspaceDidDeleteFiles:             DocDelete,
 		TextDocumentCompletion:              Completion,

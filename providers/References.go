@@ -1,9 +1,6 @@
 package providers
 
 import (
-	fm "github.com/redexp/familymarkup-parser"
-	"iter"
-
 	. "github.com/redexp/familymarkup-lsp/state"
 	. "github.com/redexp/familymarkup-lsp/types"
 	. "github.com/redexp/familymarkup-lsp/utils"
@@ -11,30 +8,41 @@ import (
 )
 
 func References(_ *Ctx, params *proto.ReferenceParams) (res []proto.Location, err error) {
-	fa, err := getDefinition(params.TextDocument.URI, params.Position)
+	def, err := getDefinition(params.TextDocument.URI, params.Position)
 
-	if err != nil || fa == nil {
+	if err != nil || def == nil {
 		return
 	}
 
-	family, member, _ := fa.Spread()
+	f, mem, _ := def.Spread()
 
 	res = make([]proto.Location, 0)
 
-	for uri, token := range GetReferencesIter(family, member) {
-		res = append(res, proto.Location{
-			URI:   uri,
-			Range: TokenToRange(token),
-		})
+	switch def.Type {
+	case RefTypeName, RefTypeNameSurname, RefTypeOrigin:
+		for ref, uri := range mem.GetAllRefsIter() {
+			res = append(res, proto.Location{
+				URI:   uri,
+				Range: TokenToRange(ref.Token),
+			})
+		}
+
+	case RefTypeSurname:
+		for ref, uri := range f.GetRefsIter() {
+			res = append(res, proto.Location{
+				URI:   uri,
+				Range: TokenToRange(ref.Token),
+			})
+		}
 	}
 
 	if !params.Context.IncludeDeclaration {
 		return
 	}
 
-	if member != nil && member.InfoUri != "" {
+	if mem != nil && mem.InfoUri != "" {
 		res = append(res, proto.Location{
-			URI: member.InfoUri,
+			URI: mem.InfoUri,
 			Range: Range{
 				Start: proto.Position{
 					Line:      0,
@@ -49,26 +57,4 @@ func References(_ *Ctx, params *proto.ReferenceParams) (res []proto.Location, er
 	}
 
 	return
-}
-
-func GetReferencesIter(family *Family, member *Member) iter.Seq2[Uri, *fm.Token] {
-	return func(yield func(string, *fm.Token) bool) {
-		if family == nil {
-			family = &Family{}
-		}
-
-		if member == nil {
-			member = &Member{}
-		}
-
-		for uri, nodes := range root.NodeRefs {
-			for _, item := range nodes {
-				if item.Family == family || item.Member == member {
-					if !yield(uri, item.Token) {
-						return
-					}
-				}
-			}
-		}
-	}
 }

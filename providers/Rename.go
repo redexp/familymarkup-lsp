@@ -1,21 +1,15 @@
 package providers
 
 import (
+	. "github.com/redexp/familymarkup-lsp/state"
 	. "github.com/redexp/familymarkup-lsp/utils"
-	fm "github.com/redexp/familymarkup-parser"
 	proto "github.com/tliron/glsp/protocol_3_16"
 )
 
 func PrepareRename(_ *Ctx, params *proto.PrepareRenameParams) (res any, err error) {
-	uri, err := NormalizeUri(params.TextDocument.URI)
+	def, err := getDefinition(params.TextDocument.URI, params.Position)
 
-	if err != nil {
-		return
-	}
-
-	famMem := root.GetFamMemByPosition(uri, params.Position)
-
-	if famMem == nil {
+	if err != nil || def == nil {
 		return
 	}
 
@@ -33,20 +27,20 @@ func Rename(_ *Ctx, params *proto.RenameParams) (res *proto.WorkspaceEdit, err e
 		return
 	}
 
-	famMem := root.GetFamMemByPosition(uri, params.Position)
+	def, err := getDefinition(uri, params.Position)
 
-	if famMem == nil {
+	if err != nil || def == nil {
 		return
 	}
 
 	res = &proto.WorkspaceEdit{}
 
-	f := famMem.Family
+	if def.Type == RefTypeSurname {
+		f := def.Family
 
-	if f != nil {
 		edits := make([]any, 0)
 
-		for uri, token := range f.GetRefsIter() {
+		for ref, uri := range f.GetRefsIter() {
 			edits = append(edits, proto.TextDocumentEdit{
 				TextDocument: proto.OptionalVersionedTextDocumentIdentifier{
 					TextDocumentIdentifier: proto.TextDocumentIdentifier{
@@ -55,7 +49,7 @@ func Rename(_ *Ctx, params *proto.RenameParams) (res *proto.WorkspaceEdit, err e
 				},
 				Edits: []any{
 					proto.TextEdit{
-						Range:   TokenToRange(token),
+						Range:   TokenToRange(ref.Token),
 						NewText: params.NewName,
 					},
 				},
@@ -81,7 +75,7 @@ func Rename(_ *Ctx, params *proto.RenameParams) (res *proto.WorkspaceEdit, err e
 		return
 	}
 
-	member := famMem.Member
+	member := def.Member
 
 	if member == nil {
 		return
@@ -89,23 +83,17 @@ func Rename(_ *Ctx, params *proto.RenameParams) (res *proto.WorkspaceEdit, err e
 
 	res.Changes = make(map[proto.DocumentUri][]proto.TextEdit)
 
-	addMem := func(uri string, person *fm.Person) {
-		edits, exist := res.Changes[uri]
+	for ref, refUri := range member.GetAllRefsIter() {
+		edits, ok := res.Changes[refUri]
 
-		if !exist {
+		if !ok {
 			edits = make([]proto.TextEdit, 0)
 		}
 
-		res.Changes[uri] = append(edits, proto.TextEdit{
-			Range:   TokenToRange(person.Name),
+		res.Changes[refUri] = append(edits, proto.TextEdit{
+			Range:   TokenToRange(ref.Person.Name),
 			NewText: params.NewName,
 		})
-	}
-
-	addMem(member.Family.Uri, member.Person)
-
-	for uri, person := range member.GetRefsIter() {
-		addMem(uri, person)
 	}
 
 	return

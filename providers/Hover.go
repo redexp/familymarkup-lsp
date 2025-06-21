@@ -5,6 +5,7 @@ import (
 	fm "github.com/redexp/familymarkup-parser"
 	"strings"
 
+	. "github.com/redexp/familymarkup-lsp/state"
 	. "github.com/redexp/familymarkup-lsp/utils"
 	proto "github.com/tliron/glsp/protocol_3_16"
 )
@@ -16,34 +17,48 @@ func Hover(_ *Ctx, params *proto.HoverParams) (h *proto.Hover, err error) {
 		return
 	}
 
-	fa, err := getDefinition(uri, params.Position)
+	ref, err := getDefinition(uri, params.Position)
 
-	if err != nil || fa == nil {
+	if err != nil || ref == nil {
 		return
 	}
 
-	f, m, target := fa.Spread()
+	f, mem, target := ref.Spread()
 
-	if f == nil {
-		f = m.Family
-	}
+	var name string
+	var aliases []string
+	var surname string
+	var sources *fm.RelList
 
-	if m != nil && fa.Person != nil && fa.Person.IsChild {
-		return
-	}
-
-	name := f.Name
-	aliases := f.Aliases
-
-	if m != nil {
-		if m.Person.Side == fm.SideSources {
+	switch ref.Type {
+	case RefTypeName, RefTypeNameSurname:
+		if ref.Person.IsChild || mem.Person == ref.Person {
 			return
 		}
 
-		name = m.Name
-		aliases = m.Aliases
-	} else if len(aliases) == 0 {
-		return
+		if ref.Type == RefTypeName && mem.Origin != nil {
+			mem = mem.Origin
+			surname = mem.Family.Name
+		}
+
+		name = mem.Name
+		aliases = mem.Aliases
+		sources = mem.Person.Relation.Sources
+
+	case RefTypeSurname:
+		if ref.Token == f.Node.Name {
+			return
+		}
+
+		name = f.Name
+		aliases = f.Aliases
+
+	case RefTypeOrigin:
+		origin := mem.Origin
+
+		name = origin.Name
+		aliases = origin.Aliases
+		sources = origin.Person.Relation.Sources
 	}
 
 	message := name
@@ -52,17 +67,19 @@ func Hover(_ *Ctx, params *proto.HoverParams) (h *proto.Hover, err error) {
 		message += " (" + strings.Join(aliases, ", ") + ")"
 	}
 
-	if m != nil {
-		sources := m.Person.Relation.Sources
+	if surname != "" {
+		message += " " + surname
+	}
 
+	if sources != nil {
 		message += " - " + L("child_of_source", sources.Format())
 	}
 
-	r := TokenToRange(target)
-
-	if fa.Person != nil && !fa.Person.IsChild {
-		r = LocToRange(fa.Person.Loc)
+	if message == target.Text {
+		return
 	}
+
+	r := TokenToRange(target)
 
 	h = &proto.Hover{
 		Range: &r,

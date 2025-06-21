@@ -89,7 +89,6 @@ func (family *Family) AddMember(person *fm.Person) *Member {
 	}
 
 	family.Members[name] = member
-	family.Root.AddNodeRef(family.Uri, &FamMem{Member: member, Person: person, Token: person.Name})
 
 	for _, alias := range aliases {
 		mem, exist = family.Members[alias]
@@ -112,7 +111,7 @@ func (family *Family) AddDuplicate(name string, member *Member) {
 
 func (family *Family) MembersIter() iter.Seq[*Member] {
 	return func(yield func(*Member) bool) {
-		check := createIterCheck(yield)
+		check := createUniqYield(yield)
 
 		for _, item := range family.Members {
 			if check(item) {
@@ -144,15 +143,15 @@ func (family *Family) NamesIter() iter.Seq[string] {
 	}
 }
 
-func (family *Family) GetRefsIter() iter.Seq2[Uri, *fm.Token] {
-	return func(yield func(Uri, *fm.Token) bool) {
+func (family *Family) GetRefsIter() iter.Seq2[*Ref, Uri] {
+	return func(yield func(*Ref, Uri) bool) {
 		for uri, refs := range family.Root.NodeRefs {
-			for _, famMem := range refs {
-				if famMem.Family != family {
+			for _, ref := range refs {
+				if ref.Family != family {
 					continue
 				}
 
-				if !yield(uri, famMem.Token) {
+				if !yield(ref, uri) {
 					return
 				}
 			}

@@ -4,7 +4,6 @@ import (
 	. "github.com/redexp/familymarkup-lsp/types"
 	. "github.com/redexp/familymarkup-lsp/utils"
 	fm "github.com/redexp/familymarkup-parser"
-	proto "github.com/tliron/glsp/protocol_3_16"
 	"os"
 	"slices"
 	"strings"
@@ -30,18 +29,6 @@ func CreateDoc(uri Uri, text string) *Doc {
 	doc.SetText(text)
 
 	return doc
-}
-
-func CreateDocFromUri(uri Uri) (doc *Doc, err error) {
-	text, err := GetText(uri)
-
-	if err != nil {
-		return
-	}
-
-	doc = CreateDoc(uri, text)
-
-	return
 }
 
 func UriFileExist(uri Uri) bool {
@@ -93,14 +80,6 @@ func (doc *Doc) SetText(text string) {
 	for _, token := range doc.Tokens {
 		doc.TokensByLine[token.Line] = append(doc.TokensByLine[token.Line], token)
 	}
-}
-
-func (doc *Doc) Change(e proto.TextDocumentContentChangeEvent) {
-	start := doc.PosToOffset(e.Range.Start)
-	end := doc.PosToOffset(e.Range.End)
-	text := doc.Text[0:start] + e.Text + doc.Text[end:]
-
-	doc.SetText(text)
 }
 
 func (doc *Doc) GetTextByLine(line int) string {

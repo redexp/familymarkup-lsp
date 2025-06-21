@@ -20,12 +20,6 @@ func addDuplicate(duplicates Duplicates, name string, dup *Duplicate) {
 	duplicates[name] = append(duplicates[name], dup)
 }
 
-func filterRefs(refs []*Ref, uris UriSet) []*Ref {
-	return slices.DeleteFunc(refs, func(ref *Ref) bool {
-		return uris.Has(ref.Uri)
-	})
-}
-
 func compareNames(a []rune, b []rune) uint {
 	al := float64(len(a))
 	bl := float64(len(b))
@@ -72,8 +66,8 @@ func WalkFiles(uri Uri, extensions []string, cb func(Uri, string) error) (err er
 	})
 }
 
-func createIterCheck[T Family | Member](yield func(*T) bool) func(*T) bool {
-	list := make(map[*T]bool)
+func createUniqYield[T Family | Member](yield func(*T) bool) func(*T) bool {
+	list := make(map[*T]struct{})
 
 	return func(item *T) bool {
 		if item == nil {
@@ -86,7 +80,7 @@ func createIterCheck[T Family | Member](yield func(*T) bool) func(*T) bool {
 			return false
 		}
 
-		list[item] = true
+		list[item] = struct{}{}
 
 		return !yield(item)
 	}

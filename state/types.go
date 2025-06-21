@@ -15,12 +15,12 @@ const (
 )
 
 type Ref struct {
-	Type    RefType
-	Uri     Uri
-	Surname *fm.Token
-	Person  *fm.Person
-	Family  *Family
-	Member  *Member
+	Type   RefType
+	Uri    Uri
+	Person *fm.Person
+	Family *Family
+	Member *Member
+	Token  *fm.Token
 }
 
 type Duplicate struct {
@@ -29,22 +29,15 @@ type Duplicate struct {
 	Uri    string
 }
 
-type FamMem struct {
-	Family *Family
-	Member *Member
-	Person *fm.Person
-	Token  *fm.Token
-}
-
 type (
 	Families   map[string]*Family
 	Members    map[string]*Member
-	NodeRefs   map[Uri]map[string]*FamMem
+	NodeRefs   map[Uri]map[string]*Ref
 	Duplicates map[string][]*Duplicate
 	Refs       []*Ref
 	Listeners  map[string][]func()
 )
 
-func (famMem *FamMem) Spread() (*Family, *Member, *fm.Token) {
-	return famMem.Family, famMem.Member, famMem.Token
+func (ref *Ref) Spread() (*Family, *Member, *fm.Token) {
+	return ref.Family, ref.Member, ref.Token
 }

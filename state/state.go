@@ -20,7 +20,7 @@ type Root struct {
 	NodeRefs     NodeRefs
 	UnknownRefs  []*Ref
 	UnknownFiles Files
-	DirtyUris    UriSet
+	DirtyUris    DirtyUris
 	Labels       map[Uri][]string
 	Listeners    Listeners
 	Log          func(string, ...any)
@@ -37,7 +37,7 @@ func CreateRoot(logger func(string, ...any)) *Root {
 		NodeRefs:     make(NodeRefs),
 		UnknownRefs:  make([]*Ref, 0),
 		UnknownFiles: make(Files),
-		DirtyUris:    make(UriSet),
+		DirtyUris:    make(DirtyUris),
 		Labels:       make(map[Uri][]string),
 		Listeners:    make(Listeners),
 		Log:          logger,
@@ -58,9 +58,8 @@ func (root *Root) SetFolders(folders []Uri) (err error) {
 	}
 
 	type TextTree struct {
-		Doc *Doc
-		Uri Uri
-		MD  bool
+		Uri  Uri
+		Text string
 	}
 
 	textTrees := make(chan TextTree, 3)
@@ -71,20 +70,20 @@ func (root *Root) SetFolders(folders []Uri) (err error) {
 				if slices.Contains(MarkdownExt, ext) {
 					textTrees <- TextTree{
 						Uri: uri,
-						MD:  true,
 					}
+
 					return nil
 				}
 
-				doc, err := CreateDocFromUri(uri)
+				text, err := GetText(uri)
 
 				if err != nil {
 					return err
 				}
 
 				textTrees <- TextTree{
-					Doc: doc,
-					Uri: uri,
+					Uri:  uri,
+					Text: text,
 				}
 
 				return nil
@@ -95,69 +94,22 @@ func (root *Root) SetFolders(folders []Uri) (err error) {
 	}()
 
 	for item := range textTrees {
-		if item.Doc != nil {
-			root.Docs[item.Uri] = item.Doc
-		}
-
-		root.DirtyUris.SetState(item.Uri, FileCreate)
+		root.DirtyUris.SetText(item.Uri, UriCreate, item.Text)
 	}
 
 	return root.UpdateDirty()
 }
 
-func (root *Root) EnsureDoc(uri Uri) (doc *Doc, err error) {
-	doc, ok := root.Docs[uri]
-
-	if ok {
-		return
-	}
-
-	text, err := GetText(uri)
-
-	if err != nil {
-		return
-	}
-
-	doc = CreateDoc(uri, text)
-
-	root.Docs[uri] = doc
-	root.DirtyUris.Set(uri)
-
-	return
-}
-
-func (root *Root) OpenDoc(uri Uri) (doc *Doc, err error) {
-	doc, err = root.EnsureDoc(uri)
-
-	if err != nil {
-		return
-	}
-
-	doc.Open = true
-
-	return
-}
-
-func (root *Root) OpenDocText(uri Uri, text string) *Doc {
+func (root *Root) OpenDoc(uri Uri) (doc *Doc) {
 	doc, ok := root.Docs[uri]
 
 	if !ok {
-		doc = CreateDoc(uri, text)
-		doc.Open = true
-		root.Docs[uri] = doc
-		root.DirtyUris.Set(uri)
-
-		return doc
+		return
 	}
 
 	doc.Open = true
 
-	if doc.Text != text {
-		doc.SetText(text)
-		root.DirtyUris.Set(uri)
-	}
-
-	return doc
+	return
 }
 
 func (root *Root) CloseDoc(uri Uri) {
@@ -190,37 +142,65 @@ func (root *Root) Update(doc *Doc) {
 
 				if person.Surname != nil {
 					root.AddRef(&Ref{
-						Type:    RefTypeSurname,
-						Uri:     uri,
-						Surname: person.Surname,
+						Type:  RefTypeSurname,
+						Uri:   uri,
+						Token: person.Surname,
 					})
+				}
 
-					if !person.IsChild {
-						root.AddRef(&Ref{
-							Type:   RefTypeNameSurname,
-							Uri:    uri,
-							Person: person,
-							Family: family,
-						})
-					}
-				} else if !rel.IsFamilyDef || (person.Side == fm.SideSources && family.HasMember(person.Name.Text)) {
+				if person.IsChild {
+					mem := family.AddMember(person)
+
 					root.AddRef(&Ref{
 						Type:   RefTypeName,
 						Uri:    uri,
+						Member: mem,
 						Person: person,
-						Family: family,
 					})
+
 					continue
 				}
 
-				mem := family.AddMember(person)
+				if person.Side == fm.SideSources && rel.IsFamilyDef {
+					if person.Surname == nil {
+						mem := family.FindMember(person.Name.Text)
 
-				// maybe mother and need find her origin member
-				if rel.IsFamilyDef && person.Side == fm.SideSources && person.Surname != nil {
+						if mem == nil {
+							mem = family.AddMember(person)
+						}
+
+						root.AddRef(&Ref{
+							Type:   RefTypeName,
+							Uri:    uri,
+							Member: mem,
+							Person: person,
+						})
+					} else {
+						mem := family.AddMember(person)
+
+						root.AddRef(&Ref{
+							Type:   RefTypeOrigin,
+							Uri:    uri,
+							Member: mem,
+							Person: person,
+						})
+					}
+
+					continue
+				}
+
+				if person.Surname == nil {
 					root.AddRef(&Ref{
-						Type:   RefTypeOrigin,
+						Type:   RefTypeName,
 						Uri:    uri,
-						Member: mem,
+						Family: family,
+						Person: person,
+					})
+				} else {
+					root.AddRef(&Ref{
+						Type:   RefTypeNameSurname,
+						Uri:    uri,
+						Person: person,
 					})
 				}
 			}
@@ -300,30 +280,33 @@ func (root *Root) UpdateDirty() (err error) {
 	}
 
 	uris := root.DirtyUris
-	root.DirtyUris = UriSet{}
-	root.UnknownRefs = filterRefs(root.UnknownRefs, uris)
+	root.DirtyUris = make(DirtyUris)
+
+	root.UnknownRefs = slices.DeleteFunc(root.UnknownRefs, func(ref *Ref) bool {
+		return uris.Has(ref.Uri)
+	})
 
 	// update markdown files
-	for uri, state := range uris {
+	for uri, item := range uris {
+		delete(root.Docs, uri)
+		delete(root.Labels, uri)
+		delete(root.NodeRefs, uri)
+
 		if !IsMarkdownUri(uri) {
 			continue
 		}
 
 		uris.Remove(uri)
 
-		_, exist := root.UnknownFiles[uri]
-
-		deleted := state == FileDelete
-
-		if exist {
-			if deleted {
+		if _, ok := root.UnknownFiles[uri]; ok {
+			if item.IsDeleted() {
 				delete(root.UnknownFiles, uri)
 			}
 
 			continue
 		}
 
-		if deleted {
+		if item.IsDeleted() {
 			for mem := range root.MembersIter() {
 				if mem.InfoUri == uri {
 					mem.InfoUri = ""
@@ -339,55 +322,31 @@ func (root *Root) UpdateDirty() (err error) {
 		}
 	}
 
-	for uri := range root.NodeRefs {
-		if uris.Has(uri) {
-			delete(root.NodeRefs, uri)
-		}
-	}
-
 	for family := range root.FamilyIter() {
-		if uris.Has(family.Uri) {
-			for member := range family.MembersIter() {
-				if member.InfoUri != "" {
-					err = root.AddUnknownFile(member.InfoUri)
+		if !uris.Has(family.Uri) {
+			continue
+		}
 
-					if err != nil {
-						return
-					}
+		for member := range family.MembersIter() {
+			if member.InfoUri != "" {
+				err = root.AddUnknownFile(member.InfoUri)
+
+				if err != nil {
+					return
 				}
 			}
-
-			root.RemoveFamily(family)
-
-			continue
 		}
+
+		root.RemoveFamily(family)
 	}
 
-	for name, dups := range root.Duplicates {
-		dups = slices.DeleteFunc(dups, func(dup *Duplicate) bool {
-			return uris.Has(dup.Uri) || uris.Has(dup.Family.Uri)
-		})
-
-		if len(dups) == 0 {
-			delete(root.Duplicates, name)
-		} else {
-			root.Duplicates[name] = dups
-		}
-	}
-
-	for uri, state := range uris {
-		delete(root.Labels, uri)
-
-		if state == FileDelete {
-			delete(root.Docs, uri)
+	for uri, item := range uris {
+		if !IsFamilyUri(uri) || item.IsDeleted() {
 			continue
 		}
 
-		doc, err := root.EnsureDoc(uri)
-
-		if err != nil {
-			return err
-		}
+		doc := CreateDoc(uri, item.Text)
+		doc.Open = item.State == UriOpen
 
 		root.Update(doc)
 	}
@@ -425,7 +384,11 @@ func (root *Root) AddFamily(uri Uri, node *fm.Family) *Family {
 		root.Families[name] = family
 	}
 
-	root.AddNodeRef(family.Uri, &FamMem{Family: family, Token: family.Node.Name})
+	root.AddNodeRef(family.Uri, &Ref{
+		Type:   RefTypeSurname,
+		Family: family,
+		Token:  family.Node.Name,
+	})
 
 	return family
 }
@@ -481,24 +444,38 @@ func (root *Root) RemoveFamily(f *Family) {
 		}
 	}
 
-	for uri, nodes := range root.NodeRefs {
-		for key, item := range nodes {
-			if item.Family == f && item.Member == nil {
-				delete(nodes, key)
+	set := make(map[*Member]struct{})
 
-				root.AddUnknownRef(&Ref{
-					Type:    RefTypeSurname,
-					Uri:     uri,
-					Surname: item.Token,
-				})
+	for member := range f.MembersIter() {
+		set[member] = struct{}{}
+	}
+
+	for uri, refs := range root.NodeRefs {
+		for pos, ref := range refs {
+			if ref.Family == f {
+				delete(refs, pos)
+
+				ref.Family = nil
+
+				root.AddUnknownRef(ref)
+			} else if _, ok := set[ref.Member]; ok {
+				delete(refs, pos)
+
+				ref.Member = nil
+
+				root.AddUnknownRef(ref)
 			}
+		}
+
+		if len(refs) == 0 {
+			delete(root.NodeRefs, uri)
 		}
 	}
 }
 
 func (root *Root) FamilyIter() iter.Seq[*Family] {
 	return func(yield func(*Family) bool) {
-		check := createIterCheck(yield)
+		check := createUniqYield(yield)
 
 		for _, item := range root.Families {
 			if check(item) {
@@ -528,16 +505,18 @@ func (root *Root) MembersIter() iter.Seq[*Member] {
 	}
 }
 
-func (root *Root) FindFamiliesByUri(uri Uri) []*Family {
-	list := make([]*Family, 0)
+func (root *Root) FamiliesByUriIter(uri Uri) iter.Seq[*Family] {
+	return func(yield func(*Family) bool) {
+		for family := range root.FamilyIter() {
+			if family.Uri != uri {
+				continue
+			}
 
-	for family := range root.FamilyIter() {
-		if family.Uri == uri {
-			list = append(list, family)
+			if !yield(family) {
+				return
+			}
 		}
 	}
-
-	return list
 }
 
 func (root *Root) FindMember(surname string, name string) (family *Family, member *Member) {
@@ -559,69 +538,50 @@ func (root *Root) FindMember(surname string, name string) (family *Family, membe
 func (root *Root) AddRef(ref *Ref) {
 	switch ref.Type {
 	case RefTypeSurname:
-		f := root.FindFamily(ref.Surname.Text)
+		ref.Family = root.FindFamily(ref.Token.Text)
 
-		if f != nil {
-			root.AddNodeRef(ref.Uri, &FamMem{Family: f, Token: ref.Surname})
+		if ref.Family != nil {
+			root.AddNodeRef(ref.Uri, ref)
 		} else {
 			root.AddUnknownRef(ref)
 		}
 
-	case RefTypeName, RefTypeNameSurname:
-		name := ref.Person.Name.Text
+	case RefTypeName:
+		ref.Token = ref.Person.Name
 
-		f := ref.Family
+		mem := ref.Member
 
-		if ref.Type == RefTypeNameSurname {
-			f = root.FindFamily(ref.Person.Surname.Text)
-
-			if f == nil {
-				root.AddUnknownRef(ref)
-				return
-			}
+		if mem == nil {
+			mem = ref.Family.FindMember(ref.Token.Text)
 		}
-
-		mem := f.FindMember(name)
 
 		if mem == nil {
 			root.AddUnknownRef(ref)
 			return
 		}
 
-		dups, exist := f.Duplicates[mem.NormalizeName(name)]
+		ref.Member = mem
 
-		if exist && ref.Family != nil {
-			for _, dup := range dups {
-				if dup.Member.Surname == "" {
-					continue
-				}
+		root.AddNodeRef(ref.Uri, ref)
 
-				fam := root.FindFamily(dup.Member.Surname)
+	case RefTypeNameSurname:
+		p := ref.Person
+		_, mem := root.FindMember(p.Surname.Text, p.Name.Text)
 
-				if fam == ref.Family {
-					mem = dup.Member
-					break
-				}
-			}
-		}
-
-		root.AddNodeRef(ref.Uri, &FamMem{Member: mem, Person: ref.Person, Token: ref.Person.Name})
-
-		if ref.Type == RefTypeNameSurname {
-			root.AddNodeRef(ref.Uri, &FamMem{Family: f, Person: ref.Person, Token: ref.Person.Surname})
-		}
-
-	case RefTypeOrigin:
-		mem := ref.Member
-
-		f := root.FindFamily(mem.Surname)
-
-		if f == nil {
+		if mem == nil {
 			root.AddUnknownRef(ref)
 			return
 		}
 
-		origin := f.FindMember(mem.Name)
+		ref.Member = mem
+		ref.Token = p.Name
+
+		root.AddNodeRef(ref.Uri, ref)
+
+	case RefTypeOrigin:
+		mem := ref.Member
+
+		f, origin := root.FindMember(mem.Surname, mem.Name)
 
 		if origin == nil {
 			root.AddUnknownRef(ref)
@@ -632,45 +592,56 @@ func (root *Root) AddRef(ref *Ref) {
 
 		if ok {
 			for _, dup := range dups {
-				if dup.Member.Surname != "" && IsEqNames(mem.Surname, dup.Member.Surname) {
+				surname := dup.Member.Surname
+
+				if surname == "" {
+					continue
+				}
+
+				f = root.FindFamily(surname)
+
+				if f == mem.Family {
 					origin = dup.Member
+					break
 				}
 			}
 		}
 
 		mem.Origin = origin
+		ref.Token = mem.Person.Name
+		root.AddNodeRef(ref.Uri, ref)
 	}
 }
 
-func (root *Root) AddNodeRef(uri Uri, famMem *FamMem) {
+func (root *Root) AddNodeRef(uri Uri, ref *Ref) {
 	_, exist := root.NodeRefs[uri]
 
 	if !exist {
-		root.NodeRefs[uri] = make(map[string]*FamMem)
+		root.NodeRefs[uri] = make(map[string]*Ref)
 	}
 
-	pos := TokenToPosString(famMem.Token) // TODO: replace with [line][char]
+	pos := TokenToPosString(ref.Token)
 
-	root.NodeRefs[uri][pos] = famMem
+	root.NodeRefs[uri][pos] = ref
 }
 
-func (root *Root) GetFamMem(uri Uri, token *fm.Token) *FamMem {
+func (root *Root) GetRefByToken(uri Uri, token *fm.Token) *Ref {
 	nodesMap, exist := root.NodeRefs[uri]
 
 	if !exist {
 		return nil
 	}
 
-	famMem, exist := nodesMap[TokenToPosString(token)]
+	ref, exist := nodesMap[TokenToPosString(token)]
 
 	if !exist {
 		return nil
 	}
 
-	return famMem
+	return ref
 }
 
-func (root *Root) GetFamMemByPosition(uri Uri, pos Position) *FamMem {
+func (root *Root) GetRefByPosition(uri Uri, pos Position) *Ref {
 	nodesMap, exist := root.NodeRefs[uri]
 
 	if !exist {
@@ -680,10 +651,10 @@ func (root *Root) GetFamMemByPosition(uri Uri, pos Position) *FamMem {
 	line := int(pos.Line)
 	char := int(pos.Character)
 
-	var endFamMem *FamMem
+	var endRef *Ref
 
-	for _, famMem := range nodesMap {
-		token := famMem.Token
+	for _, ref := range nodesMap {
+		token := ref.Token
 
 		if token.Line != line {
 			continue
@@ -692,25 +663,25 @@ func (root *Root) GetFamMemByPosition(uri Uri, pos Position) *FamMem {
 		end := token.EndChar()
 
 		if token.Char <= char && char < end {
-			return famMem
+			return ref
 		}
 
 		if char == end {
-			endFamMem = famMem
+			endRef = ref
 		}
 	}
 
-	return endFamMem
+	return endRef
 }
 
-func (root *Root) GetMemberByUriToken(uri Uri, token *fm.Token) *Member {
-	famMem := root.GetFamMem(uri, token)
+func (root *Root) GetMemberByToken(uri Uri, token *fm.Token) *Member {
+	ref := root.GetRefByToken(uri, token)
 
-	if famMem == nil {
+	if ref == nil {
 		return nil
 	}
 
-	return famMem.Member
+	return ref.Member
 }
 
 func (root *Root) FindFolder(uri Uri) Uri {
@@ -726,7 +697,7 @@ func (root *Root) FindFolder(uri Uri) Uri {
 func (root *Root) AddUnknownRef(ref *Ref) {
 	if ref.Type == RefTypeSurname {
 		for _, u := range root.UnknownRefs {
-			if u.Surname == ref.Surname {
+			if u.Token == ref.Token {
 				return
 			}
 		}

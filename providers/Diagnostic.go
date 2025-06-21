@@ -78,8 +78,8 @@ func PublishDiagnostics(ctx *Ctx, uri Uri) (err error) {
 		switch ref.Type {
 		case RefTypeSurname:
 			t = UnknownFamilyError
-			loc = ref.Surname.Loc()
-			message = L("unknown_family", ref.Surname.Text)
+			loc = ref.Token.Loc()
+			message = L("unknown_family", ref.Token.Text)
 
 		case RefTypeName:
 			t = UnknownPersonError
@@ -113,7 +113,7 @@ func PublishDiagnostics(ctx *Ctx, uri Uri) (err error) {
 
 	var locations []proto.DiagnosticRelatedInformation
 
-	ensureLocations := func(family *Family, name string) error {
+	ensureLocations := func(family *Family, member *Member, dups []*Duplicate) error {
 		if locations != nil {
 			return nil
 		}
@@ -123,12 +123,6 @@ func PublishDiagnostics(ctx *Ctx, uri Uri) (err error) {
 		if err != nil {
 			return err
 		}
-
-		dups := family.Duplicates[name]
-
-		member := family.GetMember(name)
-
-		dups = append(dups, &Duplicate{Member: member})
 
 		locations = make([]proto.DiagnosticRelatedInformation, len(dups))
 
@@ -149,19 +143,23 @@ func PublishDiagnostics(ctx *Ctx, uri Uri) (err error) {
 		return nil
 	}
 
+	// duplicates warning
 	for family := range root.FamilyIter() {
 		for name, dups := range family.Duplicates {
 			locations = nil
 
 			member := family.GetMember(name)
-			count := len(dups) + 1
 
-			for _, ref := range member.Refs {
-				if ref.Uri != uri || ref.Family == family {
+			dups = append(dups, &Duplicate{Member: member})
+
+			for ref, refUri := range member.GetRefsIter() {
+				p := ref.Person
+
+				if refUri != uri || ref.Type == RefTypeOrigin || p == member.Person || !IsEqNames(name, p.Name.Text) {
 					continue
 				}
 
-				err = ensureLocations(family, name)
+				err = ensureLocations(family, member, dups)
 
 				if err != nil {
 					return err
@@ -169,8 +167,8 @@ func PublishDiagnostics(ctx *Ctx, uri Uri) (err error) {
 
 				add(proto.Diagnostic{
 					Severity:           Warning,
-					Range:              TokenToRange(ref.Person.Name),
-					Message:            L("duplicate_count_of_name", count, name),
+					Range:              TokenToRange(p.Name),
+					Message:            L("duplicate_count_of_name", len(locations), name),
 					RelatedInformation: locations,
 					Data: DiagnosticData{
 						Type:    NameDuplicateWarning,
@@ -183,9 +181,9 @@ func PublishDiagnostics(ctx *Ctx, uri Uri) (err error) {
 	}
 
 	if warnChildrenWithoutRelations {
-		for _, f := range root.FindFamiliesByUri(uri) {
+		for f := range root.FamiliesByUriIter(uri) {
 			for mem := range f.MembersIter() {
-				if len(mem.Refs) > 0 || mem.Origin != nil || !mem.Person.IsChild {
+				if !mem.Person.IsChild || mem.HasRef() {
 					continue
 				}
 
@@ -235,18 +233,6 @@ func (dd *DocDebouncer) Flush() {
 		if err != nil {
 			LogDebug("Diagnostic error: %s", err.Error())
 		}
-	}
-}
-
-func diagnosticOpenDocs(ctx *Ctx) {
-	docDiagnostic.Ctx = ctx
-
-	for uri, doc := range root.Docs {
-		if !doc.Open {
-			continue
-		}
-
-		docDiagnostic.Set(uri)
 	}
 }
 

@@ -1,6 +1,7 @@
 package providers
 
 import (
+	. "github.com/redexp/familymarkup-lsp/state"
 	. "github.com/redexp/familymarkup-lsp/utils"
 	fm "github.com/redexp/familymarkup-parser"
 	proto "github.com/tliron/glsp/protocol_3_16"
@@ -13,15 +14,9 @@ func DocumentHighlight(_ *Ctx, params *proto.DocumentHighlightParams) (res []pro
 		return
 	}
 
-	nodes, exist := root.NodeRefs[uri]
+	def, err := getDefinition(uri, params.Position)
 
-	if !exist {
-		return
-	}
-
-	fa, err := getDefinition(uri, params.Position)
-
-	if err != nil || fa == nil {
+	if err != nil || def == nil {
 		return
 	}
 
@@ -35,22 +30,41 @@ func DocumentHighlight(_ *Ctx, params *proto.DocumentHighlightParams) (res []pro
 		})
 	}
 
-	family, member, _ := fa.Spread()
+	nodes := root.NodeRefs[uri]
 
-	if family != nil && family.Uri == uri {
-		add(family.Node.Name.Loc())
-	}
+	switch def.Type {
+	case RefTypeName, RefTypeNameSurname:
+		for _, ref := range nodes {
+			mem := ref.Member
 
-	if member != nil && member.Family.Uri == uri {
-		add(member.Person.Loc)
-	}
+			if mem == nil {
+				continue
+			}
 
-	for _, famMem := range nodes {
-		if (family == nil || famMem.Family != family) && (member == nil || famMem.Member != member) {
-			continue
+			if mem == def.Member || (ref.Type == RefTypeOrigin && mem.Origin == def.Member) {
+				add(ref.Token.Loc())
+			}
 		}
 
-		add(famMem.Token.Loc())
+	case RefTypeSurname:
+		for _, ref := range nodes {
+			if ref.Type == RefTypeSurname && ref.Family == def.Family {
+				add(ref.Token.Loc())
+			}
+		}
+
+	case RefTypeOrigin:
+		for _, ref := range nodes {
+			mem := ref.Member
+
+			if mem == nil {
+				continue
+			}
+
+			if mem == def.Member || mem == def.Member.Origin {
+				add(ref.Token.Loc())
+			}
+		}
 	}
 
 	return

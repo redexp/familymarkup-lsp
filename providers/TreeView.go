@@ -117,7 +117,7 @@ func TreeMembers(_ *Ctx, loc *TreeItemLocation) (list []*TreeMember, err error) 
 			continue
 		}
 
-		mem := root.GetMemberByUriToken(f.Uri, person.Name)
+		mem := root.GetMemberByToken(f.Uri, person.Name)
 
 		if mem != nil {
 			add(person, mem.Name, mem.Aliases)

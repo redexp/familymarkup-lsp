@@ -27,11 +27,7 @@ func DocSymbols(_ *Ctx, params *proto.DocumentSymbolParams) (res any, err error)
 
 	list := make([]proto.DocumentSymbol, 0)
 
-	for f := range root.FamilyIter() {
-		if f.Uri != uri {
-			continue
-		}
-
+	for f := range root.FamiliesByUriIter(uri) {
 		symbol := proto.DocumentSymbol{
 			Kind:           proto.SymbolKindNamespace,
 			Name:           f.Name,
@@ -41,7 +37,7 @@ func DocSymbols(_ *Ctx, params *proto.DocumentSymbolParams) (res any, err error)
 		}
 
 		for mem := range f.MembersIter() {
-			r := LocToRange(mem.Person.Loc)
+			r := LocToRange(mem.Person.Name.Loc())
 
 			symbol.Children = append(symbol.Children, proto.DocumentSymbol{
 				Kind:           proto.SymbolKindConstant,
@@ -181,7 +177,7 @@ func ResolveSymbol(_ *Ctx, symbol *WorkspaceSymbol) (res *WorkspaceSymbolLocatio
 
 		res.Location = proto.Location{
 			URI:   f.Uri,
-			Range: LocToRange(mem.Person.Loc),
+			Range: LocToRange(mem.Person.Name.Loc()),
 		}
 	}
 
