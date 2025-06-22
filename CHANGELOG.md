@@ -1,5 +1,11 @@
 # Change Log
 
+## [2.0.0] - 2025-06-22
+
+### Changed
+
+- Migrate from tree-sitter-familymarkup to familymarkup-parser
+
 ## [1.7.0] - 2025-01-12
 
 ### Added

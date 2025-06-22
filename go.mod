@@ -1,13 +1,12 @@
 module github.com/redexp/familymarkup-lsp
 
-go 1.24.2
+go 1.24.4
 
 require (
 	github.com/bep/debounce v1.2.1
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/redexp/familymarkup-parser v0.10.3
 	github.com/spf13/pflag v1.0.6
-	github.com/tliron/commonlog v0.2.19
 	github.com/tliron/glsp v0.2.2
 )
 
@@ -24,6 +23,7 @@ require (
 	github.com/sasha-s/go-deadlock v0.3.5 // indirect
 	github.com/segmentio/ksuid v1.0.4 // indirect
 	github.com/sourcegraph/jsonrpc2 v0.2.1 // indirect
+	github.com/tliron/commonlog v0.2.19 // indirect
 	github.com/tliron/kutil v0.3.26 // indirect
 	golang.org/x/crypto v0.39.0 // indirect
 	golang.org/x/sys v0.33.0 // indirect
