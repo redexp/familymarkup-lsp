@@ -10,7 +10,7 @@ import (
 )
 
 func Initialize(_ *Ctx, params *proto.InitializeParams) (any, error) {
-	root = CreateRoot(Debugf)
+	root = CreateRoot()
 
 	options, err := GetClientConfiguration(params.InitializationOptions)
 

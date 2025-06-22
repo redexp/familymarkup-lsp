@@ -23,12 +23,11 @@ type Root struct {
 	DirtyUris    DirtyUris
 	Labels       map[Uri][]string
 	Listeners    Listeners
-	Log          func(string, ...any)
 
 	UpdateLock sync.Mutex
 }
 
-func CreateRoot(logger func(string, ...any)) *Root {
+func CreateRoot() *Root {
 	return &Root{
 		Folders:      make(UriSet),
 		Docs:         make(Docs),
@@ -40,7 +39,6 @@ func CreateRoot(logger func(string, ...any)) *Root {
 		DirtyUris:    make(DirtyUris),
 		Labels:       make(map[Uri][]string),
 		Listeners:    make(Listeners),
-		Log:          logger,
 	}
 }
 

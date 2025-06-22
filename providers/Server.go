@@ -2,7 +2,6 @@ package providers
 
 import (
 	"github.com/tliron/glsp"
-	serv "github.com/tliron/glsp/server"
 )
 
 type RequestHandler struct {
@@ -14,7 +13,6 @@ func (req *RequestHandler) Handle(ctx *Ctx) (res any, validMethod bool, validPar
 		res, validMethod, validParams, err = h.Handle(ctx)
 
 		if validMethod {
-			Debugf("method: %s, err: %v", ctx.Method, err != nil)
 			return
 		}
 	}
@@ -22,7 +20,6 @@ func (req *RequestHandler) Handle(ctx *Ctx) (res any, validMethod bool, validPar
 	return
 }
 
-func CreateServer(handlers ...glsp.Handler) *serv.Server {
-	server = serv.NewServer(&RequestHandler{Handlers: handlers}, "familymarkup", false)
-	return server
+func CreateRequestHandler(handlers ...glsp.Handler) *RequestHandler {
+	return &RequestHandler{Handlers: handlers}
 }
