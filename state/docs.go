@@ -305,7 +305,21 @@ func (doc *Doc) FindPersonByRange(r Range) *fm.Person {
 	loc := RangeToLoc(r)
 
 	for _, f := range doc.Root.Families {
+		switch f.OverlapType(loc) {
+		case fm.OverlapBefore:
+			continue
+		case fm.OverlapAfter:
+			return nil
+		}
+
 		for _, rel := range f.Relations {
+			switch rel.OverlapType(loc) {
+			case fm.OverlapBefore:
+				continue
+			case fm.OverlapAfter:
+				return nil
+			}
+
 			for _, p := range rel.Sources.Persons {
 				switch p.OverlapType(loc) {
 				case fm.OverlapBefore:
@@ -321,7 +335,7 @@ func (doc *Doc) FindPersonByRange(r Range) *fm.Person {
 				continue
 			}
 
-			for _, p := range rel.Sources.Persons {
+			for _, p := range rel.Targets.Persons {
 				switch p.OverlapType(loc) {
 				case fm.OverlapBefore:
 					continue

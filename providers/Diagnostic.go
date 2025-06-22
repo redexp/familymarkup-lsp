@@ -31,7 +31,7 @@ type DiagnosticData struct {
 	Name    string `json:"name"`
 }
 
-func PublishDiagnostics(ctx *Ctx, uri Uri) (err error) {
+func PublishDiagnostics(ctx *Ctx, uri Uri) {
 	if !supportDiagnostics {
 		return
 	}
@@ -194,8 +194,6 @@ func PublishDiagnostics(ctx *Ctx, uri Uri) (err error) {
 		// TODO: add version
 		Diagnostics: list,
 	})
-
-	return nil
 }
 
 var docDiagnostic = &DocDebouncer{
@@ -218,11 +216,7 @@ func (dd *DocDebouncer) Flush() {
 			continue
 		}
 
-		err := PublishDiagnostics(docDiagnostic.Ctx, uri)
-
-		if err != nil {
-			LogDebug("Diagnostic error: %s", err.Error())
-		}
+		go PublishDiagnostics(docDiagnostic.Ctx, uri)
 	}
 }
 

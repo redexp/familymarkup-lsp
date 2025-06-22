@@ -18,7 +18,9 @@ func DocFormating(_ *Ctx, params *proto.DocumentFormattingParams) (list []proto.
 		return
 	}
 
-	return prettify(uri, nil)
+	list = prettify(uri, nil)
+
+	return
 }
 
 func RangeFormating(_ *Ctx, params *proto.DocumentRangeFormattingParams) (list []proto.TextEdit, err error) {
@@ -28,7 +30,9 @@ func RangeFormating(_ *Ctx, params *proto.DocumentRangeFormattingParams) (list [
 		return
 	}
 
-	return prettify(uri, &params.Range)
+	list = prettify(uri, &params.Range)
+
+	return
 }
 
 func LineFormating(_ *Ctx, params *proto.DocumentOnTypeFormattingParams) (list []proto.TextEdit, err error) {
@@ -73,11 +77,7 @@ func LineFormating(_ *Ctx, params *proto.DocumentOnTypeFormattingParams) (list [
 		}
 	}
 
-	list, err = prettify(uri, r)
-
-	if err != nil {
-		return
-	}
+	list = prettify(uri, r)
 
 	if newLine {
 		edits, err := addNewLineNum(doc, &pos)
@@ -94,7 +94,7 @@ func LineFormating(_ *Ctx, params *proto.DocumentOnTypeFormattingParams) (list [
 	return
 }
 
-func prettify(uri Uri, r *Range) (list []proto.TextEdit, err error) {
+func prettify(uri Uri, r *Range) (list []proto.TextEdit) {
 	doc := GetDoc(uri)
 
 	loc := doc.Root.Loc
@@ -111,7 +111,7 @@ func prettify(uri Uri, r *Range) (list []proto.TextEdit, err error) {
 		list = append(list, item)
 	}
 
-	check := func(edit proto.TextEdit) (err error) {
+	check := func(edit proto.TextEdit) {
 		text := doc.GetTextByRange(edit.Range)
 
 		if text != edit.NewText {
@@ -121,7 +121,7 @@ func prettify(uri Uri, r *Range) (list []proto.TextEdit, err error) {
 		return
 	}
 
-	checkNameAliases := func(name *fm.Token, aliases []*fm.Token) (err error) {
+	checkNameAliases := func(name *fm.Token, aliases []*fm.Token) {
 		if aliases == nil {
 			return
 		}
@@ -135,17 +135,13 @@ func prettify(uri Uri, r *Range) (list []proto.TextEdit, err error) {
 		first := aliases[0]
 
 		if name != nil {
-			err = check(proto.TextEdit{
+			check(proto.TextEdit{
 				Range: Range{
 					Start: TokenEndToPosition(name),
 					End:   TokenToPosition(first),
 				},
 				NewText: " (",
 			})
-
-			if err != nil {
-				return
-			}
 		}
 
 		prev := first
@@ -153,17 +149,13 @@ func prettify(uri Uri, r *Range) (list []proto.TextEdit, err error) {
 		for i := 1; i < count; i++ {
 			alias := aliases[i]
 
-			err = check(proto.TextEdit{
+			check(proto.TextEdit{
 				Range: Range{
 					Start: TokenEndToPosition(prev),
 					End:   TokenToPosition(alias),
 				},
 				NewText: ", ",
 			})
-
-			if err != nil {
-				return
-			}
 
 			prev = alias
 		}
@@ -193,8 +185,6 @@ func prettify(uri Uri, r *Range) (list []proto.TextEdit, err error) {
 
 			break
 		}
-
-		return
 	}
 
 	prevNext := func(token *fm.Token) (prev *fm.Token, next *fm.Token) {
@@ -240,21 +230,17 @@ func prettify(uri Uri, r *Range) (list []proto.TextEdit, err error) {
 	}
 
 	for _, family := range doc.Root.Families {
-		switch family.Loc.OverlapType(loc) {
+		switch family.OverlapType(loc) {
 		case fm.OverlapBefore:
 			continue
 		case fm.OverlapAfter:
 			return
 		}
 
-		err = checkNameAliases(family.Name, family.Aliases)
-
-		if err != nil {
-			return
-		}
+		checkNameAliases(family.Name, family.Aliases)
 
 		for _, rel := range family.Relations {
-			switch rel.Loc.OverlapType(loc) {
+			switch rel.OverlapType(loc) {
 			case fm.OverlapBefore:
 				continue
 			case fm.OverlapAfter:
@@ -276,11 +262,7 @@ func prettify(uri Uri, r *Range) (list []proto.TextEdit, err error) {
 				}
 
 				for n, person := range relList.Persons {
-					err = checkNameAliases(person.Name, person.Aliases)
-
-					if err != nil {
-						return
-					}
+					checkNameAliases(person.Name, person.Aliases)
 
 					if person.Num != nil {
 						prev, next := prevNext(person.Num)

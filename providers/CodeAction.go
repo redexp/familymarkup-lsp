@@ -62,7 +62,6 @@ func CodeAction(_ *Ctx, params *proto.CodeActionParams) (res any, err error) {
 				continue
 			}
 
-			// TODO: check maybe doc.GetTextByRange would be the same
 			token := doc.GetTokenByPosition(d.Range.Start)
 
 			add(
@@ -231,7 +230,6 @@ func CodeActionResolve(ctx *Ctx, params *proto.CodeAction) (res *proto.CodeActio
 				createInsertText(newUri, pos, text),
 			}
 
-			// TODO: check to normalize data.Uri
 			scheduleDiagnostic(ctx, data.Uri)
 
 			return res, nil
