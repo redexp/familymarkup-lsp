@@ -182,6 +182,20 @@ func prettify(uri Uri, r *Range) (list []proto.TextEdit, err error) {
 		return
 	}
 
+	prevNext := func(token *fm.Token) (prev *fm.Token, next *fm.Token) {
+		prev, next = doc.PrevNextTokens(token)
+
+		if prev != nil && prev.Line != token.Line {
+			prev = nil
+		}
+
+		if next != nil && next.Line != token.Line || next.SubType == fm.TokenNL {
+			next = nil
+		}
+
+		return
+	}
+
 	for i := loc.Start.Line; i <= loc.End.Line; i++ {
 		tokens, ok := doc.TokensByLine[i]
 
@@ -254,7 +268,7 @@ func prettify(uri Uri, r *Range) (list []proto.TextEdit, err error) {
 					}
 
 					if person.Num != nil {
-						prev, next := doc.PrevNextTokens(person.Num)
+						prev, next := prevNext(person.Num)
 
 						if prev != nil && prev.Type == fm.TokenSpace && prev.Char == 0 {
 							add(proto.TextEdit{
@@ -285,7 +299,7 @@ func prettify(uri Uri, r *Range) (list []proto.TextEdit, err error) {
 				}
 
 				for _, sep := range relList.Separators {
-					prev, next := doc.PrevNextTokens(sep)
+					prev, next := prevNext(sep)
 
 					switch sep.SubType {
 					case fm.TokenComma:
@@ -334,7 +348,7 @@ func prettify(uri Uri, r *Range) (list []proto.TextEdit, err error) {
 			}
 
 			if rel.Arrow != nil {
-				prev, next := doc.PrevNextTokens(rel.Arrow)
+				prev, next := prevNext(rel.Arrow)
 
 				if prev != nil && prev.Type != fm.TokenSpace {
 					add(proto.TextEdit{
@@ -346,7 +360,7 @@ func prettify(uri Uri, r *Range) (list []proto.TextEdit, err error) {
 					})
 				}
 
-				if next != nil && next.Line == rel.Arrow.Line && next.Type != fm.TokenSpace && next.SubType != fm.TokenNL {
+				if next != nil && next.Line == rel.Arrow.Line && next.Type != fm.TokenSpace {
 					add(proto.TextEdit{
 						Range: Range{
 							Start: TokenEndToPosition(rel.Arrow),
