@@ -113,16 +113,12 @@ func PublishDiagnostics(ctx *Ctx, uri Uri) (err error) {
 
 	var locations []proto.DiagnosticRelatedInformation
 
-	ensureLocations := func(family *Family, member *Member, dups []*Duplicate) error {
+	ensureLocations := func(family *Family, member *Member, dups []*Duplicate) {
 		if locations != nil {
-			return nil
+			return
 		}
 
-		doc, err := GetDoc(family.Uri)
-
-		if err != nil {
-			return err
-		}
+		doc := GetDoc(family.Uri)
 
 		locations = make([]proto.DiagnosticRelatedInformation, len(dups))
 
@@ -134,13 +130,11 @@ func PublishDiagnostics(ctx *Ctx, uri Uri) (err error) {
 			locations[i] = proto.DiagnosticRelatedInformation{
 				Location: proto.Location{
 					URI:   family.Uri,
-					Range: LocToRange(dup.Member.Person.Loc),
+					Range: LocToRange(dup.Member.Person.Name.Loc()),
 				},
 				Message: L("child_of_source", text),
 			}
 		}
-
-		return nil
 	}
 
 	// duplicates warning
@@ -159,11 +153,7 @@ func PublishDiagnostics(ctx *Ctx, uri Uri) (err error) {
 					continue
 				}
 
-				err = ensureLocations(family, member, dups)
-
-				if err != nil {
-					return err
-				}
+				ensureLocations(family, member, dups)
 
 				add(proto.Diagnostic{
 					Severity:           Warning,

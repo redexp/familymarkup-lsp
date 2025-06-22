@@ -135,11 +135,13 @@ func TreeReload() {
 }
 
 func getFamilyDoc(loc *TreeItemLocation) (f *Family, doc *Doc, err error) {
-	doc, err = GetDoc(loc.URI)
+	uri, err := NormalizeUri(loc.URI)
 
 	if err != nil {
 		return
 	}
+
+	doc = GetDoc(uri)
 
 	dups, exist := root.Duplicates[loc.FamilyName]
 

@@ -12,20 +12,39 @@ import (
 )
 
 func DocFormating(_ *Ctx, params *proto.DocumentFormattingParams) (list []proto.TextEdit, err error) {
-	return prettify(params.TextDocument.URI, nil)
+	uri, err := NormalizeUri(params.TextDocument.URI)
+
+	if err != nil {
+		return
+	}
+
+	return prettify(uri, nil)
 }
 
 func RangeFormating(_ *Ctx, params *proto.DocumentRangeFormattingParams) (list []proto.TextEdit, err error) {
-	return prettify(params.TextDocument.URI, &params.Range)
+	uri, err := NormalizeUri(params.TextDocument.URI)
+
+	if err != nil {
+		return
+	}
+
+	return prettify(uri, &params.Range)
 }
 
 func LineFormating(_ *Ctx, params *proto.DocumentOnTypeFormattingParams) (list []proto.TextEdit, err error) {
-	doc, err := GetDoc(params.TextDocument.URI)
+	uri, err := NormalizeUri(params.TextDocument.URI)
 
 	if err != nil {
-		return nil, err
+		return
 	}
 
+	err = root.UpdateDirty()
+
+	if err != nil {
+		return
+	}
+
+	doc := GetDoc(uri)
 	pos := params.Position
 	line := pos.Line
 
@@ -54,7 +73,7 @@ func LineFormating(_ *Ctx, params *proto.DocumentOnTypeFormattingParams) (list [
 		}
 	}
 
-	list, err = prettify(params.TextDocument.URI, r)
+	list, err = prettify(uri, r)
 
 	if err != nil {
 		return
@@ -76,11 +95,7 @@ func LineFormating(_ *Ctx, params *proto.DocumentOnTypeFormattingParams) (list [
 }
 
 func prettify(uri Uri, r *Range) (list []proto.TextEdit, err error) {
-	doc, err := GetDoc(uri)
-
-	if err != nil {
-		return
-	}
+	doc := GetDoc(uri)
 
 	loc := doc.Root.Loc
 

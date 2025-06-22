@@ -35,7 +35,6 @@ func CodeAction(_ *Ctx, params *proto.CodeActionParams) (res any, err error) {
 	}
 
 	list := make([]proto.CodeAction, 0)
-	var doc *Doc
 	QuickFix := P(proto.CodeActionKindQuickFix)
 
 	add := func(items ...proto.CodeAction) {
@@ -56,12 +55,7 @@ func CodeAction(_ *Ctx, params *proto.CodeActionParams) (res any, err error) {
 
 		switch data.Type {
 		case UnknownFamilyError:
-			doc, err = GetDoc(uri)
-
-			if err != nil {
-				return
-			}
-
+			doc := GetDoc(uri)
 			family := doc.FindFamilyByRange(d.Range)
 
 			if family == nil {
@@ -125,11 +119,7 @@ func CodeAction(_ *Ctx, params *proto.CodeActionParams) (res any, err error) {
 
 			dups = append(dups, &Duplicate{Member: member})
 
-			doc, err = GetDoc(family.Uri)
-
-			if err != nil {
-				return
-			}
+			doc := GetDoc(family.Uri)
 
 			for _, dup := range dups {
 				mem := dup.Member
@@ -190,7 +180,6 @@ func CodeActionResolve(ctx *Ctx, params *proto.CodeAction) (res *proto.CodeActio
 
 	r := params.Diagnostics[0].Range
 
-	var doc *Doc
 	var token *fm.Token
 
 	res = &proto.CodeAction{
@@ -199,11 +188,7 @@ func CodeActionResolve(ctx *Ctx, params *proto.CodeAction) (res *proto.CodeActio
 
 	switch data.Type {
 	case UnknownFamilyError:
-		doc, err = GetDoc(data.Uri)
-
-		if err != nil {
-			return
-		}
+		doc := GetDoc(data.Uri)
 
 		token = doc.GetTokenByPosition(r.Start)
 
@@ -272,11 +257,7 @@ func CodeActionResolve(ctx *Ctx, params *proto.CodeAction) (res *proto.CodeActio
 		res.Edit.DocumentChanges = []any{createEdit(data.Uri, r.Start, r.End, data.Name)}
 
 	case ChildWithoutRelationsInfo:
-		doc, err = GetDoc(data.Uri)
-
-		if err != nil {
-			return
-		}
+		doc := GetDoc(data.Uri)
 
 		token = doc.GetTokenByPosition(r.Start)
 

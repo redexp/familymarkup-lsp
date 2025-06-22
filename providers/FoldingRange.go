@@ -13,11 +13,7 @@ func FoldingRange(_ *Ctx, params *proto.FoldingRangeParams) (res []proto.Folding
 		return
 	}
 
-	doc, err := GetDoc(uri)
-
-	if err != nil {
-		return
-	}
+	doc := GetDoc(uri)
 
 	res = getFoldingRanges(doc.Root)
 

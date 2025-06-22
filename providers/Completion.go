@@ -9,7 +9,9 @@ import (
 )
 
 func Completion(_ *Ctx, params *proto.CompletionParams) (res any, err error) {
-	t, words, err := GetCompletionType(params.TextDocument.URI, params.Position)
+	uri, err := NormalizeUri(params.TextDocument.URI)
+
+	t, words, err := GetCompletionType(uri, params.Position)
 
 	if err != nil || t == "" {
 		return
@@ -86,11 +88,7 @@ func Completion(_ *Ctx, params *proto.CompletionParams) (res any, err error) {
 		t = "name"
 	}
 
-	doc, err := GetDoc(params.TextDocument.URI)
-
-	if err != nil {
-		return
-	}
+	doc := GetDoc(uri)
 
 	rel := doc.FindRelationByRange(PositionToRange(params.Position))
 
@@ -151,11 +149,7 @@ func Completion(_ *Ctx, params *proto.CompletionParams) (res any, err error) {
 // "name" || "surname", [string]
 // "", []
 func GetCompletionType(uri Uri, pos Position) (t string, words []string, err error) {
-	doc, err := GetDoc(uri)
-
-	if err != nil {
-		return
-	}
+	doc := GetDoc(uri)
 
 	token := doc.GetTokenByPosition(pos)
 
