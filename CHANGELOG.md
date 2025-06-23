@@ -1,5 +1,11 @@
 # Change Log
 
+## [2.1.0] - 2025-06-23
+
+### Changed
+
+- Split build dev server on WebSocket and prod on Stdio
+
 ## [2.0.0] - 2025-06-22
 
 ### Changed

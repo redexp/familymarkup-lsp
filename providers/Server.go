@@ -1,25 +1,23 @@
 package providers
 
 import (
-	"github.com/tliron/glsp"
+	"go.uber.org/multierr"
+	"io"
 )
 
-type RequestHandler struct {
-	Handlers []glsp.Handler
+type ReadWriteCloser struct {
+	reader io.ReadCloser
+	writer io.WriteCloser
 }
 
-func (req *RequestHandler) Handle(ctx *Ctx) (res any, validMethod bool, validParams bool, err error) {
-	for _, h := range req.Handlers {
-		res, validMethod, validParams, err = h.Handle(ctx)
-
-		if validMethod {
-			return
-		}
-	}
-
-	return
+func (r *ReadWriteCloser) Read(b []byte) (int, error) {
+	return r.reader.Read(b)
 }
 
-func CreateRequestHandler(handlers ...glsp.Handler) *RequestHandler {
-	return &RequestHandler{Handlers: handlers}
+func (r *ReadWriteCloser) Write(b []byte) (int, error) {
+	return r.writer.Write(b)
+}
+
+func (r *ReadWriteCloser) Close() error {
+	return multierr.Append(r.reader.Close(), r.writer.Close())
 }
