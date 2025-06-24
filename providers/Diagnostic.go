@@ -25,24 +25,12 @@ const (
 	ChildWithoutRelationsInfo
 )
 
-type DiagnosticData struct {
-	Type    uint8  `json:"type"`
-	Surname string `json:"surname"`
-	Name    string `json:"name"`
-}
-
-func PublishDiagnostics(ctx *Ctx, uri Uri) {
-	if !supportDiagnostics {
-		return
-	}
-
+func GetDiagnostics(uri Uri) (list []proto.Diagnostic) {
 	doc, ok := root.Docs[uri]
 
 	if !ok {
 		return
 	}
-
-	list := make([]proto.Diagnostic, 0)
 
 	add := func(item proto.Diagnostic) {
 		list = append(list, item)
@@ -189,20 +177,31 @@ func PublishDiagnostics(ctx *Ctx, uri Uri) {
 		}
 	}
 
+	return
+}
+
+func PublishDiagnostics(ctx *Ctx, uri Uri) {
+	if !supportDiagnostics {
+		return
+	}
+
 	ctx.Notify(proto.ServerTextDocumentPublishDiagnostics, proto.PublishDiagnosticsParams{
-		URI: uri,
-		// TODO: add version
-		Diagnostics: list,
+		URI:         EncUri(uri),
+		Diagnostics: GetDiagnostics(uri),
 	})
 }
 
 var docDiagnostic = &DocDebouncer{
-	Debounce: debounce.New(200 * time.Millisecond),
+	Debounce: debounce.New(300 * time.Millisecond),
 	Uris:     make(UriSet),
 }
 
 func (dd *DocDebouncer) Set(uri Uri) {
 	dd.Uris.Set(uri)
+	dd.Schedule()
+}
+
+func (dd *DocDebouncer) Schedule() {
 	dd.Debounce(dd.Flush)
 }
 
@@ -212,7 +211,7 @@ func (dd *DocDebouncer) Flush() {
 	for uri := range dd.Uris {
 		dd.Uris.Remove(uri)
 
-		if !IsFamilyUri(uri) || !UriFileExist(uri) {
+		if _, ok := root.Docs[uri]; !ok {
 			continue
 		}
 
@@ -231,4 +230,10 @@ func diagnosticAllDocs(ctx *Ctx) {
 func scheduleDiagnostic(ctx *Ctx, uri Uri) {
 	docDiagnostic.Ctx = ctx
 	docDiagnostic.Set(uri)
+}
+
+type DiagnosticData struct {
+	Type    uint8  `json:"type"`
+	Surname string `json:"surname"`
+	Name    string `json:"name"`
 }

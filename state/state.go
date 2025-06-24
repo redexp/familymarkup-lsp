@@ -46,12 +46,6 @@ func (root *Root) SetFolders(folders []Uri) (err error) {
 	root.Folders = make(UriSet)
 
 	for _, uri := range folders {
-		uri, err = NormalizeUri(uri)
-
-		if err != nil {
-			return
-		}
-
 		root.Folders.Set(uri)
 	}
 

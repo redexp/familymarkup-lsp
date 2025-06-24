@@ -9,15 +9,6 @@ import (
 )
 
 func StartServer() {
-	handler := CreateRequestHandler(
-		NewProtocolHandlers(),
-		NewWorkspaceHandlers(),
-		NewTreeHandlers(),
-		NewConfigurationHandlers(),
-	)
-
-	server := serv.NewServer(handler, "familymarkup", false)
-
 	socket := flag.Int("web-socket", 0, "socket number")
 	flag.Parse()
 
@@ -25,6 +16,7 @@ func StartServer() {
 		panic("--web-socket required")
 	}
 
+	server := serv.NewServer(CreateRequestHandler(), "familymarkup", false)
 	err := server.RunWebSocket(fmt.Sprintf("127.0.0.1:%d", *socket))
 
 	if err != nil {

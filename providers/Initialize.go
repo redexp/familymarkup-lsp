@@ -98,7 +98,13 @@ func Initialize(_ *Ctx, params *proto.InitializeParams) (any, error) {
 		folders := make([]string, len(params.WorkspaceFolders))
 
 		for i, folder := range params.WorkspaceFolders {
-			folders[i] = folder.URI
+			uri, err := NormalizeUri(folder.URI)
+
+			if err != nil {
+				return nil, err
+			}
+
+			folders[i] = uri
 		}
 
 		err = root.SetFolders(folders)

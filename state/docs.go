@@ -31,28 +31,7 @@ func CreateDoc(uri Uri, text string) *Doc {
 	return doc
 }
 
-func UriFileExist(uri Uri) bool {
-	path, err := UriToPath(uri)
-
-	if err != nil {
-		return false
-	}
-
-	info, err := os.Stat(path)
-	if os.IsNotExist(err) {
-		return false
-	}
-
-	return !info.IsDir()
-}
-
 func GetText(uri Uri) (text string, err error) {
-	uri, err = NormalizeUri(uri)
-
-	if err != nil {
-		return
-	}
-
 	path, err := UriToPath(uri)
 
 	if err != nil {

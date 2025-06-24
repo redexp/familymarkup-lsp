@@ -1,7 +1,6 @@
 package providers
 
 import (
-	. "github.com/redexp/familymarkup-lsp/utils"
 	fm "github.com/redexp/familymarkup-parser"
 	proto "github.com/tliron/glsp/protocol_3_16"
 )

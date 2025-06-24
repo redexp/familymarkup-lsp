@@ -9,7 +9,6 @@ import (
 	fm "github.com/redexp/familymarkup-parser"
 
 	. "github.com/redexp/familymarkup-lsp/types"
-	. "github.com/redexp/familymarkup-lsp/utils"
 	proto "github.com/tliron/glsp/protocol_3_16"
 )
 

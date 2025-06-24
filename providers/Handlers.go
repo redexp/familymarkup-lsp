@@ -8,6 +8,17 @@ import (
 	"golang.org/x/net/context"
 )
 
+func CreateRequestHandler() *RequestHandler {
+	return &RequestHandler{
+		Handlers: []glsp.Handler{
+			NewProtocolHandlers(),
+			NewWorkspaceHandlers(),
+			NewTreeHandlers(),
+			NewConfigurationHandlers(),
+		},
+	}
+}
+
 func NewProtocolHandlers() *proto.Handler {
 	return &proto.Handler{
 		Initialize:                          Initialize,
@@ -118,8 +129,4 @@ func (req *RequestHandler) Handle(ctx *Ctx) (res any, validMethod bool, validPar
 	}
 
 	return
-}
-
-func CreateRequestHandler(handlers ...glsp.Handler) *RequestHandler {
-	return &RequestHandler{Handlers: handlers}
 }

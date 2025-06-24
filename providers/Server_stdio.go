@@ -14,12 +14,7 @@ func StartServer() {
 		writer: os.Stdout,
 	}
 
-	handler := CreateRequestHandler(
-		NewProtocolHandlers(),
-		NewWorkspaceHandlers(),
-		NewTreeHandlers(),
-		NewConfigurationHandlers(),
-	)
+	handler := CreateRequestHandler()
 
 	conn := jsonrpc2.NewConn(
 		context.Background(),

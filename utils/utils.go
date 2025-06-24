@@ -37,33 +37,6 @@ func ToUri(path string) Uri {
 	return path
 }
 
-func NormalizeUri(uri Uri) (Uri, error) {
-	path, err := UriToPath(uri)
-
-	if err != nil {
-		return "", err
-	}
-
-	return ToUri(path), nil
-}
-
-func RenameUri(uri Uri, name string) (Uri, error) {
-	base, err := UriToPath(uri)
-
-	if err != nil {
-		return "", err
-	}
-
-	return ToUri(filepath.Join(base, "..", name+filepath.Ext(base))), nil
-}
-
-func IsUriName(uri Uri, name string) bool {
-	base := filepath.Base(uri)
-	ext := filepath.Ext(uri)
-
-	return name+ext == base
-}
-
 func Ext(path string) string {
 	return strings.ToLower(strings.TrimLeft(filepath.Ext(path), "."))
 }
@@ -74,10 +47,6 @@ func IsFamilyUri(uri Uri) bool {
 
 func IsMarkdownUri(uri Uri) bool {
 	return slices.Contains(MarkdownExt, Ext(uri))
-}
-
-func P[T ~string | ~int32](src T) *T {
-	return &src
 }
 
 func TokensToStrings(tokens []*fm.Token) []string {
