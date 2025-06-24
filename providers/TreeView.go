@@ -20,7 +20,9 @@ var treeReloadDebouncer = debounce.New(2 * time.Second)
 func TreeFamilies(ctx *Ctx) ([]*TreeFamily, error) {
 	list := make([]*TreeFamily, 0)
 
-	for f := range root.FamilyIter() {
+	rt := root
+
+	for f := range rt.FamilyIter() {
 		list = append(list, &TreeFamily{
 			Position: f.Node.Start,
 
@@ -31,7 +33,17 @@ func TreeFamilies(ctx *Ctx) ([]*TreeFamily, error) {
 	}
 
 	slices.SortFunc(list, func(a *TreeFamily, b *TreeFamily) int {
-		return strings.Compare(a.Name, b.Name)
+		n := strings.Compare(a.Name, b.Name)
+
+		if n == 0 {
+			n = strings.Compare(a.URI, b.URI)
+
+			if n == 0 {
+				return a.Line - b.Line
+			}
+		}
+
+		return n
 	})
 
 	if treeContext == nil {
@@ -135,13 +147,7 @@ func TreeReload() {
 }
 
 func getFamilyDoc(loc *TreeItemLocation) (f *Family, doc *Doc, err error) {
-	uri, err := NormalizeUri(loc.URI)
-
-	if err != nil {
-		return
-	}
-
-	doc = GetDoc(uri)
+	doc = GetDoc(loc.URI)
 
 	dups, exist := root.Duplicates[loc.FamilyName]
 

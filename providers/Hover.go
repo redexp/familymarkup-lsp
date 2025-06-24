@@ -11,13 +11,7 @@ import (
 )
 
 func Hover(_ *Ctx, params *proto.HoverParams) (h *proto.Hover, err error) {
-	uri, err := NormalizeUri(params.TextDocument.URI)
-
-	if err != nil {
-		return
-	}
-
-	ref, err := getDefinition(uri, params.Position)
+	ref, err := getDefinition(params.TextDocument.URI, params.Position)
 
 	if err != nil || ref == nil {
 		return

@@ -9,7 +9,7 @@ import (
 )
 
 func Completion(_ *Ctx, params *proto.CompletionParams) (res any, err error) {
-	uri, err := NormalizeUri(params.TextDocument.URI)
+	uri := NormalizeUri(params.TextDocument.URI)
 
 	t, words, err := GetCompletionType(uri, params.Position)
 

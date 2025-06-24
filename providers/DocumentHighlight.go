@@ -8,11 +8,7 @@ import (
 )
 
 func DocumentHighlight(_ *Ctx, params *proto.DocumentHighlightParams) (res []proto.DocumentHighlight, err error) {
-	uri, err := NormalizeUri(params.TextDocument.URI)
-
-	if err != nil {
-		return
-	}
+	uri := NormalizeUri(params.TextDocument.URI)
 
 	def, err := getDefinition(uri, params.Position)
 

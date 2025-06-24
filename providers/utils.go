@@ -8,19 +8,24 @@ import (
 )
 
 func GetDoc(uri Uri) (doc *Doc) {
+	root.UpdateLock.Lock()
+	defer root.UpdateLock.Unlock()
+
+	uri = NormalizeUri(uri)
+
 	doc = root.Docs[uri]
 
 	return
 }
 
-func NormalizeUri(uri Uri) (Uri, error) {
+func NormalizeUri(uri Uri) Uri {
 	url, err := urlParser.Parse(uri)
 
 	if err != nil {
-		return "", err
+		panic(err)
 	}
 
-	return url.String(), nil
+	return url.Scheme + "://" + url.Path
 }
 
 func EncUri(uri Uri) string {

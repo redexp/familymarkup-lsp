@@ -21,11 +21,7 @@ func PrepareRename(_ *Ctx, params *proto.PrepareRenameParams) (res any, err erro
 }
 
 func Rename(_ *Ctx, params *proto.RenameParams) (res *proto.WorkspaceEdit, err error) {
-	uri, err := NormalizeUri(params.TextDocument.URI)
-
-	if err != nil {
-		return
-	}
+	uri := NormalizeUri(params.TextDocument.URI)
 
 	def, err := getDefinition(uri, params.Position)
 

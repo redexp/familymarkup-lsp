@@ -13,11 +13,7 @@ import (
 )
 
 func DocSymbols(_ *Ctx, params *proto.DocumentSymbolParams) (res any, err error) {
-	uri, err := NormalizeUri(params.TextDocument.URI)
-
-	if err != nil {
-		return
-	}
+	uri := NormalizeUri(params.TextDocument.URI)
 
 	err = root.UpdateDirty()
 

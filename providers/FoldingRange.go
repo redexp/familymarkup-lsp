@@ -6,11 +6,7 @@ import (
 )
 
 func FoldingRange(_ *Ctx, params *proto.FoldingRangeParams) (res []proto.FoldingRange, err error) {
-	uri, err := NormalizeUri(params.TextDocument.URI)
-
-	if err != nil {
-		return
-	}
+	uri := NormalizeUri(params.TextDocument.URI)
 
 	doc := GetDoc(uri)
 

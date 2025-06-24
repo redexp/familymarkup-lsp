@@ -12,35 +12,19 @@ import (
 )
 
 func DocFormating(_ *Ctx, params *proto.DocumentFormattingParams) (list []proto.TextEdit, err error) {
-	uri, err := NormalizeUri(params.TextDocument.URI)
-
-	if err != nil {
-		return
-	}
-
-	list = prettify(uri, nil)
+	list = prettify(params.TextDocument.URI, nil)
 
 	return
 }
 
 func RangeFormating(_ *Ctx, params *proto.DocumentRangeFormattingParams) (list []proto.TextEdit, err error) {
-	uri, err := NormalizeUri(params.TextDocument.URI)
-
-	if err != nil {
-		return
-	}
-
-	list = prettify(uri, &params.Range)
+	list = prettify(params.TextDocument.URI, &params.Range)
 
 	return
 }
 
 func LineFormating(_ *Ctx, params *proto.DocumentOnTypeFormattingParams) (list []proto.TextEdit, err error) {
-	uri, err := NormalizeUri(params.TextDocument.URI)
-
-	if err != nil {
-		return
-	}
+	uri := NormalizeUri(params.TextDocument.URI)
 
 	err = root.UpdateDirty()
 

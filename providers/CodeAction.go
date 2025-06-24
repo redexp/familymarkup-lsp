@@ -28,11 +28,7 @@ func CodeAction(_ *Ctx, params *proto.CodeActionParams) (res any, err error) {
 		return
 	}
 
-	uri, err := NormalizeUri(params.TextDocument.URI)
-
-	if err != nil {
-		return
-	}
+	uri := NormalizeUri(params.TextDocument.URI)
 
 	list := make([]proto.CodeAction, 0)
 	QuickFix := P(proto.CodeActionKindQuickFix)

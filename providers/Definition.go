@@ -10,11 +10,7 @@ import (
 )
 
 func Definition(_ *Ctx, params *proto.DefinitionParams) (res any, err error) {
-	uri, err := NormalizeUri(params.TextDocument.URI)
-
-	if err != nil {
-		return
-	}
+	uri := NormalizeUri(params.TextDocument.URI)
 
 	ref, err := getDefinition(uri, params.Position)
 
@@ -52,17 +48,13 @@ func Definition(_ *Ctx, params *proto.DefinitionParams) (res any, err error) {
 }
 
 func getDefinition(uri Uri, pos Position) (ref *Ref, err error) {
-	uri, err = NormalizeUri(uri)
-
-	if err != nil {
-		return
-	}
-
 	err = root.UpdateDirty()
 
 	if err != nil {
 		return
 	}
+
+	uri = NormalizeUri(uri)
 
 	ref = root.GetRefByPosition(uri, pos)
 

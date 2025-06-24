@@ -24,7 +24,7 @@
   - [x] QuickFix for "An unobvious name" warning
 - [x] Symbol
   - [x] For current document - in editor could be shown in file path toolbar as surname and name of currently focused name like `Potter.family * Potter * Harry`
-  - [x] For workspace - helpful to find any person from any place like in vscode by running command `#HarPot` will show all people which name starts with `Har` and surname with `Pot`
+  - [x] For workspace - helpful to find any person from any place like in VSCode by running command `#HarPot` will show all people which name starts with `Har` and surname with `Pot`
 - [x] Tree view - helpful to build family tree like
     ```
     Weasley

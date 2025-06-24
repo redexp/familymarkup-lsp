@@ -6,11 +6,7 @@ import (
 )
 
 func DocOpen(ctx *Ctx, params *proto.DidOpenTextDocumentParams) (err error) {
-	uri, err := NormalizeUri(params.TextDocument.URI)
-
-	if err != nil {
-		return
-	}
+	uri := NormalizeUri(params.TextDocument.URI)
 
 	text := params.TextDocument.Text
 
@@ -27,11 +23,7 @@ func DocOpen(ctx *Ctx, params *proto.DidOpenTextDocumentParams) (err error) {
 }
 
 func DocClose(_ *Ctx, params *proto.DidCloseTextDocumentParams) (err error) {
-	uri, err := NormalizeUri(params.TextDocument.URI)
-
-	if err != nil {
-		return
-	}
+	uri := NormalizeUri(params.TextDocument.URI)
 
 	root.CloseDoc(uri)
 
@@ -39,11 +31,7 @@ func DocClose(_ *Ctx, params *proto.DidCloseTextDocumentParams) (err error) {
 }
 
 func DocChange(ctx *Ctx, params *proto.DidChangeTextDocumentParams) (err error) {
-	uri, err := NormalizeUri(params.TextDocument.URI)
-
-	if err != nil {
-		return
-	}
+	uri := NormalizeUri(params.TextDocument.URI)
 
 	for _, wrap := range params.ContentChanges {
 		switch change := wrap.(type) {
@@ -73,17 +61,8 @@ func DocChange(ctx *Ctx, params *proto.DidChangeTextDocumentParams) (err error) 
 
 func DocRename(ctx *Ctx, params *proto.RenameFilesParams) error {
 	for _, file := range params.Files {
-		oldUri, err := NormalizeUri(file.OldURI)
-
-		if err != nil {
-			return err
-		}
-
-		newUri, err := NormalizeUri(file.NewURI)
-
-		if err != nil {
-			return err
-		}
+		oldUri := NormalizeUri(file.OldURI)
+		newUri := NormalizeUri(file.NewURI)
 
 		doc, ok := root.Docs[oldUri]
 
@@ -102,11 +81,7 @@ func DocRename(ctx *Ctx, params *proto.RenameFilesParams) error {
 
 func DocDelete(ctx *Ctx, params *proto.DeleteFilesParams) error {
 	for _, file := range params.Files {
-		uri, err := NormalizeUri(file.URI)
-
-		if err != nil {
-			return err
-		}
+		uri := NormalizeUri(file.URI)
 
 		root.DirtyUris.Set(uri, UriDelete)
 

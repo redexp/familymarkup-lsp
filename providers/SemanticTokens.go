@@ -135,11 +135,7 @@ func (legend *LegendType) Get(name string) (proto.UInteger, proto.UInteger) {
 }
 
 func getSemanticTokens(docUri string) (result Tokens, uri string, err error) {
-	uri, err = NormalizeUri(docUri)
-
-	if err != nil {
-		return
-	}
+	uri = NormalizeUri(docUri)
 
 	err = root.UpdateDirty()
 
