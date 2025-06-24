@@ -26,6 +26,8 @@ const (
 )
 
 func GetDiagnostics(uri Uri) (list []proto.Diagnostic) {
+	list = make([]proto.Diagnostic, 0)
+
 	doc, ok := root.Docs[uri]
 
 	if !ok {

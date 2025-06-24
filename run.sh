@@ -13,7 +13,7 @@ case "$1" in
         echo "go build wasm"
         GOOS=js GOARCH=wasm go build -o build/main.wasm main.go
         ;;
-    tinywasm)
+    wasm)
         echo "tinygo build wasm"
         GOOS=wasip1 GOARCH=wasm tinygo build -o build/main.wasm main.go
         ;;
