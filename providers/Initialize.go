@@ -101,11 +101,7 @@ func Initialize(_ *Ctx, params *proto.InitializeParams) (any, error) {
 			folders[i] = NormalizeUri(folder.URI)
 		}
 
-		err = root.SetFolders(folders)
-
-		if err != nil {
-			return nil, err
-		}
+		root.SetFolders(folders)
 	}
 
 	supportDiagnostics = params.Capabilities.TextDocument != nil && params.Capabilities.TextDocument.PublishDiagnostics != nil
@@ -113,10 +109,16 @@ func Initialize(_ *Ctx, params *proto.InitializeParams) (any, error) {
 	return res, nil
 }
 
-func Initialized(ctx *Ctx, _ *proto.InitializedParams) error {
+func Initialized(ctx *Ctx, _ *proto.InitializedParams) (err error) {
+	err = root.UpdateDirty()
+
+	if err != nil {
+		return
+	}
+
 	diagnosticAllDocs(ctx)
 
-	return nil
+	return
 }
 
 func SetTrace(_ *Ctx, _ *proto.SetTraceParams) error {

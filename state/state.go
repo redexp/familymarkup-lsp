@@ -42,7 +42,7 @@ func CreateRoot() *Root {
 	}
 }
 
-func (root *Root) SetFolders(folders []Uri) (err error) {
+func (root *Root) SetFolders(folders []Uri) {
 	root.Folders = make(UriSet)
 
 	for _, uri := range folders {
@@ -88,8 +88,6 @@ func (root *Root) SetFolders(folders []Uri) (err error) {
 	for item := range textTrees {
 		root.DirtyUris.SetText(item.Uri, UriCreate, item.Text)
 	}
-
-	return root.UpdateDirty()
 }
 
 func (root *Root) OpenDoc(uri Uri) (doc *Doc) {
