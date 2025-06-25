@@ -56,17 +56,7 @@ func DocChange(_ *Ctx, params *proto.DidChangeTextDocumentParams) (err error) {
 	return
 }
 
-func DocCreate(_ *Ctx, params *proto.CreateFilesParams) error {
-	for _, file := range params.Files {
-		uri := NormalizeUri(file.URI)
-
-		doc, ok := root.Docs[uri]
-
-		if ok && doc.Text != "" {
-			continue
-		}
-	}
-
+func DocCreate(_ *Ctx, _ *proto.CreateFilesParams) error {
 	return nil
 }
 
@@ -97,5 +87,3 @@ func DocDelete(_ *Ctx, params *proto.DeleteFilesParams) error {
 
 	return nil
 }
-
-// TODO: workspace/didCreateFiles
