@@ -12,9 +12,22 @@ func CreateRequestHandler() *RequestHandler {
 	return &RequestHandler{
 		Handlers: []glsp.Handler{
 			NewProtocolHandlers(),
-			NewWorkspaceHandlers(),
-			NewTreeHandlers(),
-			NewConfigurationHandlers(),
+			&WorkspaceHandler{
+				WorkspaceSymbol:        AllSymbols,
+				WorkspaceSymbolResolve: ResolveSymbol,
+			},
+			&TreeHandlers{
+				TreeFamilies:  TreeFamilies,
+				TreeRelations: TreeRelations,
+				TreeMembers:   TreeMembers,
+			},
+			&ConfigurationHandlers{
+				Change: ConfigurationChange,
+			},
+			&DiagnosticHandler{
+				TextDocumentDiagnostic: TextDocumentDiagnostic,
+				WorkspaceDiagnostic:    WorkspaceDiagnostic,
+			},
 		},
 	}
 }
@@ -47,27 +60,6 @@ func NewProtocolHandlers() *proto.Handler {
 		TextDocumentRangeFormatting:         RangeFormating,
 		TextDocumentOnTypeFormatting:        LineFormating,
 		CodeActionResolve:                   CodeActionResolve,
-	}
-}
-
-func NewWorkspaceHandlers() *WorkspaceHandler {
-	return &WorkspaceHandler{
-		WorkspaceSymbol:        AllSymbols,
-		WorkspaceSymbolResolve: ResolveSymbol,
-	}
-}
-
-func NewTreeHandlers() *TreeHandlers {
-	return &TreeHandlers{
-		TreeFamilies:  TreeFamilies,
-		TreeRelations: TreeRelations,
-		TreeMembers:   TreeMembers,
-	}
-}
-
-func NewConfigurationHandlers() *ConfigurationHandlers {
-	return &ConfigurationHandlers{
-		Change: ConfigurationChange,
 	}
 }
 

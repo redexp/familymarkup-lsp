@@ -5,7 +5,7 @@ import (
 	proto "github.com/tliron/glsp/protocol_3_16"
 )
 
-func DocOpen(ctx *Ctx, params *proto.DidOpenTextDocumentParams) (err error) {
+func DocOpen(_ *Ctx, params *proto.DidOpenTextDocumentParams) (err error) {
 	uri := NormalizeUri(params.TextDocument.URI)
 
 	text := params.TextDocument.Text
@@ -16,8 +16,6 @@ func DocOpen(ctx *Ctx, params *proto.DidOpenTextDocumentParams) (err error) {
 	}
 
 	root.DirtyUris.SetText(uri, UriOpen, text)
-
-	scheduleDiagnostic(ctx, uri)
 
 	return
 }
@@ -30,7 +28,7 @@ func DocClose(_ *Ctx, params *proto.DidCloseTextDocumentParams) (err error) {
 	return
 }
 
-func DocChange(ctx *Ctx, params *proto.DidChangeTextDocumentParams) (err error) {
+func DocChange(_ *Ctx, params *proto.DidChangeTextDocumentParams) (err error) {
 	uri := NormalizeUri(params.TextDocument.URI)
 
 	for _, wrap := range params.ContentChanges {
@@ -54,12 +52,10 @@ func DocChange(ctx *Ctx, params *proto.DidChangeTextDocumentParams) (err error) 
 		}
 	}
 
-	scheduleDiagnostic(ctx, uri)
-
 	return
 }
 
-func DocRename(ctx *Ctx, params *proto.RenameFilesParams) error {
+func DocRename(_ *Ctx, params *proto.RenameFilesParams) error {
 	for _, file := range params.Files {
 		oldUri := NormalizeUri(file.OldURI)
 		newUri := NormalizeUri(file.NewURI)
@@ -72,21 +68,19 @@ func DocRename(ctx *Ctx, params *proto.RenameFilesParams) error {
 
 		root.DirtyUris.Set(oldUri, UriDelete)
 		root.DirtyUris.SetText(newUri, UriCreate, doc.Text)
-
-		scheduleDiagnostic(ctx, newUri)
 	}
 
 	return nil
 }
 
-func DocDelete(ctx *Ctx, params *proto.DeleteFilesParams) error {
+func DocDelete(_ *Ctx, params *proto.DeleteFilesParams) error {
 	for _, file := range params.Files {
 		uri := NormalizeUri(file.URI)
 
 		root.DirtyUris.Set(uri, UriDelete)
-
-		scheduleDiagnostic(ctx, uri)
 	}
 
 	return nil
 }
+
+// TODO: workspace/didCreateFiles

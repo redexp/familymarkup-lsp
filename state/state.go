@@ -90,27 +90,11 @@ func (root *Root) SetFolders(folders []Uri) {
 	}
 }
 
-func (root *Root) OpenDoc(uri Uri) (doc *Doc) {
-	doc, ok := root.Docs[uri]
-
-	if !ok {
-		return
-	}
-
-	doc.Open = true
-
-	return
-}
-
-func (root *Root) CloseDoc(uri Uri) {
-	doc, ok := root.Docs[uri]
-
-	if ok {
-		doc.Open = false
-	}
-}
-
 func (root *Root) Update(doc *Doc) {
+	if d, ok := root.Docs[doc.Uri]; ok && d != doc {
+		doc.Version = d.Version + 1
+	}
+
 	root.Docs[doc.Uri] = doc
 
 	uri := doc.Uri
@@ -198,6 +182,26 @@ func (root *Root) Update(doc *Doc) {
 	}
 }
 
+func (root *Root) OpenDoc(uri Uri) (doc *Doc) {
+	doc, ok := root.Docs[uri]
+
+	if !ok {
+		return
+	}
+
+	doc.Open = true
+
+	return
+}
+
+func (root *Root) CloseDoc(uri Uri) {
+	doc, ok := root.Docs[uri]
+
+	if ok {
+		doc.Open = false
+	}
+}
+
 func (root *Root) UpdateUnknownRefs() {
 	if len(root.UnknownRefs) == 0 {
 		return
@@ -278,7 +282,6 @@ func (root *Root) UpdateDirty() (err error) {
 
 	// update markdown files
 	for uri, item := range uris {
-		delete(root.Docs, uri)
 		delete(root.Labels, uri)
 		delete(root.NodeRefs, uri)
 
@@ -312,6 +315,7 @@ func (root *Root) UpdateDirty() (err error) {
 		}
 	}
 
+	// remove families
 	for family := range root.FamilyIter() {
 		if !uris.Has(family.Uri) {
 			continue
@@ -330,19 +334,37 @@ func (root *Root) UpdateDirty() (err error) {
 		root.RemoveFamily(family)
 	}
 
+	// update docs
 	for uri, item := range uris {
-		if !IsFamilyUri(uri) || item.IsDeleted() {
+		if item.IsDeleted() {
+			delete(root.Docs, uri)
 			continue
 		}
 
 		doc := CreateDoc(uri, item.Text)
 		doc.Open = item.State == UriOpen
+		doc.NeedDiagnostic = true
 
 		root.Update(doc)
 	}
 
 	root.UpdateUnknownRefs()
 	root.UpdateUnknownFiles()
+
+	// mark docs needed to diagnostic
+	for _, doc := range root.Docs {
+		if doc.NeedDiagnostic {
+			continue
+		}
+
+		for ref, refUri := range root.RefsIter() {
+			if uris.Has(refUri) || uris.Has(ref.TargetUri()) {
+				doc.NeedDiagnostic = true
+				break
+			}
+		}
+	}
+
 	root.Trigger(RootOnUpdate)
 
 	return

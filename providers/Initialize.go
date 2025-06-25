@@ -24,7 +24,6 @@ func Initialize(_ *Ctx, params *proto.InitializeParams) (any, error) {
 		warnChildrenWithoutRelations = options.WarnChildrenWithoutRelations
 	}
 
-	syncType := proto.TextDocumentSyncKindIncremental
 	fileFilters := proto.FileOperationRegistrationOptions{
 		Filters: []proto.FileOperationFilter{
 			{
@@ -36,60 +35,66 @@ func Initialize(_ *Ctx, params *proto.InitializeParams) (any, error) {
 		},
 	}
 
-	res := &proto.InitializeResult{
-		ServerInfo: &proto.InitializeResultServerInfo{
-			Name: "familymarkup",
+	type obj map[string]any
+
+	res := obj{
+		"serverInfo": obj{
+			"name": "familymarkup",
 		},
-		Capabilities: proto.ServerCapabilities{
-			TextDocumentSync: proto.TextDocumentSyncOptions{
-				OpenClose: &proto.True,
-				Change:    &syncType,
+		"capabilities": obj{
+			"textDocumentSync": obj{
+				"openClose": true,
+				"change":    proto.TextDocumentSyncKindIncremental,
 			},
-			SemanticTokensProvider: proto.SemanticTokensOptions{
-				Full: proto.SemanticDelta{
-					Delta: &proto.True,
+			"semanticTokensProvider": obj{
+				"full": obj{
+					"delta": true,
 				},
-				Range: false,
-				Legend: proto.SemanticTokensLegend{
-					TokenTypes:     Legend.Types,
-					TokenModifiers: Legend.Modifiers,
-				},
-			},
-			CompletionProvider: &proto.CompletionOptions{},
-			Workspace: &proto.ServerCapabilitiesWorkspace{
-				WorkspaceFolders: &proto.WorkspaceFoldersServerCapabilities{
-					Supported: &proto.True,
-				},
-				FileOperations: &proto.ServerCapabilitiesWorkspaceFileOperations{
-					DidCreate: &fileFilters,
-					DidRename: &fileFilters,
-					DidDelete: &fileFilters,
+				"range": false,
+				"legend": obj{
+					"tokenTypes":     Legend.Types,
+					"tokenModifiers": Legend.Modifiers,
 				},
 			},
-			DefinitionProvider:        true,
-			ReferencesProvider:        true,
-			TypeDefinitionProvider:    true,
-			HoverProvider:             true,
-			DocumentHighlightProvider: true,
-			FoldingRangeProvider:      true,
-			DocumentSymbolProvider:    true,
-			WorkspaceSymbolProvider: WorkspaceSymbolOptions{
-				ResolveProvider: true,
+			"completionProvider": obj{},
+			"workspace": obj{
+				"workspaceFolders": obj{
+					"supported": true,
+				},
+				"fileOperations": obj{
+					"didCreate": fileFilters,
+					"didRename": fileFilters,
+					"didDelete": fileFilters,
+				},
 			},
-			RenameProvider: proto.RenameOptions{
-				PrepareProvider: &proto.True,
+			"definitionProvider":        true,
+			"referencesProvider":        true,
+			"typeDefinitionProvider":    true,
+			"hoverProvider":             true,
+			"documentHighlightProvider": true,
+			"foldingRangeProvider":      true,
+			"documentSymbolProvider":    true,
+			"workspaceSymbolProvider": obj{
+				"resolveProvider": true,
 			},
-			CodeActionProvider: proto.CodeActionOptions{
-				CodeActionKinds: []proto.CodeActionKind{
+			"renameProvider": obj{
+				"prepareProvider": true,
+			},
+			"codeActionProvider": obj{
+				"codeActionKinds": []proto.CodeActionKind{
 					proto.CodeActionKindQuickFix,
 				},
-				ResolveProvider: &proto.True,
+				"resolveProvider": true,
 			},
-			DocumentFormattingProvider:      true,
-			DocumentRangeFormattingProvider: true,
-			DocumentOnTypeFormattingProvider: &proto.DocumentOnTypeFormattingOptions{
+			"documentFormattingProvider":      true,
+			"documentRangeFormattingProvider": true,
+			"documentOnTypeFormattingProvider": proto.DocumentOnTypeFormattingOptions{
 				FirstTriggerCharacter: " ",
 				MoreTriggerCharacter:  []string{"(", ")", "\n"},
+			},
+			"diagnosticProvider": obj{
+				"interFileDependencies": true,
+				"workspaceDiagnostics":  true,
 			},
 		},
 	}
@@ -109,14 +114,8 @@ func Initialize(_ *Ctx, params *proto.InitializeParams) (any, error) {
 	return res, nil
 }
 
-func Initialized(ctx *Ctx, _ *proto.InitializedParams) (err error) {
+func Initialized(_ *Ctx, _ *proto.InitializedParams) (err error) {
 	err = root.UpdateDirty()
-
-	if err != nil {
-		return
-	}
-
-	diagnosticAllDocs(ctx)
 
 	return
 }

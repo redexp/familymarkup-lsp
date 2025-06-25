@@ -6,6 +6,7 @@ import (
 	fm "github.com/redexp/familymarkup-parser"
 	"os"
 	"slices"
+	"strconv"
 	"strings"
 )
 
@@ -17,13 +18,17 @@ type Doc struct {
 	Root   *fm.Root
 
 	TokensByLine map[int][]*fm.Token
+
+	Version        int
+	NeedDiagnostic bool
 }
 
 type Docs map[Uri]*Doc
 
 func CreateDoc(uri Uri, text string) *Doc {
 	doc := &Doc{
-		Uri: uri,
+		Uri:     uri,
+		Version: 1,
 	}
 
 	doc.SetText(text)
@@ -47,6 +52,10 @@ func GetText(uri Uri) (text string, err error) {
 	text = string(bytes)
 
 	return
+}
+
+func (doc *Doc) V() string {
+	return strconv.Itoa(doc.Version)
 }
 
 func (doc *Doc) SetText(text string) {

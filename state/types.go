@@ -41,3 +41,18 @@ type (
 func (ref *Ref) Spread() (*Family, *Member, *fm.Token) {
 	return ref.Family, ref.Member, ref.Token
 }
+
+func (ref *Ref) TargetUri() Uri {
+	switch ref.Type {
+	case RefTypeNameSurname:
+		return ref.Member.Family.Uri
+
+	case RefTypeSurname:
+		return ref.Family.Uri
+
+	case RefTypeOrigin:
+		return ref.Member.Origin.Family.Uri
+	}
+
+	return ref.Uri
+}

@@ -6,14 +6,16 @@ import (
 	"github.com/mitchellh/mapstructure"
 )
 
-func ConfigurationChange(ctx *Ctx, config *ClientConfiguration) (err error) {
+func ConfigurationChange(_ *Ctx, config *ClientConfiguration) (err error) {
 	if config.Locale != "" {
 		err = SetLocale(config.Locale)
 	}
 
 	warnChildrenWithoutRelations = config.WarnChildrenWithoutRelations
 
-	diagnosticAllDocs(ctx)
+	for _, doc := range root.Docs {
+		doc.NeedDiagnostic = true
+	}
 
 	return
 }

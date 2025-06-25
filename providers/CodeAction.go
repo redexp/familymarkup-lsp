@@ -160,7 +160,7 @@ func CodeAction(_ *Ctx, params *proto.CodeActionParams) (res any, err error) {
 	return list, nil
 }
 
-func CodeActionResolve(ctx *Ctx, params *proto.CodeAction) (res *proto.CodeAction, err error) {
+func CodeActionResolve(_ *Ctx, params *proto.CodeAction) (res *proto.CodeAction, err error) {
 	if len(params.Diagnostics) == 0 || params.Data == nil {
 		return
 	}
@@ -225,8 +225,6 @@ func CodeActionResolve(ctx *Ctx, params *proto.CodeAction) (res *proto.CodeActio
 				createFile,
 				createInsertText(newUri, pos, text),
 			}
-
-			scheduleDiagnostic(ctx, data.Uri)
 
 			return res, nil
 		}

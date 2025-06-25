@@ -1,11 +1,10 @@
 package providers
 
 import (
-	"time"
-
+	"encoding/json"
 	fm "github.com/redexp/familymarkup-parser"
+	"strconv"
 
-	"github.com/bep/debounce"
 	. "github.com/redexp/familymarkup-lsp/state"
 	. "github.com/redexp/familymarkup-lsp/types"
 	. "github.com/redexp/familymarkup-lsp/utils"
@@ -24,6 +23,104 @@ const (
 	NameDuplicateWarning
 	ChildWithoutRelationsInfo
 )
+
+func TextDocumentDiagnostic(_ *Ctx, params *DocumentDiagnosticParams) (res *DocumentDiagnosticReport, err error) {
+	err = root.UpdateDirty()
+
+	if err != nil {
+		return
+	}
+
+	uri := NormalizeUri(params.TextDocument.URI)
+	id := params.PreviousResultId
+	doc := GetDoc(uri)
+
+	if id == "" {
+		id = "1"
+	}
+
+	if doc.NeedDiagnostic {
+		doc.NeedDiagnostic = false
+
+		id, err := incId(id)
+
+		if err != nil {
+			return nil, err
+		}
+
+		res = &DocumentDiagnosticReport{
+			Kind:     "full",
+			ResultId: id,
+			Items:    GetDiagnostics(uri),
+		}
+	} else {
+		res = &DocumentDiagnosticReport{
+			Kind:     "unchanged",
+			ResultId: id,
+		}
+	}
+
+	return
+}
+
+func WorkspaceDiagnostic(_ *Ctx, params *WorkspaceDiagnosticParams) (res *WorkspaceDiagnosticReport, err error) {
+	ids := map[Uri]string{}
+
+	for _, item := range params.PreviousResultIds {
+		ids[NormalizeUri(item.Uri)] = item.Value
+	}
+
+	err = root.UpdateDirty()
+
+	if err != nil {
+		return
+	}
+
+	count := len(root.Docs)
+
+	res = &WorkspaceDiagnosticReport{
+		Items: make([]WorkspaceDocumentDiagnosticReport, count),
+	}
+
+	i := 0
+
+	for uri, doc := range root.Docs {
+		id, ok := ids[uri]
+
+		if !ok {
+			id = "1"
+		}
+
+		if doc.NeedDiagnostic {
+			doc.NeedDiagnostic = false
+
+			id, err := incId(id)
+
+			if err != nil {
+				return nil, err
+			}
+
+			res.Items[i] = WorkspaceDocumentDiagnosticReport{
+				Kind:     "full",
+				Uri:      uri,
+				ResultId: id,
+				Version:  1,
+				Items:    GetDiagnostics(uri),
+			}
+		} else {
+			res.Items[i] = WorkspaceDocumentDiagnosticReport{
+				Kind:     "unchanged",
+				Uri:      uri,
+				ResultId: id,
+				Version:  1,
+			}
+		}
+
+		i++
+	}
+
+	return
+}
 
 func GetDiagnostics(uri Uri) (list []proto.Diagnostic) {
 	list = make([]proto.Diagnostic, 0)
@@ -182,60 +279,97 @@ func GetDiagnostics(uri Uri) (list []proto.Diagnostic) {
 	return
 }
 
-func PublishDiagnostics(ctx *Ctx, uri Uri) {
-	if !supportDiagnostics {
-		return
+func incId(id string) (string, error) {
+	if id == "" {
+		return "1", nil
 	}
 
-	ctx.Notify(proto.ServerTextDocumentPublishDiagnostics, proto.PublishDiagnosticsParams{
-		URI:         EncUri(uri),
-		Diagnostics: GetDiagnostics(uri),
-	})
-}
+	intId, err := strconv.Atoi(id)
 
-var docDiagnostic = &DocDebouncer{
-	Debounce: debounce.New(300 * time.Millisecond),
-	Uris:     make(UriSet),
-}
-
-func (dd *DocDebouncer) Set(uri Uri) {
-	dd.Uris.Set(uri)
-	dd.Schedule()
-}
-
-func (dd *DocDebouncer) Schedule() {
-	dd.Debounce(dd.Flush)
-}
-
-func (dd *DocDebouncer) Flush() {
-	_ = root.UpdateDirty()
-
-	for uri := range dd.Uris {
-		dd.Uris.Remove(uri)
-
-		if _, ok := root.Docs[uri]; !ok {
-			continue
-		}
-
-		go PublishDiagnostics(docDiagnostic.Ctx, uri)
+	if err != nil {
+		return "", err
 	}
-}
 
-func diagnosticAllDocs(ctx *Ctx) {
-	docDiagnostic.Ctx = ctx
-
-	for uri := range root.Docs {
-		docDiagnostic.Set(uri)
-	}
-}
-
-func scheduleDiagnostic(ctx *Ctx, uri Uri) {
-	docDiagnostic.Ctx = ctx
-	docDiagnostic.Set(uri)
+	return strconv.Itoa(intId + 1), nil
 }
 
 type DiagnosticData struct {
 	Type    uint8  `json:"type"`
 	Surname string `json:"surname"`
 	Name    string `json:"name"`
+}
+
+type DiagnosticHandler struct {
+	TextDocumentDiagnostic TextDocumentDiagnosticFunc
+	WorkspaceDiagnostic    WorkspaceDiagnosticFunc
+}
+
+func (req *DiagnosticHandler) Handle(ctx *Ctx) (res any, validMethod bool, validParams bool, err error) {
+	switch ctx.Method {
+	case TextDocumentDiagnosticMethod:
+		validMethod = true
+
+		var params DocumentDiagnosticParams
+		if err = json.Unmarshal(ctx.Params, &params); err == nil {
+			validParams = true
+			res, err = req.TextDocumentDiagnostic(ctx, &params)
+		}
+
+	case WorkspaceDiagnosticMethod:
+		validMethod = true
+
+		var params WorkspaceDiagnosticParams
+		if err = json.Unmarshal(ctx.Params, &params); err == nil {
+			validParams = true
+			res, err = req.WorkspaceDiagnostic(ctx, &params)
+		}
+	}
+
+	return
+}
+
+const TextDocumentDiagnosticMethod = "textDocument/diagnostic"
+
+type TextDocumentDiagnosticFunc func(ctx *Ctx, params *DocumentDiagnosticParams) (*DocumentDiagnosticReport, error)
+
+type DocumentDiagnosticParams struct {
+	TextDocument     proto.TextDocumentIdentifier `json:"textDocument"`
+	PreviousResultId string                       `json:"previousResultId,omitempty"`
+}
+
+type DocumentDiagnosticReport struct {
+	Kind             string                           `json:"kind,omitempty"`
+	Items            []proto.Diagnostic               `json:"items"`
+	ResultId         string                           `json:"resultId,omitempty"`
+	RelatedDocuments map[Uri]DocumentDiagnosticReport `json:"relatedDocuments,omitempty"`
+}
+
+type DiagnosticOptions struct {
+	InterFileDependencies bool `json:"interFileDependencies"`
+	WorkspaceDiagnostics  bool `json:"workspaceDiagnostics"`
+}
+
+const WorkspaceDiagnosticMethod = "workspace/diagnostic"
+
+type WorkspaceDiagnosticFunc func(ctx *Ctx, params *WorkspaceDiagnosticParams) (*WorkspaceDiagnosticReport, error)
+
+type WorkspaceDiagnosticParams struct {
+	PreviousResultIds []PreviousResultId `json:"previousResultIds"`
+}
+
+type PreviousResultId struct {
+	Uri   string `json:"uri"`
+	Value string `json:"value"`
+}
+
+type WorkspaceDiagnosticReport struct {
+	Items []WorkspaceDocumentDiagnosticReport `json:"items"`
+}
+
+type WorkspaceDocumentDiagnosticReport struct {
+	Kind     string             `json:"kind,omitempty"`
+	Uri      string             `json:"uri"`
+	ResultId string             `json:"resultId,omitempty"`
+	Version  int                `json:"version"`
+	Items    []proto.Diagnostic `json:"items"`
 }
