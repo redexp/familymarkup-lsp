@@ -67,6 +67,18 @@ func (uris DirtyUris) Remove(uri Uri) {
 	delete(uris, uri)
 }
 
+func (uris DirtyUris) GetDeleted() UriSet {
+	list := UriSet{}
+
+	for uri, item := range uris {
+		if item.IsDeleted() {
+			list.Set(uri)
+		}
+	}
+
+	return list
+}
+
 func (item *TextState) IsDeleted() bool {
 	return item.State == UriDelete
 }

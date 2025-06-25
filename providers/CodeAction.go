@@ -205,6 +205,9 @@ func CodeActionResolve(_ *Ctx, params *proto.CodeAction) (res *proto.CodeAction,
 		}
 
 		if data.Mod == CreateFamilyOnNewFile {
+			doc.Version++
+			doc.NeedDiagnostic = true
+
 			newUri, err := RenameUri(data.Uri, surname)
 
 			if err != nil {

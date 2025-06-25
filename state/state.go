@@ -275,10 +275,19 @@ func (root *Root) UpdateDirty() (err error) {
 
 	uris := root.DirtyUris
 	root.DirtyUris = make(DirtyUris)
-
 	root.UnknownRefs = slices.DeleteFunc(root.UnknownRefs, func(ref *Ref) bool {
 		return uris.Has(ref.Uri)
 	})
+
+	deletedUris := uris.GetDeleted()
+
+	if !deletedUris.Empty() {
+		for ref, uri := range root.RefsIter() {
+			if deletedUris.Has(ref.TargetUri()) {
+				deletedUris.Set(uri)
+			}
+		}
+	}
 
 	// update markdown files
 	for uri, item := range uris {
@@ -357,8 +366,15 @@ func (root *Root) UpdateDirty() (err error) {
 			continue
 		}
 
+		if deletedUris.Has(doc.Uri) {
+			doc.Version++
+			doc.NeedDiagnostic = true
+			continue
+		}
+
 		for ref, refUri := range root.RefsIter() {
 			if uris.Has(refUri) || uris.Has(ref.TargetUri()) {
+				doc.Version++
 				doc.NeedDiagnostic = true
 				break
 			}

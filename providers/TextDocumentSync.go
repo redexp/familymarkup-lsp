@@ -45,6 +45,7 @@ func DocChange(_ *Ctx, params *proto.DidChangeTextDocumentParams) (err error) {
 			doc, ok := root.Docs[uri]
 
 			if !ok {
+				root.DirtyUris.SetText(uri, UriChange, change.Text)
 				continue
 			}
 
@@ -53,6 +54,20 @@ func DocChange(_ *Ctx, params *proto.DidChangeTextDocumentParams) (err error) {
 	}
 
 	return
+}
+
+func DocCreate(_ *Ctx, params *proto.CreateFilesParams) error {
+	for _, file := range params.Files {
+		uri := NormalizeUri(file.URI)
+
+		doc, ok := root.Docs[uri]
+
+		if ok && doc.Text != "" {
+			continue
+		}
+	}
+
+	return nil
 }
 
 func DocRename(_ *Ctx, params *proto.RenameFilesParams) error {

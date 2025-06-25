@@ -2,12 +2,10 @@ package providers
 
 import (
 	"encoding/json"
-	fm "github.com/redexp/familymarkup-parser"
-	"strconv"
-
 	. "github.com/redexp/familymarkup-lsp/state"
 	. "github.com/redexp/familymarkup-lsp/types"
 	. "github.com/redexp/familymarkup-lsp/utils"
+	fm "github.com/redexp/familymarkup-parser"
 	proto "github.com/tliron/glsp/protocol_3_16"
 )
 
@@ -32,44 +30,28 @@ func TextDocumentDiagnostic(_ *Ctx, params *DocumentDiagnosticParams) (res *Docu
 	}
 
 	uri := NormalizeUri(params.TextDocument.URI)
-	id := params.PreviousResultId
 	doc := GetDoc(uri)
 
-	if id == "" {
-		id = "1"
-	}
-
-	if doc.NeedDiagnostic {
-		doc.NeedDiagnostic = false
-
-		id, err := incId(id)
-
-		if err != nil {
-			return nil, err
-		}
-
-		res = &DocumentDiagnosticReport{
-			Kind:     "full",
-			ResultId: id,
-			Items:    GetDiagnostics(uri),
-		}
-	} else {
+	if !doc.NeedDiagnostic {
 		res = &DocumentDiagnosticReport{
 			Kind:     "unchanged",
-			ResultId: id,
+			ResultId: doc.V(),
 		}
+		return
+	}
+
+	doc.NeedDiagnostic = false
+
+	res = &DocumentDiagnosticReport{
+		Kind:     "full",
+		ResultId: doc.V(),
+		Items:    GetDiagnostics(uri),
 	}
 
 	return
 }
 
-func WorkspaceDiagnostic(_ *Ctx, params *WorkspaceDiagnosticParams) (res *WorkspaceDiagnosticReport, err error) {
-	ids := map[Uri]string{}
-
-	for _, item := range params.PreviousResultIds {
-		ids[NormalizeUri(item.Uri)] = item.Value
-	}
-
+func WorkspaceDiagnostic(_ *Ctx, _ *WorkspaceDiagnosticParams) (res *WorkspaceDiagnosticReport, err error) {
 	err = root.UpdateDirty()
 
 	if err != nil {
@@ -85,34 +67,20 @@ func WorkspaceDiagnostic(_ *Ctx, params *WorkspaceDiagnosticParams) (res *Worksp
 	i := 0
 
 	for uri, doc := range root.Docs {
-		id, ok := ids[uri]
-
-		if !ok {
-			id = "1"
-		}
-
 		if doc.NeedDiagnostic {
 			doc.NeedDiagnostic = false
-
-			id, err := incId(id)
-
-			if err != nil {
-				return nil, err
-			}
 
 			res.Items[i] = WorkspaceDocumentDiagnosticReport{
 				Kind:     "full",
 				Uri:      uri,
-				ResultId: id,
-				Version:  1,
+				ResultId: doc.V(),
 				Items:    GetDiagnostics(uri),
 			}
 		} else {
 			res.Items[i] = WorkspaceDocumentDiagnosticReport{
 				Kind:     "unchanged",
 				Uri:      uri,
-				ResultId: id,
-				Version:  1,
+				ResultId: doc.V(),
 			}
 		}
 
@@ -277,20 +245,6 @@ func GetDiagnostics(uri Uri) (list []proto.Diagnostic) {
 	}
 
 	return
-}
-
-func incId(id string) (string, error) {
-	if id == "" {
-		return "1", nil
-	}
-
-	intId, err := strconv.Atoi(id)
-
-	if err != nil {
-		return "", err
-	}
-
-	return strconv.Itoa(intId + 1), nil
 }
 
 type DiagnosticData struct {
