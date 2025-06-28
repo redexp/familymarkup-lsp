@@ -32,6 +32,12 @@ func Initialize(_ *Ctx, params *proto.InitializeParams) (any, error) {
 					Glob: fmt.Sprintf("**/*.{%s}", strings.Join(AllExt, ",")),
 				},
 			},
+			{
+				Pattern: proto.FileOperationPattern{
+					Glob:    "**",
+					Matches: P(proto.FileOperationPatternKindFolder),
+				},
+			},
 		},
 	}
 

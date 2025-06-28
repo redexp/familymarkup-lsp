@@ -1,5 +1,15 @@
 # Change Log
 
+## [2.2.0] - 2025-06-28
+
+### Fixed
+
+- Handling of Rename/Delete folders which containing family files
+
+### Changed
+
+- FamilyMarkup Parser v0.11.0
+
 ## [2.1.0] - 2025-06-23
 
 ### Changed

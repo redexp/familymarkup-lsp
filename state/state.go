@@ -316,11 +316,7 @@ func (root *Root) UpdateDirty() (err error) {
 				}
 			}
 		} else {
-			err = root.AddUnknownFile(uri)
-
-			if err != nil {
-				return
-			}
+			root.AddUnknownFile(uri)
 		}
 	}
 
@@ -332,24 +328,23 @@ func (root *Root) UpdateDirty() (err error) {
 
 		for member := range family.MembersIter() {
 			if member.InfoUri != "" {
-				err = root.AddUnknownFile(member.InfoUri)
-
-				if err != nil {
-					return
-				}
+				root.AddUnknownFile(member.InfoUri)
 			}
 		}
 
 		root.RemoveFamily(family)
 	}
 
-	// update docs
+	// remove docs
 	for uri, item := range uris {
 		if item.IsDeleted() {
 			delete(root.Docs, uri)
-			continue
+			delete(uris, uri)
 		}
+	}
 
+	// update docs
+	for uri, item := range uris {
 		doc := CreateDoc(uri, item.Text)
 		doc.Open = item.State == UriOpen
 		doc.NeedDiagnostic = true
@@ -461,6 +456,23 @@ func (root *Root) RemoveFamily(f *Family) {
 			continue
 		}
 
+		count := len(dups)
+
+		if count == 0 {
+			delete(root.Duplicates, name)
+			continue
+		}
+
+		root.Families[name] = dups[count-1].Family
+
+		if count == 1 {
+			delete(root.Duplicates, name)
+		} else {
+			root.Duplicates[name] = dups[:count-1]
+		}
+	}
+
+	for name, dups := range root.Duplicates {
 		dups = slices.DeleteFunc(dups, func(d *Duplicate) bool {
 			return d.Family == f
 		})
@@ -743,16 +755,10 @@ func (root *Root) AddUnknownRef(ref *Ref) {
 	root.UnknownRefs = append(root.UnknownRefs, ref)
 }
 
-func (root *Root) AddUnknownFile(uri Uri) error {
-	file, err := CreateFile(uri, root.FindFolder(uri))
-
-	if err != nil {
-		return err
-	}
+func (root *Root) AddUnknownFile(uri Uri) {
+	file := CreateFile(uri, root.FindFolder(uri))
 
 	root.UnknownFiles[uri] = file
-
-	return nil
 }
 
 func (root *Root) AddLabel(uri Uri, label string) {

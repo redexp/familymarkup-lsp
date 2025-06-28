@@ -26,12 +26,8 @@ type FileTree struct {
 	Children FilesTree
 }
 
-func CreateFile(uri Uri, folder Uri) (file *File, err error) {
-	path, err := UriToPath(uri)
-
-	if err != nil {
-		return
-	}
+func CreateFile(uri Uri, folder Uri) (file *File) {
+	path, _ := UriToPath(uri)
 
 	file = &File{
 		Uri: uri,
