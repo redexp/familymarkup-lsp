@@ -76,7 +76,11 @@ func DocRename(_ *Ctx, params *proto.RenameFilesParams) error {
 
 		if ok {
 			root.DirtyUris.Set(oldUri, UriDelete)
-			root.DirtyUris.SetText(newUri, UriCreate, doc.Text)
+
+			if _, ok = root.Docs[newUri]; !ok {
+				root.DirtyUris.SetText(newUri, UriCreate, doc.Text)
+			}
+
 			continue
 		}
 
