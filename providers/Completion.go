@@ -17,11 +17,6 @@ func Completion(_ *Ctx, params *proto.CompletionParams) (res any, err error) {
 		return
 	}
 
-	// show names for surname
-	if t == "surname" {
-		t = "name"
-	}
-
 	list := make([]proto.CompletionItem, 0)
 	hash := make(map[string]bool)
 
@@ -157,6 +152,10 @@ func GetCompletionType(uri Uri, pos Position) (t string, words []string, err err
 		return
 	}
 
+	if token.SubType == fm.TokenNL {
+		token, _ = doc.PrevNextTokens(token)
+	}
+
 	prev, next := doc.PrevNextNonSpaceTokens(token)
 
 	mask := fm.TokenSpace | fm.TokenNewLine | fm.TokenEmptyLine
@@ -191,7 +190,15 @@ func GetCompletionType(uri Uri, pos Position) (t string, words []string, err err
 	}
 
 	if token.Type == fm.TokenSurname {
-		return "surname", []string{token.Text}, nil
+		t = "surname"
+		words = []string{token.Text}
+
+		// if token alone then it could be start of relation, not a family name
+		if token.Char == 0 && (next == nil || next.SubType == fm.TokenNL) {
+			t = "name"
+		}
+
+		return
 	}
 
 	return "", []string{}, nil
