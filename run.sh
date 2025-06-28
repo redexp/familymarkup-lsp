@@ -16,6 +16,7 @@ case "$1" in
     wasm)
         echo "tinygo build wasm"
         GOOS=wasip1 GOARCH=wasm tinygo build -o build/main.wasm main.go
+        ls -la build/main.wasm
         ;;
     *)
         echo "go run"
