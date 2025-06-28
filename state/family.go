@@ -146,7 +146,7 @@ func (family *Family) NamesIter() iter.Seq[string] {
 func (family *Family) GetRefsIter() iter.Seq2[*Ref, Uri] {
 	return func(yield func(*Ref, Uri) bool) {
 		for ref, uri := range family.Root.RefsIter() {
-			if ref.Family != family {
+			if ref.Type != RefTypeSurname || ref.Family != family {
 				continue
 			}
 
