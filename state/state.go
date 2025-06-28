@@ -141,6 +141,22 @@ func (root *Root) Update(doc *Doc) {
 
 						if mem == nil {
 							mem = family.AddMember(person)
+						} else if mem.Surname != "" && !mem.Person.IsChild { // it is a mother
+							// is it have duplicates
+							dups, ok := family.Duplicates[mem.NormalizeName(person.Name.Text)]
+
+							// if it is then find first backwords non mother
+							// a mother can have ref only in non family relation
+							if ok {
+								for i := len(dups) - 1; i >= 0; i-- {
+									dup := dups[i].Member
+
+									if dup.Person.IsChild || dup.Surname == "" {
+										mem = dup
+										break
+									}
+								}
+							}
 						}
 
 						root.AddRef(&Ref{
