@@ -107,6 +107,7 @@ func GetDiagnostics(uri Uri) (list []proto.Diagnostic) {
 	Warning := P(proto.DiagnosticSeverityWarning)
 	Info := P(proto.DiagnosticSeverityInformation)
 
+	// syntax errors
 	for _, token := range doc.Tokens {
 		if token.Type == fm.TokenInvalid || token.ErrType == fm.ErrUnexpected {
 			add(proto.Diagnostic{
@@ -117,9 +118,8 @@ func GetDiagnostics(uri Uri) (list []proto.Diagnostic) {
 		}
 	}
 
-	refs := root.UnknownRefs
-
-	for _, ref := range refs {
+	// unknown refs
+	for _, ref := range root.UnknownRefs {
 		if ref.Uri != uri {
 			continue
 		}
