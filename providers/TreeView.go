@@ -64,19 +64,15 @@ func TreeRelations(_ *Ctx, loc *TreeItemLocation) (list []*TreeRelation, err err
 		return
 	}
 
-	list = make([]*TreeRelation, 0)
+	list = make([]*TreeRelation, len(f.Node.Relations))
 
-	for _, rel := range f.Node.Relations {
-		r := LocToRange(rel.Sources.Loc)
-
-		label := doc.GetTextByRange(r)
-
-		list = append(list, &TreeRelation{
+	for i, rel := range f.Node.Relations {
+		list[i] = &TreeRelation{
 			Position: rel.Loc.Start,
 
-			Label: label,
+			Label: doc.GetTextByLoc(rel.Sources.Loc),
 			Arrow: rel.Arrow.Text,
-		})
+		}
 	}
 
 	return
