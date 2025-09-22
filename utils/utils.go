@@ -1,11 +1,12 @@
 package utils
 
 import (
-	proto "github.com/tliron/glsp/protocol_3_16"
 	urlParser "net/url"
 	"path/filepath"
 	"slices"
 	"strings"
+
+	proto "github.com/tliron/glsp/protocol_3_16"
 
 	. "github.com/redexp/familymarkup-lsp/types"
 	fm "github.com/redexp/familymarkup-parser"

@@ -1,10 +1,11 @@
 package providers
 
 import (
-	. "github.com/redexp/familymarkup-lsp/state"
-	. "github.com/redexp/familymarkup-lsp/types"
 	urlParser "net/url"
 	"path/filepath"
+
+	. "github.com/redexp/familymarkup-lsp/state"
+	. "github.com/redexp/familymarkup-lsp/types"
 )
 
 func GetDoc(uri Uri) (doc *Doc) {
@@ -26,16 +27,6 @@ func NormalizeUri(uri Uri) Uri {
 	}
 
 	return url.Scheme + "://" + url.Path
-}
-
-func EncUri(uri Uri) string {
-	url, err := urlParser.Parse(uri)
-
-	if err != nil {
-		panic(err)
-	}
-
-	return url.String()
 }
 
 func RenameUri(uri Uri, name string) (Uri, error) {

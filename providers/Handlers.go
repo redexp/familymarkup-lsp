@@ -2,6 +2,7 @@ package providers
 
 import (
 	"fmt"
+
 	"github.com/sourcegraph/jsonrpc2"
 	"github.com/tliron/glsp"
 	proto "github.com/tliron/glsp/protocol_3_16"
@@ -27,6 +28,9 @@ func CreateRequestHandler() *RequestHandler {
 			&DiagnosticHandler{
 				TextDocumentDiagnostic: TextDocumentDiagnostic,
 				WorkspaceDiagnostic:    WorkspaceDiagnostic,
+			},
+			&SvgHandlers{
+				Document: SvgDocument,
 			},
 		},
 	}

@@ -260,14 +260,6 @@ func getSemanticTokens(docUri string) (result Tokens, uri string, err error) {
 	return
 }
 
-func min(a, b uint32) uint32 {
-	if a <= b {
-		return a
-	}
-
-	return b
-}
-
 func deltaSemanticTokens(prevTokens, tokens Tokens) (st, delCount uint32, insert Tokens) {
 	prevLen := uint32(len(prevTokens))
 	curLen := uint32(len(tokens))
