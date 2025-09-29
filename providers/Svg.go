@@ -2,6 +2,7 @@ package providers
 
 import (
 	"encoding/json"
+	"slices"
 	"sync"
 
 	. "github.com/redexp/familymarkup-lsp/types"
@@ -26,6 +27,7 @@ func SvgDocument(_ *Ctx, params *SvgDocumentParams) (list []*SvgFamily, err erro
 
 	var wg sync.WaitGroup
 
+	// align roots
 	for i, family := range families {
 		f := &SvgFamily{
 			Title: SvgNode{
@@ -59,17 +61,9 @@ func SvgDocument(_ *Ctx, params *SvgDocumentParams) (list []*SvgFamily, err erro
 					bottom = max(bottom, p.Y+p.Height)
 				})
 
-				var walk func(*SvgPerson)
-
-				walk = func(p *SvgPerson) {
+				node.Walk(func(p *SvgPerson) {
 					p.X += -left
-
-					for _, child := range p.Children {
-						walk(child)
-					}
-				}
-
-				walk(node)
+				})
 
 				f.Roots[j] = &SvgRoot{
 					Rect: Rect{
@@ -95,39 +89,173 @@ func SvgDocument(_ *Ctx, params *SvgDocumentParams) (list []*SvgFamily, err erro
 		}
 	}
 
-	for fi, f := range list {
-		for ri, r := range f.Roots {
-			r.Y = ss.FamilyPadding + ss.FamilyTitleSize + ss.ArrowsHeight
+	// align families
+	for _, f := range list {
+		wg.Go(func() {
+			for ri, r := range f.Roots {
+				r.Y = ss.FamilyPadding + ss.FamilyTitleSize + ss.ArrowsHeight
 
-			f.Width += r.Width
-			f.Height = max(f.Height, r.Height)
+				f.Width += r.Width
+				f.Height = max(f.Height, r.Height)
 
-			if ri == 0 {
-				r.X += ss.FamilyPadding
+				if ri == 0 {
+					r.X += ss.FamilyPadding
+					walk(r, r.Person)
+					continue
+				}
+
+				f.Width += ss.FamilyGap
+
+				prev := f.Roots[ri-1]
+
+				r.X = prev.X + prev.Width + ss.FamilyGap
 				walk(r, r.Person)
-				continue
 			}
 
-			f.Width += ss.FamilyGap
+			f.Width = ss.FamilyPadding + f.Width + ss.FamilyPadding
+			f.Height = ss.FamilyPadding + ss.FamilyTitleSize + ss.ArrowsHeight + f.Height + ss.FamilyPadding
+			updateSvgFamilyTitle(f)
+		})
+	}
 
-			prev := f.Roots[ri-1]
+	wg.Wait()
 
-			r.X = prev.X + prev.Width + ss.FamilyGap
-			walk(r, r.Person)
-		}
+	// create bounding path
+	for _, f := range list {
+		count := len(f.Roots)
 
-		f.Width = ss.FamilyPadding + f.Width + ss.FamilyPadding
-		f.Height = ss.FamilyPadding + ss.FamilyTitleSize + ss.ArrowsHeight + f.Height + ss.FamilyPadding
-		updateSvgFamilyTitle(f)
-
-		if fi == 0 {
+		if count == 0 {
 			continue
 		}
 
-		prev := list[fi-1]
+		wg.Go(func() {
+			var rightPoints []SvgPos
 
-		f.Y = prev.Y + prev.Height
+			var g sync.WaitGroup
+
+			g.Go(func() {
+				firstRoot := f.Roots[0]
+				persons := make(map[int]Rect)
+
+				firstRoot.Person.Walk(func(p *SvgPerson) {
+					prev, ok := persons[p.Y]
+
+					if ok && p.X >= prev.X {
+						return
+					}
+
+					persons[p.Y] = p.Rect
+				})
+
+				rects := make([]Rect, 0, len(persons)+1)
+
+				rects = append(rects, f.Title.Rect)
+
+				rects[0].Height += ss.ArrowsHeight
+
+				for _, p := range persons {
+					rects = append(rects, p)
+				}
+
+				slices.SortFunc(rects, func(a, b Rect) int {
+					return a.Y - b.Y
+				})
+
+				for i, r := range rects {
+					if i == 0 {
+						continue
+					}
+
+					prev := rects[i-1]
+					delta := prev.X - r.X
+
+					if -10 < delta && delta < 0 {
+						rects[i].X = prev.X
+					} else if 0 < delta && delta < 10 {
+						rects[i-1].X = r.X
+					}
+
+					if i <= 1 {
+						continue
+					}
+
+					rects[i].Y -= ss.ArrowsHeight
+					rects[i].Height += ss.ArrowsHeight
+				}
+
+				f.Bounding = make([]SvgPos, 0, len(rects)*2)
+
+				for _, r := range rects {
+					f.Bounding = append(f.Bounding, r.Pos("tl"), r.Pos("bl"))
+				}
+			})
+
+			g.Go(func() {
+				lastRoot := f.Roots[count-1]
+				persons := make(map[int]Rect)
+
+				lastRoot.Person.Walk(func(p *SvgPerson) {
+					prev, ok := persons[p.Y]
+
+					if ok && p.Pos("tr").X <= prev.X {
+						return
+					}
+
+					persons[p.Y] = p.Move(p.Width, 0)
+				})
+
+				rects := make([]Rect, 0, len(persons)+1)
+
+				rects = append(rects, f.Title.Move(f.Title.Width, 0))
+
+				rects[0].Height += ss.ArrowsHeight
+
+				for _, p := range persons {
+					rects = append(rects, p)
+				}
+
+				slices.SortFunc(rects, func(a, b Rect) int {
+					return a.Y - b.Y
+				})
+
+				for i, r := range rects {
+					if i == 0 {
+						continue
+					}
+
+					prev := rects[i-1]
+					delta := prev.X - r.X
+
+					if -10 < delta && delta < 0 {
+						rects[i-1].X = r.X
+					} else if 0 < delta && delta < 10 {
+						rects[i].X = prev.X
+					}
+
+					if i <= 1 {
+						continue
+					}
+
+					rects[i].Y -= ss.ArrowsHeight
+					rects[i].Height += ss.ArrowsHeight
+				}
+
+				slices.Reverse(rects)
+
+				rightPoints = make([]SvgPos, 0, len(rects)*2)
+
+				for _, p := range rects {
+					rightPoints = append(rightPoints, p.Pos("bl"), p.Pos("tl"))
+				}
+			})
+
+			g.Wait()
+
+			f.Bounding = append(f.Bounding, rightPoints...)
+		})
 	}
+
+	wg.Wait()
 
 	return list, nil
 }
@@ -256,6 +384,40 @@ type Rect struct {
 	Height int `json:"height"`
 }
 
+func (r Rect) Pos(t string) SvgPos {
+	pos := SvgPos{
+		X: r.X,
+		Y: r.Y,
+	}
+
+	switch t {
+	case "tl":
+		return pos
+	case "tr":
+		pos.X += r.Width
+	case "bl":
+		pos.Y += r.Height
+	case "bl+":
+		pos.Y += r.Height + ss.ArrowsHeight
+	case "br":
+		pos.X += r.Width
+		pos.Y += r.Height
+	case "br+":
+		pos.X += r.Width
+		pos.Y += r.Height + ss.ArrowsHeight
+	default:
+		panic("invalid Pos type: " + t)
+	}
+
+	return pos
+}
+
+func (r Rect) Move(x, y int) Rect {
+	r.X += x
+	r.Y += y
+	return r
+}
+
 type SvgNode struct {
 	Rect
 
@@ -269,7 +431,7 @@ type SvgFamily struct {
 
 	Roots []*SvgRoot `json:"roots"`
 
-	//Bounding []SvgPos `json:"bounding"`
+	Bounding []SvgPos `json:"bounding"`
 }
 
 type SvgRoot struct {
@@ -284,6 +446,14 @@ type SvgPerson struct {
 	Name string `json:"name"`
 
 	Children []*SvgPerson `json:"children"`
+}
+
+func (p *SvgPerson) Walk(cb func(*SvgPerson)) {
+	cb(p)
+
+	for _, child := range p.Children {
+		child.Walk(cb)
+	}
 }
 
 type SvgHandlers struct {
