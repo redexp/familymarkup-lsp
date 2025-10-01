@@ -12,7 +12,7 @@ import (
 
 var ss = SvgStyle{
 	FamilyTitleSize: 16,
-	FamilyPadding:   20,
+	FamilyPadding:   10,
 	FamilyGap:       15,
 	PersonNameSize:  12,
 	PersonHeight:    30,
@@ -183,11 +183,48 @@ func SvgDocument(_ *Ctx, params *SvgDocumentParams) (list []*SvgFamily, err erro
 					rects[i].Height += ss.ArrowsHeight
 				}
 
-				f.Bounding = make([]SvgPos, 0, len(rects)*2)
+				points := make([]SvgPos, 0, len(rects)*2)
 
 				for _, r := range rects {
-					f.Bounding = append(f.Bounding, r.Pos("tl"), r.Pos("bl"))
+					points = append(points, r.Pos("tl"), r.Pos("bl"))
 				}
+
+				pad := ss.FamilyPadding
+
+				prev := points[0]
+
+				count := len(points)
+
+				for i := 1; i < count-1; i++ {
+					cur := points[i]
+
+					if prev.X == cur.X {
+						next := points[i+1]
+
+						if cur.X < next.X {
+							cur.Y += pad
+						}
+					} else if prev.X < cur.X {
+						cur.Y += pad
+					}
+
+					cur.X -= pad
+
+					prev = points[i]
+					points[i] = cur
+				}
+
+				points[0].X -= pad
+				points[0].Y -= pad
+				points[count-1].X -= pad
+				points[count-1].Y += pad
+
+				if points[2].X < points[1].X {
+					points[1].Y -= pad
+					points[2].Y -= pad
+				}
+
+				f.Bounding = points
 			})
 
 			g.Go(func() {
@@ -240,13 +277,50 @@ func SvgDocument(_ *Ctx, params *SvgDocumentParams) (list []*SvgFamily, err erro
 					rects[i].Height += ss.ArrowsHeight
 				}
 
-				slices.Reverse(rects)
-
-				rightPoints = make([]SvgPos, 0, len(rects)*2)
+				points := make([]SvgPos, 0, len(rects)*2)
 
 				for _, p := range rects {
-					rightPoints = append(rightPoints, p.Pos("bl"), p.Pos("tl"))
+					points = append(points, p.Pos("tl"), p.Pos("bl"))
 				}
+
+				pad := ss.FamilyPadding
+
+				prev := points[0]
+
+				count := len(points)
+
+				for i := 1; i < count-1; i++ {
+					cur := points[i]
+
+					if prev.X == cur.X {
+						next := points[i+1]
+
+						if next.X < cur.X {
+							cur.Y += pad
+						}
+					} else if cur.X < prev.X {
+						cur.Y += pad
+					}
+
+					cur.X += pad
+
+					prev = points[i]
+					points[i] = cur
+				}
+
+				points[0].X += pad
+				points[0].Y -= pad
+				points[count-1].X += pad
+				points[count-1].Y += pad
+
+				if points[1].X < points[2].X {
+					points[1].Y -= pad
+					points[2].Y -= pad
+				}
+
+				slices.Reverse(points)
+
+				rightPoints = points
 			})
 
 			g.Wait()
