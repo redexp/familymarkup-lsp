@@ -331,6 +331,13 @@ func SvgDocument(_ *Ctx, params *SvgDocumentParams) (list []*SvgFamily, err erro
 
 	wg.Wait()
 
+	for i := 1; i < len(list); i++ {
+		prev := list[i-1]
+		cur := list[i]
+
+		cur.Y = prev.Pos("bl").Y
+	}
+
 	return list, nil
 }
 
