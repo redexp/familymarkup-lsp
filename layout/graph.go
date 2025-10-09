@@ -1,4 +1,4 @@
-package providers
+package layout
 
 import (
 	. "github.com/redexp/familymarkup-lsp/state"
@@ -6,7 +6,7 @@ import (
 	fm "github.com/redexp/familymarkup-parser"
 )
 
-func GraphDocumentFamilies(uri Uri) (list []*GraphFamily) {
+func GraphDocumentFamilies(root *Root, uri Uri) (list []*GraphFamily) {
 	personMem := make(map[*fm.Person]*Member)
 
 	for _, ref := range root.NodeRefs[uri] {
