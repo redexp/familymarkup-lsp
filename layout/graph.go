@@ -1,20 +1,24 @@
 package layout
 
 import (
+	"sync"
+
 	. "github.com/redexp/familymarkup-lsp/state"
 	. "github.com/redexp/familymarkup-lsp/types"
 	fm "github.com/redexp/familymarkup-parser"
 )
 
-func GraphDocumentFamilies(root *Root, uri Uri) (list []*GraphFamily) {
+func GraphDocumentFamilies(root *Root, uri Uri) []*GraphFamily {
 	personMem := make(map[*fm.Person]*Member)
 
 	for _, ref := range root.NodeRefs[uri] {
-		if ref.Type != RefTypeName {
-			continue
-		}
+		switch ref.Type {
+		case RefTypeName, RefTypeNameSurname:
+			personMem[ref.Person] = ref.Member
 
-		personMem[ref.Person] = ref.Member
+		case RefTypeOrigin:
+			personMem[ref.Person] = ref.Member.Origin
+		}
 	}
 
 	memGP := make(map[*Member]*GraphPerson)
@@ -35,10 +39,16 @@ func GraphDocumentFamilies(root *Root, uri Uri) (list []*GraphFamily) {
 		}
 	}
 
-	for _, f := range root.Docs[uri].Root.Families {
+	list := make([]*GraphFamily, len(root.Docs[uri].Root.Families))
+
+	//links := make(map[*GraphPerson]*GraphPerson)
+
+	for i, f := range root.Docs[uri].Root.Families {
 		gf := &GraphFamily{
 			Name: f.Name,
 		}
+
+		list[i] = gf
 
 		for _, rel := range f.Relations {
 			if !rel.IsFamilyDef {
@@ -47,24 +57,31 @@ func GraphDocumentFamilies(root *Root, uri Uri) (list []*GraphFamily) {
 
 			var gp *GraphPerson
 			var partners []*GraphPerson
+			var mem *Member
 
 			for _, p := range rel.Sources.Persons {
-				if gp == nil {
-					var mem *Member
+				if gp != nil {
+					partner := toGP(p)
 
-					gp, mem = findGP(p)
+					mem = personMem[p]
 
-					if gp != nil {
-						continue
+					if mem != nil {
+						memGP[mem] = partner
 					}
 
-					gp = toGP(p)
-					memGP[mem] = gp
-					gf.RootPersons = append(gf.RootPersons, gp)
+					partners = append(partners, partner)
 					continue
 				}
 
-				partners = append(partners, toGP(p))
+				gp, mem = findGP(p)
+
+				if gp != nil {
+					continue
+				}
+
+				gp = toGP(p)
+				memGP[mem] = gp
+				gf.RootPersons = append(gf.RootPersons, gp)
 			}
 
 			if gp == nil {
@@ -90,18 +107,48 @@ func GraphDocumentFamilies(root *Root, uri Uri) (list []*GraphFamily) {
 				child := toGP(p)
 				gr.Children = append(gr.Children, child)
 
-				mem, ok := personMem[p]
+				mem = personMem[p]
 
-				if ok {
+				if mem != nil {
 					memGP[mem] = child
 				}
 			}
 		}
-
-		list = append(list, gf)
 	}
 
-	return
+	var walk func(*GraphPerson)
+
+	walk = func(p *GraphPerson) {
+		for _, rel := range p.Relations {
+			for _, partner := range rel.Partners {
+				mem := personMem[partner.Person]
+
+				if mem == nil {
+					continue
+				}
+
+				partner.Link = memGP[mem]
+			}
+
+			for _, child := range rel.Children {
+				walk(child)
+			}
+		}
+	}
+
+	var wg sync.WaitGroup
+
+	for _, gf := range list {
+		for _, gp := range gf.RootPersons {
+			wg.Go(func() {
+				walk(gp)
+			})
+		}
+	}
+
+	wg.Wait()
+
+	return list
 }
 
 type GraphFamily struct {
@@ -111,6 +158,7 @@ type GraphFamily struct {
 
 type GraphPerson struct {
 	Person    *fm.Person
+	Link      *GraphPerson
 	Relations []*GraphRelation
 }
 
