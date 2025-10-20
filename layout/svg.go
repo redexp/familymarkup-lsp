@@ -22,6 +22,8 @@ func (r Rect) ToPos(t string) Pos {
 	switch t {
 	case "tl":
 		return pos
+	case "tm":
+		pos.X += r.Width / 2
 	case "tr":
 		pos.X += r.Width
 	case "bl":
@@ -53,21 +55,17 @@ type SvgFamily struct {
 
 	Title Node `json:"title"`
 
-	Roots []*SvgRoot `json:"roots"`
+	Roots []*SvgPerson `json:"roots"`
 
 	Bounding []Pos `json:"bounding"`
-}
-
-type SvgRoot struct {
-	Rect
-
-	Person *SvgPerson `json:"person"`
 }
 
 type SvgPerson struct {
 	Rect
 
-	Name string `json:"name"`
+	Name   string `json:"name"`
+	person *GraphPerson
+	Link   *Pos `json:"link,omitempty"`
 
 	Children []*SvgPerson `json:"children"`
 }

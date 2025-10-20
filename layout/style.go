@@ -12,7 +12,7 @@ var ss = Style{
 }
 
 type Style struct {
-	FamilyTitleSize int
+	FamilyTitleSize float64
 	FamilyPadding   int
 	FamilyGap       int
 	PersonNameSize  float64
