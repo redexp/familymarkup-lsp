@@ -84,7 +84,7 @@ func Align(root *state.Root, uri types.Uri, params AlignParams) []*SvgFamily {
 			Children: f.Roots,
 		}
 
-		rootPerson.Width += int(ss.PersonPaddingX * 2)
+		rootPerson.Width += int(ss.PersonPaddingX)
 		rootPerson.Height += ss.ArrowsHeight
 
 		wg.Go(func() {
