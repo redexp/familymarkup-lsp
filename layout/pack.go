@@ -2,7 +2,6 @@ package layout
 
 import (
 	"iter"
-	"math"
 )
 
 type Point struct {
@@ -71,12 +70,6 @@ func (p Point) Iter() iter.Seq2[int, int] {
 			}
 		}
 	}
-}
-
-func Distance(p1, p2 Point) float64 {
-	dx := float64(p1.X - p2.X)
-	dy := float64(p1.Y - p2.Y)
-	return math.Sqrt(dx*dx + dy*dy)
 }
 
 func direction(x int) int {

@@ -38,6 +38,10 @@ func TestPack(t *testing.T) {
 
 	fmt.Println("\nКонечные позиции:")
 	printFigures(figures)
+
+	if fig1.AbsLinkCell().Distance(fig2.AbsLinkCell()).AbsSum() != 1 {
+		t.Error("distance != 1")
+	}
 }
 
 func printFigures(figures []*Figure) {
@@ -90,16 +94,4 @@ func printFigures(figures []*Figure) {
 	}
 
 	fmt.Print("\n")
-
-	for _, fig := range figures {
-		linkPoint := fig.AbsLinkCell()
-		fmt.Printf("Фигура %d: позиция (%d, %d), точка связи (%d, %d)\n",
-			fig.ID, fig.Position.X, fig.Position.Y, linkPoint.X, linkPoint.Y)
-
-		if fig.LinkTo != nil {
-			linkPoint2 := fig.LinkTo.AbsLinkCell()
-			dist := Distance(linkPoint, linkPoint2)
-			fmt.Printf("  Расстояние до связанной фигуры: %.2f\n", dist)
-		}
-	}
 }
