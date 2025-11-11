@@ -60,7 +60,8 @@ func Align(root *state.Root, uri types.Uri, params AlignParams) []*SvgFamily {
 			})
 
 			node.Walk(func(p *SvgPerson) {
-				p.X += -left
+				p.X += -left + ss.FamilyPadding
+				p.Y += ss.FamilyPadding
 			})
 
 			f.Width = right - left + ss.FamilyPadding*2
