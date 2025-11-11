@@ -8,14 +8,7 @@ import (
 )
 
 func TestAlign(t *testing.T) {
-	root := state.CreateRoot()
-	root.SetFolders([]types.Uri{"/home/sergii/projects/relatives"})
-	err := root.UpdateDirty()
-
-	if err != nil {
-		t.Error(err)
-		return
-	}
+	root := testRoot(t)
 
 	list := Align(root, "file:///home/sergii/projects/relatives/Ключник/Ключник.family", AlignParams{
 		FontRatio: 1,
@@ -24,4 +17,16 @@ func TestAlign(t *testing.T) {
 	if len(list) == 0 {
 		t.Error("list == 0")
 	}
+}
+
+func testRoot(t *testing.T) *state.Root {
+	root := state.CreateRoot()
+	root.SetFolders([]types.Uri{"/home/sergii/projects/relatives"})
+	err := root.UpdateDirty()
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return root
 }
