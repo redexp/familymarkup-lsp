@@ -44,6 +44,12 @@ func (r Rect) Move(x, y int) Rect {
 	return r
 }
 
+func (p Pos) Move(x, y int) Pos {
+	p.X += x
+	p.Y += y
+	return p
+}
+
 type Node struct {
 	Rect
 
