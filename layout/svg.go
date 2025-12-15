@@ -66,6 +66,18 @@ type SvgFamily struct {
 	Bounding []Pos `json:"bounding"`
 }
 
+func (f SvgFamily) Walk(cb func(*SvgPerson)) {
+	rootPerson := &SvgPerson{
+		Rect:     f.Title.Rect,
+		Children: f.Roots,
+	}
+
+	rootPerson.Width += int(ss.PersonPaddingX)
+	rootPerson.Height += ss.ArrowsHeight
+
+	rootPerson.Walk(cb)
+}
+
 type SvgPerson struct {
 	Rect
 

@@ -53,6 +53,7 @@ func alignFamilies(list []*SvgFamily, graphFamilies map[*GraphFamily]*SvgFamily)
 
 	for f, links := range famLinks {
 		fam := &AlignFamily{
+			Index:  slices.Index(list, f),
 			Family: f,
 			Links:  make([]*AlignLink, 0, len(links)),
 		}
@@ -79,27 +80,34 @@ func alignFamilies(list []*SvgFamily, graphFamilies map[*GraphFamily]*SvgFamily)
 		})
 	}
 
+	slices.SortFunc(families, func(a, b *AlignFamily) int {
+		return a.Index - b.Index
+	})
+
 	for _, af := range families {
-		f := af.Family
-		c := f.Width / 2
+		target := af.Family.ToFigure()
 
 		for _, link := range af.Links {
-			fromPers := link.From
-			toPers := link.ToPerson
-			toFam := link.ToFamily
+			target.SetLinkCell(link.From.ToPos("tl"))
+			fig := link.ToFamily.ToFigure()
+			fig.SetLinkCell(link.ToPerson.ToPos("tl"))
+			fig.MoveTo(target)
 
-			if fromPers.ToPos("tm").X < c {
-				toFam.X = f.X - toFam.Width
-			} else {
-				toFam.X = f.X + f.Width
+			link.ToFamily.X = fig.X * ss.GridStep
+			link.ToFamily.Y = fig.Y * ss.GridStep
+
+			for _, cell := range fig.Cells {
+				target.Cells = append(target.Cells, Pos{
+					X: cell.X + fig.X - target.X,
+					Y: cell.Y + fig.Y - target.Y,
+				})
 			}
-
-			toFam.Y = f.Y + (fromPers.Y - toPers.Y)
 		}
 	}
 }
 
 type AlignFamily struct {
+	Index  int
 	Family *SvgFamily
 	Links  []*AlignLink
 }

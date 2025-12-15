@@ -80,36 +80,36 @@ func Align(root *state.Root, uri types.Uri, params AlignParams) []*SvgFamily {
 			continue
 		}
 
-		rootPerson := &SvgPerson{
-			Rect:     f.Title.Rect,
-			Children: f.Roots,
-		}
-
-		rootPerson.Width += int(ss.PersonPaddingX)
-		rootPerson.Height += ss.ArrowsHeight
-
 		wg.Go(func() {
+			leftRects := make(map[int]Rect)
+			rightRects := make(map[int]Rect)
+
+			f.Walk(func(p *SvgPerson) {
+				rect := p.Rect
+				level := rect.Y
+
+				prev, ok := leftRects[level]
+
+				if !ok || rect.X < prev.X {
+					leftRects[level] = rect
+				}
+
+				prev, ok = rightRects[level]
+
+				if !ok || rect.ToPos("tr").X > prev.X {
+					rightRects[level] = rect.Move(p.Width, 0)
+				}
+			})
+
 			var rightPoints []Pos
 
 			var g sync.WaitGroup
 
 			g.Go(func() {
-				persons := make(map[int]Rect)
+				rects := make([]Rect, 0, len(leftRects))
 
-				rootPerson.Walk(func(p *SvgPerson) {
-					prev, ok := persons[p.Y]
-
-					if ok && p.X >= prev.X {
-						return
-					}
-
-					persons[p.Y] = p.Rect
-				})
-
-				rects := make([]Rect, 0, len(persons))
-
-				for _, p := range persons {
-					rects = append(rects, p)
+				for _, rect := range leftRects {
+					rects = append(rects, rect)
 				}
 
 				slices.SortFunc(rects, func(a, b Rect) int {
@@ -144,61 +144,14 @@ func Align(root *state.Root, uri types.Uri, params AlignParams) []*SvgFamily {
 					points = append(points, r.ToPos("tl"), r.ToPos("bl"))
 				}
 
-				pad := ss.FamilyPadding
-
-				prev := points[0]
-
-				count := len(points)
-
-				for i := 1; i < count-1; i++ {
-					cur := points[i]
-
-					if prev.X == cur.X {
-						next := points[i+1]
-
-						if cur.X < next.X {
-							cur.Y += pad
-						}
-					} else if prev.X < cur.X {
-						cur.Y += pad
-					}
-
-					cur.X -= pad
-
-					prev = points[i]
-					points[i] = cur
-				}
-
-				points[0].X -= pad
-				points[0].Y -= pad
-				points[count-1].X -= pad
-				points[count-1].Y += pad
-
-				if points[2].X < points[1].X {
-					points[1].Y -= pad
-					points[2].Y -= pad
-				}
-
 				f.Bounding = points
 			})
 
 			g.Go(func() {
-				persons := make(map[int]Rect)
+				rects := make([]Rect, 0, len(rightRects))
 
-				rootPerson.Walk(func(p *SvgPerson) {
-					prev, ok := persons[p.Y]
-
-					if ok && p.ToPos("tr").X <= prev.X {
-						return
-					}
-
-					persons[p.Y] = p.Move(p.Width, 0)
-				})
-
-				rects := make([]Rect, 0, len(persons))
-
-				for _, p := range persons {
-					rects = append(rects, p)
+				for _, rect := range rightRects {
+					rects = append(rects, rect)
 				}
 
 				slices.SortFunc(rects, func(a, b Rect) int {
@@ -233,41 +186,6 @@ func Align(root *state.Root, uri types.Uri, params AlignParams) []*SvgFamily {
 					points = append(points, p.ToPos("tl"), p.ToPos("bl"))
 				}
 
-				pad := ss.FamilyPadding
-
-				prev := points[0]
-
-				count := len(points)
-
-				for i := 1; i < count-1; i++ {
-					cur := points[i]
-
-					if prev.X == cur.X {
-						next := points[i+1]
-
-						if next.X < cur.X {
-							cur.Y += pad
-						}
-					} else if cur.X < prev.X {
-						cur.Y += pad
-					}
-
-					cur.X += pad
-
-					prev = points[i]
-					points[i] = cur
-				}
-
-				points[0].X += pad
-				points[0].Y -= pad
-				points[count-1].X += pad
-				points[count-1].Y += pad
-
-				if points[1].X < points[2].X {
-					points[1].Y -= pad
-					points[2].Y -= pad
-				}
-
 				slices.Reverse(points)
 
 				rightPoints = points
@@ -276,6 +194,8 @@ func Align(root *state.Root, uri types.Uri, params AlignParams) []*SvgFamily {
 			g.Wait()
 
 			f.Bounding = append(f.Bounding, rightPoints...)
+
+			addBoundingPadding(f)
 		})
 	}
 
@@ -335,6 +255,10 @@ func createFlexTree(p *GraphPerson, params AlignParams) *flex.Tree {
 func personToFlexTree(p *GraphPerson, params AlignParams) *flex.Tree {
 	token := p.Token()
 
+	if token == nil {
+		panic("token nil")
+	}
+
 	return &flex.Tree{
 		Input:  p,
 		Width:  float64(token.CharsNum)*ss.PersonNameSize*params.FontRatio + ss.PersonPaddingX*2 + ss.PersonMarginX*2,
@@ -371,3 +295,91 @@ func flexTreeToSvgPerson(tree *flex.Tree, walk func(*SvgPerson)) *SvgPerson {
 
 	return p
 }
+
+func addBoundingPadding(f *SvgFamily) {
+	points := f.Bounding
+	last := len(points) - 1
+	list := make([]Pos, last+1)
+	p := ss.FamilyPadding
+
+	list[0] = points[0].Move(-p, -p)
+	list[last] = points[last].Move(p, -p)
+
+	for i := 1; i < last; i++ {
+		prev := points[i-1]
+		cur := points[i]
+		next := points[i+1]
+		x := 0
+		y := 0
+
+		if prev == cur {
+			list[i] = list[i-1]
+			continue
+		}
+
+		if prev.X == cur.X && prev.Y < cur.Y {
+			x = -1
+			if next.X < cur.X {
+				y = -1
+			} else if next.X > cur.X {
+				y = 1
+			}
+		} else if prev.Y == cur.Y && cur.X < prev.X {
+			y = -1
+			if next.Y < cur.Y {
+				x = 1
+			} else if next.Y > cur.Y {
+				x = -1
+			}
+		} else if prev.Y == cur.Y && prev.X < cur.X {
+			y = 1
+			if next.Y < cur.Y {
+				x = 1
+			} else if next.Y > cur.Y {
+				x = -1
+			}
+		} else if prev.X == cur.X && prev.Y > cur.Y {
+			x = 1
+			if next.X < cur.X {
+				y = -1
+			} else if next.X > cur.X {
+				y = 1
+			}
+		}
+
+		list[i] = cur.Move(p*x, p*y)
+	}
+
+	f.Bounding = list
+}
+
+//func boundingBetweenPoints(leftPoints, rightPoints []Pos, bottomRects []Rect) (list []Pos) {
+//	if len(leftPoints) == 0 || len(rightPoints) == 0 {
+//		return
+//	}
+//
+//	left := leftPoints[len(leftPoints)-1]
+//	right := rightPoints[0]
+//
+//	if right.X-left.X < 100 {
+//		return
+//	}
+//
+//	var rects []Rect
+//	prev := &left
+//
+//	for _, rect := range bottomRects {
+//		br := rect.ToPos("br")
+//
+//		if br.X < prev.X || br == *prev {
+//			continue
+//		}
+//
+//		bl := rect.ToPos("bl")
+//
+//		if bl.X < prev.X {
+//			bl.X = prev.X
+//		}
+//
+//	}
+//}
