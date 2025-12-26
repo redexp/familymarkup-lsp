@@ -5,12 +5,22 @@ type Pos struct {
 	Y int `json:"y"`
 }
 
+func (p Pos) Move(x, y int) Pos {
+	p.X += x
+	p.Y += y
+	return p
+}
+
 type Rect struct {
 	X int `json:"x"`
 	Y int `json:"y"`
 
 	Width  int `json:"width"`
 	Height int `json:"height"`
+}
+
+func (r Rect) Right() int {
+	return r.X + r.Width
 }
 
 func (r Rect) ToPos(t string) Pos {
@@ -42,12 +52,6 @@ func (r Rect) Move(x, y int) Rect {
 	r.X += x
 	r.Y += y
 	return r
-}
-
-func (p Pos) Move(x, y int) Pos {
-	p.X += x
-	p.Y += y
-	return p
 }
 
 type Node struct {

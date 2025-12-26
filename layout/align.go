@@ -83,6 +83,7 @@ func Align(root *state.Root, uri types.Uri, params AlignParams) []*SvgFamily {
 		wg.Go(func() {
 			leftRects := make(map[int]Rect)
 			rightRects := make(map[int]Rect)
+			allRects := make(map[int][]Rect)
 
 			f.Walk(func(p *SvgPerson) {
 				rect := p.Rect
@@ -99,6 +100,8 @@ func Align(root *state.Root, uri types.Uri, params AlignParams) []*SvgFamily {
 				if !ok || rect.ToPos("tr").X > prev.X {
 					rightRects[level] = rect.Move(p.Width, 0)
 				}
+
+				allRects[level] = append(allRects[level], rect)
 			})
 
 			var rightPoints []Pos
@@ -192,6 +195,12 @@ func Align(root *state.Root, uri types.Uri, params AlignParams) []*SvgFamily {
 			})
 
 			g.Wait()
+
+			between := boundingBetweenPoints(allRects, f.Bounding, rightPoints)
+
+			if between != nil {
+				f.Bounding = append(f.Bounding, between...)
+			}
 
 			f.Bounding = append(f.Bounding, rightPoints...)
 
@@ -353,33 +362,182 @@ func addBoundingPadding(f *SvgFamily) {
 	f.Bounding = list
 }
 
-//func boundingBetweenPoints(leftPoints, rightPoints []Pos, bottomRects []Rect) (list []Pos) {
-//	if len(leftPoints) == 0 || len(rightPoints) == 0 {
-//		return
-//	}
-//
-//	left := leftPoints[len(leftPoints)-1]
-//	right := rightPoints[0]
-//
-//	if right.X-left.X < 100 {
-//		return
-//	}
-//
-//	var rects []Rect
-//	prev := &left
-//
-//	for _, rect := range bottomRects {
-//		br := rect.ToPos("br")
-//
-//		if br.X < prev.X || br == *prev {
-//			continue
-//		}
-//
-//		bl := rect.ToPos("bl")
-//
-//		if bl.X < prev.X {
-//			bl.X = prev.X
-//		}
-//
-//	}
-//}
+func boundingBetweenPoints(allRects map[int][]Rect, leftPoints, rightPoints []Pos) (points []Pos) {
+	left := leftPoints[len(leftPoints)-1].X
+	right := rightPoints[0].X
+	limit := 300
+
+	if right-left < limit {
+		return
+	}
+
+	levels := make([]int, 0, len(allRects))
+
+	for level := range allRects {
+		levels = append(levels, level)
+	}
+
+	slices.SortFunc(levels, func(a, b int) int {
+		return b - a
+	})
+
+	var prevSpaces []Rect
+	var allSpaces []Rect
+
+	for index, level := range levels {
+		rects := allRects[level]
+
+		rects = slices.DeleteFunc(rects, func(rect Rect) bool {
+			return rect.Right() < left || right < rect.X
+		})
+
+		if len(rects) == 0 {
+			continue
+		}
+
+		slices.SortFunc(rects, func(a, b Rect) int {
+			return a.X - b.X
+		})
+
+		rects = append(rects, Rect{X: right})
+
+		var spaces []Rect
+		prev := Rect{X: left}
+
+		for _, rect := range rects {
+			prevRight := prev.Right()
+			width := rect.X - prevRight
+
+			if width >= limit {
+				spaces = append(spaces, Rect{
+					X:      prevRight,
+					Y:      rect.Y,
+					Width:  width,
+					Height: rect.Height,
+				})
+			}
+
+			prev = rect
+		}
+
+		if len(spaces) == 0 {
+			break
+		}
+
+		if index > 0 {
+			list := make([]Rect, 0, len(spaces))
+
+			for _, rect := range spaces {
+				rectLeft := rect.X
+				rectRight := rect.Right()
+				var space *Rect
+
+				for _, item := range prevSpaces {
+					if rectRight <= item.X || item.Right() <= rectLeft {
+						continue
+					}
+
+					space = &item
+					break
+				}
+
+				if space == nil {
+					continue
+				}
+
+				if rect.X < space.X {
+					rect.Width -= space.X - rect.X
+					rect.X = space.X
+					rectRight = rect.Right()
+				}
+
+				if rectRight > space.Right() {
+					rect.Width -= rectRight - space.Right()
+				}
+
+				list = append(list, rect)
+			}
+
+			spaces = list
+		}
+
+		if len(spaces) == 0 {
+			break
+		}
+
+		allSpaces = append(allSpaces, spaces...)
+
+		prevSpaces = spaces
+
+		for _, rect := range spaces {
+			rect.Y -= ss.ArrowsHeight
+			rect.Height += ss.ArrowsHeight
+
+			points = append(
+				points,
+				rect.ToPos("tl"),
+				rect.ToPos("tr"),
+				rect.ToPos("br"),
+				rect.ToPos("bl"),
+			)
+		}
+	}
+
+	if points == nil {
+		return
+	}
+
+	slices.SortFunc(points, func(a, b Pos) int {
+		dir := a.X - b.X
+
+		if dir == 0 {
+			dir = b.Y - a.Y
+		}
+
+		return dir
+	})
+
+	list := make([]Pos, 0, len(points))
+
+	for i, p := range points {
+		if i > 0 && p == points[i-1] {
+			continue
+		}
+		list = append(list, p)
+	}
+
+	points = list
+
+	count := len(points)
+
+	for i := 1; i < count-1; i++ {
+		prev := points[i-1]
+		cur := points[i]
+		next := points[i+1]
+
+		if cur.X != next.X {
+			continue
+		}
+
+		j := i + 1
+
+		for j < count {
+			if cur.X != points[j].X {
+				break
+			}
+			j++
+		}
+
+		if j-i <= 1 {
+			continue
+		}
+
+		if prev.Y < cur.Y {
+			slices.Reverse(points[i:j])
+		}
+
+		i = j - 1
+	}
+
+	return points
+}
