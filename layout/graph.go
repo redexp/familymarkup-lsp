@@ -42,8 +42,6 @@ func GraphDocumentFamilies(root *Root, uri Uri) []*GraphFamily {
 
 	list := make([]*GraphFamily, len(root.Docs[uri].Root.Families))
 
-	//links := make(map[*GraphPerson]*GraphPerson)
-
 	for i, f := range root.Docs[uri].Root.Families {
 		gf := &GraphFamily{
 			Name: f.Name,
