@@ -6,11 +6,13 @@ func alignFamilies(list []*SvgFamily, graphFamilies map[*GraphFamily]*SvgFamily)
 	graphPersons := make(map[*GraphPerson]*SvgPerson)
 
 	for _, f := range list {
-		for _, p := range f.Roots {
-			p.Walk(func(p *SvgPerson) {
-				graphPersons[p.person] = p
-			})
-		}
+		f.Walk(func(p *SvgPerson) {
+			if p.person == nil {
+				return
+			}
+
+			graphPersons[p.person] = p
+		})
 	}
 
 	famLinks := make(map[*SvgFamily]map[*SvgFamily][]*SvgPerson)
