@@ -57,8 +57,8 @@ func MergeLevelsRects(levels []Level, minGap int) {
 		list := make([]Rect, 0, len(level.Rects))
 		var last *Rect
 
-		for i, rect := range level.Rects {
-			if i > 0 && rect.X-last.Right() < minGap {
+		for _, rect := range level.Rects {
+			if last != nil && rect.X-last.Right() < minGap {
 				last.Width = rect.Right() - last.X
 				continue
 			}
