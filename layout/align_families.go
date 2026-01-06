@@ -90,9 +90,9 @@ func alignFamilies(list []*SvgFamily, graphFamilies map[*GraphFamily]*SvgFamily)
 		target := af.Family.ToFigure()
 
 		for _, link := range af.Links {
-			target.SetLinkCell(link.From.ToPos("tl"))
+			target.SetLinkCell(link.From.ToPos(TL))
 			fig := link.ToFamily.ToFigure()
-			fig.SetLinkCell(link.ToPerson.ToPos("tl"))
+			fig.SetLinkCell(link.ToPerson.ToPos(TL))
 			fig.MoveTo(target)
 
 			link.ToFamily.X = fig.X * ss.GridStep

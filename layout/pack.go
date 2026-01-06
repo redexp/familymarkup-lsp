@@ -287,7 +287,7 @@ func (f *SvgFamily) ToFigure() *Figure {
 	for _, root := range f.Roots {
 		root.Walk(func(p *SvgPerson) {
 			fromX := p.X / step
-			toX := p.ToPos("tr").X / step
+			toX := p.ToPos(TR).X / step
 			y := p.Y / step
 
 			for x := range rangeIter(fromX, toX) {

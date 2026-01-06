@@ -23,6 +23,13 @@ func (r Rect) Right() int {
 	return r.X + r.Width
 }
 
+const (
+	TL = "tl"
+	TR = "tr"
+	BL = "bl"
+	BR = "br"
+)
+
 func (r Rect) ToPos(t string) Pos {
 	pos := Pos{
 		X: r.X,
@@ -30,15 +37,15 @@ func (r Rect) ToPos(t string) Pos {
 	}
 
 	switch t {
-	case "tl":
+	case TL:
 		return pos
 	case "tm":
 		pos.X += r.Width / 2
-	case "tr":
+	case TR:
 		pos.X += r.Width
-	case "bl":
+	case BL:
 		pos.Y += r.Height
-	case "br":
+	case BR:
 		pos.X += r.Width
 		pos.Y += r.Height
 	default:
