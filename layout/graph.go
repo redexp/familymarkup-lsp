@@ -161,6 +161,8 @@ func GraphDocumentFamilies(root *Root, uri Uri) []*GraphFamily {
 type GraphFamily struct {
 	Name        *fm.Token
 	RootPersons []*GraphPerson
+
+	svgFamily *SvgFamily
 }
 
 type GraphPerson struct {
@@ -168,6 +170,8 @@ type GraphPerson struct {
 	Person    *fm.Person
 	Link      *GraphPerson
 	Relations []*GraphRelation
+
+	svgPerson *SvgPerson
 }
 
 func (p *GraphPerson) Token() (token *fm.Token) {

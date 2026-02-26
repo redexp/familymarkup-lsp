@@ -1,7 +1,6 @@
 package layout
 
 import (
-	"slices"
 	"sync"
 
 	"github.com/redexp/familymarkup-lsp/state"
@@ -10,14 +9,13 @@ import (
 )
 
 func Align(root *state.Root, uri types.Uri, params AlignParams) []*SvgFamily {
-	families := GraphDocumentFamilies(root, uri)
-	list := make([]*SvgFamily, len(families))
-	graphFamilies := make(map[*GraphFamily]*SvgFamily)
+	graphFamilies := GraphDocumentFamilies(root, uri)
+	svgFamilies := make([]*SvgFamily, len(graphFamilies))
 
 	var wg sync.WaitGroup
 
 	// align roots
-	for i, gf := range families {
+	for fi, gf := range graphFamilies {
 		f := &SvgFamily{
 			Title: Node{
 				Rect: Rect{
@@ -28,20 +26,19 @@ func Align(root *state.Root, uri types.Uri, params AlignParams) []*SvgFamily {
 			},
 		}
 
-		graphFamilies[gf] = f
-
-		list[i] = f
+		gf.svgFamily = f
+		svgFamilies[fi] = f
 
 		wg.Go(func() {
 			tree := &flex.Tree{
 				Input:    &GraphPerson{},
-				Width:    float64(f.Title.Width) + ss.PersonPaddingX*2,
-				Height:   float64(f.Title.Height + ss.ArrowsHeight),
-				Children: make([]*flex.Tree, 0, len(gf.RootPersons)),
+				Width:    float64(f.Title.Width) + ss.PersonMarginX*2,
+				Height:   float64(ss.LevelHeight),
+				Children: make([]*flex.Tree, len(gf.RootPersons)),
 			}
 
-			for _, p := range gf.RootPersons {
-				tree.Children = append(tree.Children, createFlexTree(p, params))
+			for i, p := range gf.RootPersons {
+				tree.Children[i] = createFlexTree(p, params)
 			}
 
 			tree.Reset()
@@ -57,50 +54,68 @@ func Align(root *state.Root, uri types.Uri, params AlignParams) []*SvgFamily {
 				left = min(left, p.X)
 				right = max(right, p.X+p.Width)
 				bottom = max(bottom, p.Y+p.Height)
+
+				if p.graphPerson != nil {
+					p.graphPerson.svgPerson = p
+				}
 			})
 
 			node.Walk(func(p *SvgPerson) {
-				p.X += -left + ss.FamilyPadding
-				p.Y += ss.FamilyPadding
+				p.X += -left + ss.BorderPadding
+				//p.Y += ss.BorderPadding
 			})
 
-			f.Width = right - left + ss.FamilyPadding*2
-			f.Height = bottom + ss.FamilyPadding*2
+			f.Width = right - left + ss.BorderPadding*2
+			f.Height = bottom + ss.BorderPadding*2
 			f.Title.X = node.X
-			f.Title.Y = node.Y
+			f.Title.Y = ss.LevelHeight - f.Title.Height
 			f.Roots = node.Children
 		})
 	}
 
 	wg.Wait()
 
-	// create bounding path
-	for _, f := range list {
+	// create levels and bounding
+	for _, f := range svgFamilies {
 		wg.Go(func() {
 			lvlMap := make(LevelsMap)
 
+			lvlMap.Add(Rect{
+				X:      f.Title.X,
+				Y:      0,
+				Width:  f.Title.Width,
+				Height: ss.LevelHeight,
+			})
+
 			f.Walk(func(p *SvgPerson) {
 				rect := p.Rect
+				rect.Y -= ss.ArrowsHeight
+				rect.Height = ss.LevelHeight
 
-				if p.person != nil && !slices.Contains(f.Roots, p) {
-					rect.Y -= ss.ArrowsHeight
-					rect.Height += ss.ArrowsHeight
+				link := p.graphPerson.Link
+
+				if link != nil {
+					f.links = append(f.links, &SvgLink{
+						Family: link.Family.svgFamily,
+						From:   p.Rect,
+						To:     link.svgPerson.Rect,
+					})
 				}
 
 				lvlMap.Add(rect)
 			})
 
-			f.Bounding = lvlMap.Border(160)
-
-			addBoundingPadding(f)
+			f.levels = lvlMap.ToArray()
+			mergeLevelsRects(f.levels, 160)
+			f.Bounding = levelsToBounding(f.levels)
 		})
 	}
 
 	wg.Wait()
 
-	alignFamilies(list, graphFamilies)
+	alignByLevels(svgFamilies)
 
-	return list
+	return svgFamilies
 }
 
 type AlignParams struct {
@@ -159,7 +174,7 @@ func personToFlexTree(p *GraphPerson, params AlignParams) *flex.Tree {
 	return &flex.Tree{
 		Input:  p,
 		Width:  float64(token.CharsNum)*ss.PersonNameSize*params.FontRatio + ss.PersonPaddingX*2 + ss.PersonMarginX*2,
-		Height: ss.PersonHeight + float64(ss.ArrowsHeight),
+		Height: float64(ss.LevelHeight),
 	}
 }
 
@@ -169,13 +184,13 @@ func flexTreeToSvgPerson(tree *flex.Tree, walk func(*SvgPerson)) *SvgPerson {
 	p := &SvgPerson{
 		Rect: Rect{
 			X: int(tree.X + ss.PersonMarginX),
-			Y: int(tree.Y),
+			Y: int(tree.Y) + ss.ArrowsHeight,
 
 			Width:  int(tree.Width - ss.PersonMarginX*2),
-			Height: int(tree.Height) - ss.ArrowsHeight,
+			Height: int(ss.PersonHeight),
 		},
 
-		person: gp,
+		graphPerson: gp,
 	}
 
 	if token := gp.Token(); token != nil {
@@ -191,61 +206,4 @@ func flexTreeToSvgPerson(tree *flex.Tree, walk func(*SvgPerson)) *SvgPerson {
 	walk(p)
 
 	return p
-}
-
-func addBoundingPadding(f *SvgFamily) {
-	points := f.Bounding
-	last := len(points) - 1
-	list := make([]Pos, last+1)
-	p := ss.FamilyPadding
-
-	list[0] = points[0].Move(-p, -p)
-	list[last] = points[last].Move(p, -p)
-
-	for i := 1; i < last; i++ {
-		prev := points[i-1]
-		cur := points[i]
-		next := points[i+1]
-		x := 0
-		y := 0
-
-		if prev == cur {
-			list[i] = list[i-1]
-			continue
-		}
-
-		if prev.X == cur.X && prev.Y < cur.Y {
-			x = -1
-			if next.X < cur.X {
-				y = -1
-			} else if next.X > cur.X {
-				y = 1
-			}
-		} else if prev.Y == cur.Y && cur.X < prev.X {
-			y = -1
-			if next.Y < cur.Y {
-				x = 1
-			} else if next.Y > cur.Y {
-				x = -1
-			}
-		} else if prev.Y == cur.Y && prev.X < cur.X {
-			y = 1
-			if next.Y < cur.Y {
-				x = 1
-			} else if next.Y > cur.Y {
-				x = -1
-			}
-		} else if prev.X == cur.X && prev.Y > cur.Y {
-			x = 1
-			if next.X < cur.X {
-				y = -1
-			} else if next.X > cur.X {
-				y = 1
-			}
-		}
-
-		list[i] = cur.Move(p*x, p*y)
-	}
-
-	f.Bounding = list
 }

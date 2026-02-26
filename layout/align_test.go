@@ -12,21 +12,19 @@ import (
 func TestAlign(t *testing.T) {
 	root := testRoot(t)
 
-	list := Align(root, "file:///home/sergii/projects/relatives/Ключник/Величко.family", AlignParams{
-		FontRatio: 1,
+	list := Align(root, "file:///home/sergii/projects/Родина/Ключник/Ключник.family", AlignParams{
+		FontRatio: 0.615,
 	})
 
 	if len(list) == 0 {
 		t.Error("list == 0")
 		return
 	}
-
-	_PointsToSVG("points.svg", list[0].Bounding)
 }
 
 func testRoot(t *testing.T) *state.Root {
 	root := state.CreateRoot()
-	root.SetFolders([]types.Uri{"/home/sergii/projects/relatives"})
+	root.SetFolders([]types.Uri{"/home/sergii/projects/Родина"})
 	err := root.UpdateDirty()
 
 	if err != nil {
@@ -36,18 +34,29 @@ func testRoot(t *testing.T) *state.Root {
 	return root
 }
 
-func _RectsToSvg(filename string, rects []Rect) {
+func _RectsToSvg(filename string, rects map[string][]Rect) {
+	minX := 0
 	maxX := 0
+	minY := 0
 	maxY := 0
-	for _, rect := range rects {
-		right := rect.Right()
-		bottom := rect.Y + rect.Height
+	for _, list := range rects {
+		for _, rect := range list {
+			right := rect.Right()
+			bottom := rect.Y + rect.Height
 
-		if maxX < right {
-			maxX = right
-		}
-		if maxY < bottom {
-			maxY = bottom
+			if rect.X < minX {
+				minX = rect.X
+			}
+			if rect.Y < minY {
+				minY = rect.Y
+			}
+
+			if maxX < right {
+				maxX = right
+			}
+			if maxY < bottom {
+				maxY = bottom
+			}
 		}
 	}
 
@@ -64,12 +73,14 @@ func _RectsToSvg(filename string, rects []Rect) {
 	}
 
 	write(fmt.Sprintf(
-		"<svg width=\"%d\" height=\"%d\" viewBox=\"0 0 %d %d\" xmlns=\"http://www.w3.org/2000/svg\">\n",
-		maxX+10, maxY+10, maxX+10, maxY+10,
+		"<svg width=\"%d\" height=\"%d\" viewBox=\"%d %d %d %d\" xmlns=\"http://www.w3.org/2000/svg\">\n",
+		maxX+10-minX, maxY+10-minY, minX, minY, maxX+10-minX, maxY+10-minY,
 	))
 
-	for _, r := range rects {
-		write(fmt.Sprintf("<rect x='%d' y='%d' width='%d' height='%d'/>", r.X, r.Y, r.Width, r.Height))
+	for color, list := range rects {
+		for _, r := range list {
+			write(fmt.Sprintf("\t<rect x='%d' y='%d' width='%d' height='%d' fill='%s'/>\n", r.X, r.Y, r.Width, r.Height, color))
+		}
 	}
 
 	write("</svg>")

@@ -5,7 +5,7 @@ import (
 )
 
 func TestMergeLevelsRects(t *testing.T) {
-	levels := []Level{
+	levels := []*Level{
 		{
 			Rects: []Rect{
 				{
@@ -40,7 +40,7 @@ func TestMergeLevelsRects(t *testing.T) {
 		},
 	}
 
-	result := []Level{
+	result := []*Level{
 		{
 			Rects: []Rect{
 				{
@@ -71,7 +71,7 @@ func TestMergeLevelsRects(t *testing.T) {
 		},
 	}
 
-	MergeLevelsRects(levels, 10)
+	mergeLevelsRects(levels, 10)
 
 	for i, level := range levels {
 		resLevel := result[i]
@@ -92,7 +92,7 @@ func TestMergeLevelsRects(t *testing.T) {
 }
 
 func TestLevelsBorder(t *testing.T) {
-	levels := []Level{
+	levels := []*Level{
 		{
 			Y:      0,
 			Height: 10,
@@ -133,9 +133,9 @@ func TestLevelsBorder(t *testing.T) {
 		},
 	}
 
-	MergeLevelsRects(levels, 20)
+	mergeLevelsRects(levels, 20)
 
-	result := LevelsBorder(levels)
+	result := levelsToBounding(levels)
 
 	points := []Pos{
 		{10, 0},

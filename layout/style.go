@@ -2,7 +2,7 @@ package layout
 
 var ss = Style{
 	FamilyTitleSize: 16,
-	FamilyPadding:   10,
+	BorderPadding:   10,
 	FamilyGap:       15,
 	PersonNameSize:  12,
 	PersonHeight:    30,
@@ -10,11 +10,13 @@ var ss = Style{
 	PersonMarginX:   10,
 	ArrowsHeight:    25,
 	GridStep:        30,
+	LevelHeight:     30 + 25,
+	LevelMinGap:     160,
 }
 
 type Style struct {
 	FamilyTitleSize float64
-	FamilyPadding   int
+	BorderPadding   int
 	FamilyGap       int
 	PersonNameSize  float64
 	PersonHeight    float64
@@ -22,4 +24,6 @@ type Style struct {
 	PersonMarginX   float64
 	ArrowsHeight    int
 	GridStep        int
+	LevelHeight     int
+	LevelMinGap     int
 }

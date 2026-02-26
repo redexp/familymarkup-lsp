@@ -48,6 +48,9 @@ func (r Rect) ToPos(t string) Pos {
 	case BR:
 		pos.X += r.Width
 		pos.Y += r.Height
+	case "center":
+		pos.X += r.Width / 2
+		pos.Y += r.Height / 2
 	default:
 		panic("invalid ToPos type: " + t)
 	}
@@ -70,31 +73,25 @@ type Node struct {
 type SvgFamily struct {
 	Rect
 
-	Title Node `json:"title"`
-
-	Roots []*SvgPerson `json:"roots"`
-
-	Bounding []Pos `json:"bounding"`
+	Title    Node         `json:"title"`
+	Roots    []*SvgPerson `json:"roots"`
+	Bounding []Pos        `json:"bounding"`
+	levels   []*Level
+	links    []*SvgLink
 }
 
-func (f SvgFamily) Walk(cb func(*SvgPerson)) {
-	rootPerson := &SvgPerson{
-		Rect:     f.Title.Rect,
-		Children: f.Roots,
+func (f *SvgFamily) Walk(cb func(*SvgPerson)) {
+	for _, person := range f.Roots {
+		person.Walk(cb)
 	}
-
-	rootPerson.Width += int(ss.PersonPaddingX)
-	rootPerson.Height += ss.ArrowsHeight
-
-	rootPerson.Walk(cb)
 }
 
 type SvgPerson struct {
 	Rect
 
-	Name   string `json:"name"`
-	person *GraphPerson
-	Link   *Pos `json:"link,omitempty"`
+	Name        string `json:"name"`
+	graphPerson *GraphPerson
+	Link        *Pos `json:"link,omitempty"`
 
 	Children []*SvgPerson `json:"children"`
 }
@@ -105,4 +102,10 @@ func (p *SvgPerson) Walk(cb func(*SvgPerson)) {
 	for _, child := range p.Children {
 		child.Walk(cb)
 	}
+}
+
+type SvgLink struct {
+	Family *SvgFamily
+	From   Rect
+	To     Rect
 }
