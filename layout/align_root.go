@@ -85,8 +85,7 @@ func (root *AlignRoot) setPos(pos Pos) {
 }
 
 func (root *AlignRoot) getHeight() int {
-	// TODO implement!
-	return 0
+	return len(root.levels) * ss.LevelHeight
 }
 
 func (root *AlignRoot) Top() int {
