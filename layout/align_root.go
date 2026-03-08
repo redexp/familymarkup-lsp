@@ -29,28 +29,32 @@ func alignByLevels(families []*SvgFamily) {
 			moved[f] = root
 		}
 
+		root.families = append(root.families, f)
+
 		for _, link := range f.links {
 			target := link.Family
+			from := link.From.Move(f.X, f.Y)
+			to := link.To.Move(target.X, target.Y)
 
 			if targetRoot, ok := moved[target]; ok {
 				if root == targetRoot {
 					continue
 				}
 
-				pos := targetRoot.align(root.levels, link.From, link.To)
-				root.setPos(pos)
-				targetRoot.mergeRoot(root)
+				pos := root.align(targetRoot.levels, from, to)
+				root.mergeRoot(pos, targetRoot)
 
-				for _, family := range root.families {
-					moved[family] = targetRoot
+				for _, family := range targetRoot.families {
+					moved[family] = root
 				}
 
 				continue
 			}
 
 			moved[target] = root
+			root.families = append(root.families, target)
 
-			pos := root.align(target.levels, link.From.Move(f.X, f.Y), link.To)
+			pos := root.align(target.levels, from, to)
 
 			target.X = pos.X
 			target.Y = pos.Y
@@ -70,17 +74,27 @@ func alignByLevels(families []*SvgFamily) {
 			continue
 		}
 
-		root.setPos(prev.Pos.Move(0, root.getHeight()+ss.FamilyGap))
+		rootMap[root] = struct{}{}
+
+		y := prev.Bottom()
+		top := root.Top()
+		if top < 0 {
+			y += -top
+		}
+
+		root.Move(0, y)
+
+		prev = root
 	}
 }
 
-func (root *AlignRoot) setPos(pos Pos) {
-	root.X = pos.X
-	root.Y = pos.Y
+func (root *AlignRoot) Move(x, y int) {
+	root.X += x
+	root.Y += y
 
 	for _, f := range root.families {
-		f.X += pos.X
-		f.Y += pos.Y
+		f.X += x
+		f.Y += y
 	}
 }
 
@@ -90,6 +104,12 @@ func (root *AlignRoot) getHeight() int {
 
 func (root *AlignRoot) Top() int {
 	return root.levels[0].Y + root.Y
+}
+
+func (root *AlignRoot) Bottom() int {
+	last := lastItem(root.levels)
+
+	return last.Y + ss.LevelHeight + root.Y
 }
 
 func (root *AlignRoot) align(levels []*Level, from, to Rect) Pos {
@@ -249,6 +269,7 @@ func (root *AlignRoot) mergeLevels(pos Pos, levels []*Level) {
 
 		for ri, rect := range level.Rects {
 			rect.X += relX
+			rect.Y = item.Y
 			item.Rects[ri] = rect
 		}
 
@@ -298,10 +319,15 @@ func (root *AlignRoot) mergeLevels(pos Pos, levels []*Level) {
 	}
 }
 
-func (root *AlignRoot) mergeRoot(source *AlignRoot) {
+func (root *AlignRoot) mergeRoot(pos Pos, source *AlignRoot) {
+	for _, f := range source.families {
+		f.X += pos.X
+		f.Y += pos.Y
+	}
+
 	root.families = append(root.families, source.families...)
 
-	root.mergeLevels(source.Pos, source.levels)
+	root.mergeLevels(pos, source.levels)
 }
 
 func (root *AlignRoot) getLevelsIntersection(target *AlignRoot) int {
@@ -349,6 +375,10 @@ func findLevelByRect(levels []*Level, rect Rect) (level *Level, lRect *Rect) {
 		}
 
 		if rect.Y < l.Y {
+			if i == 0 {
+				panic("i == 0")
+			}
+
 			level = levels[i-1]
 			break
 		}
@@ -365,12 +395,20 @@ func findLevelByRect(levels []*Level, rect Rect) (level *Level, lRect *Rect) {
 		}
 
 		if rect.X < r.X {
+			if i == 0 {
+				panic("empty rects")
+			}
+
 			lRect = &level.Rects[i-1]
 			break
 		}
 	}
 
 	if lRect == nil {
+		if len(level.Rects) == 0 {
+			panic("empty rects")
+		}
+
 		lRect = &level.Rects[len(level.Rects)-1]
 	}
 

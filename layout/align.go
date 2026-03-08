@@ -4,12 +4,12 @@ import (
 	"sync"
 
 	"github.com/redexp/familymarkup-lsp/state"
-	"github.com/redexp/familymarkup-lsp/types"
 	flex "github.com/redexp/go-flextree"
 )
 
-func Align(root *state.Root, uri types.Uri, params AlignParams) []*SvgFamily {
-	graphFamilies := GraphDocumentFamilies(root, uri)
+func Align(root *state.Root, params AlignParams) []*SvgFamily {
+	graphFamilies := GraphDocumentFamilies(root)
+
 	svgFamilies := make([]*SvgFamily, len(graphFamilies))
 
 	var wg sync.WaitGroup

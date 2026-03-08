@@ -12,7 +12,7 @@ import (
 func TestAlign(t *testing.T) {
 	root := testRoot(t)
 
-	list := Align(root, "file:///home/sergii/projects/Родина/Ключник/Ключник.family", AlignParams{
+	list := Align(root, AlignParams{
 		FontRatio: 0.615,
 	})
 

@@ -8,9 +8,7 @@ import (
 )
 
 func SvgDocument(_ *Ctx, params *SvgDocumentParams) ([]*layout.SvgFamily, error) {
-	uri := NormalizeUri(params.URI)
-
-	list := layout.Align(root, uri, layout.AlignParams{
+	list := layout.Align(root, layout.AlignParams{
 		FontRatio: params.FontRatio,
 	})
 

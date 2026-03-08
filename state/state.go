@@ -2,11 +2,12 @@ package state
 
 import (
 	"fmt"
-	fm "github.com/redexp/familymarkup-parser"
 	"iter"
 	"slices"
 	"strings"
 	"sync"
+
+	fm "github.com/redexp/familymarkup-parser"
 
 	. "github.com/redexp/familymarkup-lsp/types"
 	. "github.com/redexp/familymarkup-lsp/utils"
@@ -305,7 +306,7 @@ func (root *Root) UpdateDirty() (err error) {
 		}
 	}
 
-	// update markdown files
+	// update Markdown files
 	for uri, item := range uris {
 		delete(root.Labels, uri)
 		delete(root.NodeRefs, uri)
@@ -551,6 +552,28 @@ func (root *Root) FamilyIter() iter.Seq[*Family] {
 		for _, dups := range root.Duplicates {
 			for _, dup := range dups {
 				if check(dup.Family) {
+					return
+				}
+			}
+		}
+	}
+}
+
+func (root *Root) FmFamilyIter() iter.Seq[*fm.Family] {
+	docs := make([]*Doc, len(root.Docs))
+	i := 0
+	for _, doc := range root.Docs {
+		docs[i] = doc
+		i++
+	}
+	slices.SortFunc(docs, func(a, b *Doc) int {
+		return strings.Compare(a.Uri, b.Uri)
+	})
+
+	return func(yield func(*fm.Family) bool) {
+		for _, doc := range docs {
+			for _, family := range doc.Root.Families {
+				if !yield(family) {
 					return
 				}
 			}

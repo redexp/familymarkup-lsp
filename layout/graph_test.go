@@ -17,7 +17,7 @@ func TestGraph(t *testing.T) {
 		return
 	}
 
-	list := GraphDocumentFamilies(root, "file:///home/sergii/projects/relatives/Ключник/Ключник.family")
+	list := GraphDocumentFamilies(root)
 
 	if len(list) == 0 {
 		t.Error("list == 0")

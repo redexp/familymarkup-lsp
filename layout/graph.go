@@ -4,14 +4,13 @@ import (
 	"sync"
 
 	. "github.com/redexp/familymarkup-lsp/state"
-	. "github.com/redexp/familymarkup-lsp/types"
 	fm "github.com/redexp/familymarkup-parser"
 )
 
-func GraphDocumentFamilies(root *Root, uri Uri) []*GraphFamily {
+func GraphDocumentFamilies(root *Root) []*GraphFamily {
 	personMem := make(map[*fm.Person]*Member)
 
-	for _, ref := range root.NodeRefs[uri] {
+	for ref := range root.RefsIter() {
 		switch ref.Type {
 		case RefTypeName, RefTypeNameSurname:
 			personMem[ref.Person] = ref.Member
@@ -40,14 +39,14 @@ func GraphDocumentFamilies(root *Root, uri Uri) []*GraphFamily {
 		}
 	}
 
-	list := make([]*GraphFamily, len(root.Docs[uri].Root.Families))
+	var list []*GraphFamily
 
-	for i, f := range root.Docs[uri].Root.Families {
+	for f := range root.FmFamilyIter() {
 		gf := &GraphFamily{
 			Name: f.Name,
 		}
 
-		list[i] = gf
+		list = append(list, gf)
 
 		for _, rel := range f.Relations {
 			if !rel.IsFamilyDef {
