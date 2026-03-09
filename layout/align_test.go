@@ -3,6 +3,7 @@ package layout
 import (
 	"fmt"
 	"os"
+	"slices"
 	"testing"
 
 	"github.com/redexp/familymarkup-lsp/state"
@@ -20,6 +21,36 @@ func TestAlign(t *testing.T) {
 		t.Error("list == 0")
 		return
 	}
+
+	var rects []cRect
+
+	for _, family := range list {
+		for li, level := range family.levels {
+			for ri, rect := range level.Rects {
+				rects = append(rects, cRect{
+					Rect:  rect.Move(family.X, family.Y),
+					color: "black",
+					title: fmt.Sprintf("%s, l: %d, r: %d", family.Title.Name, li, ri),
+				})
+			}
+		}
+	}
+
+	for _, family := range list {
+		family.Walk(func(person *SvgPerson) {
+			rects = append(rects, cRect{
+				Rect:  person.Rect.Move(family.X, family.Y),
+				color: "red",
+				title: family.Title.Name + ", " + person.Name,
+			})
+		})
+	}
+
+	slices.SortFunc(rects, func(a, b cRect) int {
+		return a.Y - b.Y
+	})
+
+	_RectsToSvg("after.svg", rects)
 }
 
 func testRoot(t *testing.T) *state.Root {
@@ -34,29 +65,34 @@ func testRoot(t *testing.T) *state.Root {
 	return root
 }
 
-func _RectsToSvg(filename string, rects map[string][]Rect) {
+type cRect struct {
+	Rect
+
+	color string
+	title string
+}
+
+func _RectsToSvg(filename string, rects []cRect) {
 	minX := 0
 	maxX := 0
 	minY := 0
 	maxY := 0
-	for _, list := range rects {
-		for _, rect := range list {
-			right := rect.Right()
-			bottom := rect.Y + rect.Height
+	for _, rect := range rects {
+		right := rect.Right()
+		bottom := rect.Y + rect.Height
 
-			if rect.X < minX {
-				minX = rect.X
-			}
-			if rect.Y < minY {
-				minY = rect.Y
-			}
+		if rect.X < minX {
+			minX = rect.X
+		}
+		if rect.Y < minY {
+			minY = rect.Y
+		}
 
-			if maxX < right {
-				maxX = right
-			}
-			if maxY < bottom {
-				maxY = bottom
-			}
+		if maxX < right {
+			maxX = right
+		}
+		if maxY < bottom {
+			maxY = bottom
 		}
 	}
 
@@ -77,10 +113,8 @@ func _RectsToSvg(filename string, rects map[string][]Rect) {
 		maxX+10-minX, maxY+10-minY, minX, minY, maxX+10-minX, maxY+10-minY,
 	))
 
-	for color, list := range rects {
-		for _, r := range list {
-			write(fmt.Sprintf("\t<rect x='%d' y='%d' width='%d' height='%d' fill='%s'/>\n", r.X, r.Y, r.Width, r.Height, color))
-		}
+	for _, r := range rects {
+		write(fmt.Sprintf("\t<rect x='%d' y='%d' width='%d' height='%d' fill='%s' title='%s'/>\n", r.X, r.Y, r.Width, r.Height, r.color, r.title))
 	}
 
 	write("</svg>")

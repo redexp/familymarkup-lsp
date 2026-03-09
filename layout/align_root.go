@@ -23,13 +23,13 @@ func alignByLevels(families []*SvgFamily) {
 
 		if root == nil {
 			root = &AlignRoot{
-				levels: f.levels,
+				families: []*SvgFamily{f},
 			}
+
+			root.mergeLevels(Pos{}, f.levels)
 
 			moved[f] = root
 		}
-
-		root.families = append(root.families, f)
 
 		for _, link := range f.links {
 			target := link.Family
@@ -274,6 +274,11 @@ func (root *AlignRoot) mergeLevels(pos Pos, levels []*Level) {
 		}
 
 		list[i] = item
+	}
+
+	if len(root.levels) == 0 {
+		root.levels = list
+		return
 	}
 
 	levels = list
