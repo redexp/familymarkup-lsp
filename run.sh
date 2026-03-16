@@ -12,6 +12,7 @@ case "$1" in
     gowasm)
         echo "go build wasm"
         GOOS=js GOARCH=wasm go build -o build/main.wasm main.go
+        ls -la build/main.wasm
         ;;
     wasm)
         echo "tinygo build wasm"
