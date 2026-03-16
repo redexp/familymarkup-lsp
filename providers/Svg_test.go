@@ -7,7 +7,7 @@ import (
 	. "github.com/redexp/familymarkup-lsp/types"
 )
 
-func TestSvgDocument(t *testing.T) {
+func TestSvgFamilies(t *testing.T) {
 	root = CreateRoot()
 	root.SetFolders([]Uri{"/home/sergii/projects/relatives"})
 	err := root.UpdateDirty()
@@ -17,7 +17,7 @@ func TestSvgDocument(t *testing.T) {
 		return
 	}
 
-	list, err := SvgDocument(nil, &SvgDocumentParams{
+	list, err := SvgFamilies(nil, &SvgFamiliesParams{
 		URI:       "file:///home/sergii/projects/relatives/Ключник/Ключник.family",
 		FontRatio: 1,
 	})

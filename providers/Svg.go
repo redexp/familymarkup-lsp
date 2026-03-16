@@ -7,7 +7,7 @@ import (
 	. "github.com/redexp/familymarkup-lsp/types"
 )
 
-func SvgDocument(_ *Ctx, params *SvgDocumentParams) ([]*layout.SvgFamily, error) {
+func SvgFamilies(_ *Ctx, params *SvgFamiliesParams) ([]*layout.SvgFamily, error) {
 	list := layout.Align(root, layout.AlignParams{
 		FontRatio: params.FontRatio,
 	})
@@ -16,29 +16,29 @@ func SvgDocument(_ *Ctx, params *SvgDocumentParams) ([]*layout.SvgFamily, error)
 }
 
 type SvgHandlers struct {
-	Document SvgDocumentFunc
+	Families SvgFamiliesFunc
 }
 
 func (req *SvgHandlers) Handle(ctx *Ctx) (res any, validMethod bool, validParams bool, err error) {
 	switch ctx.Method {
-	case SvgDocumentMethod:
+	case SvgFamiliesMethod:
 		validMethod = true
 
-		var params SvgDocumentParams
+		var params SvgFamiliesParams
 		if err = json.Unmarshal(ctx.Params, &params); err == nil {
 			validParams = true
-			res, err = req.Document(ctx, &params)
+			res, err = req.Families(ctx, &params)
 		}
 	}
 
 	return
 }
 
-const SvgDocumentMethod = "svg/document"
+const SvgFamiliesMethod = "svg/families"
 
-type SvgDocumentParams struct {
+type SvgFamiliesParams struct {
 	URI       Uri     `json:"URI"`
 	FontRatio float64 `json:"fontRatio"`
 }
 
-type SvgDocumentFunc func(*Ctx, *SvgDocumentParams) ([]*layout.SvgFamily, error)
+type SvgFamiliesFunc func(*Ctx, *SvgFamiliesParams) ([]*layout.SvgFamily, error)

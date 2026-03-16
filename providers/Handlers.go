@@ -30,7 +30,7 @@ func CreateRequestHandler() *RequestHandler {
 				WorkspaceDiagnostic:    WorkspaceDiagnostic,
 			},
 			&SvgHandlers{
-				Document: SvgDocument,
+				Families: SvgFamilies,
 			},
 		},
 	}

@@ -115,8 +115,6 @@ func Initialize(_ *Ctx, params *proto.InitializeParams) (any, error) {
 		root.SetFolders(folders)
 	}
 
-	supportDiagnostics = params.Capabilities.TextDocument != nil && params.Capabilities.TextDocument.PublishDiagnostics != nil
-
 	return res, nil
 }
 
