@@ -559,7 +559,7 @@ func (root *Root) FamilyIter() iter.Seq[*Family] {
 	}
 }
 
-func (root *Root) FmFamilyIter() iter.Seq[*fm.Family] {
+func (root *Root) FmFamilyIter() iter.Seq2[*fm.Family, *Doc] {
 	docs := make([]*Doc, len(root.Docs))
 	i := 0
 	for _, doc := range root.Docs {
@@ -570,10 +570,10 @@ func (root *Root) FmFamilyIter() iter.Seq[*fm.Family] {
 		return strings.Compare(a.Uri, b.Uri)
 	})
 
-	return func(yield func(*fm.Family) bool) {
+	return func(yield func(*fm.Family, *Doc) bool) {
 		for _, doc := range docs {
 			for _, family := range doc.Root.Families {
-				if !yield(family) {
+				if !yield(family, doc) {
 					return
 				}
 			}

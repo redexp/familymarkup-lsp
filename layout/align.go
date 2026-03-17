@@ -17,6 +17,8 @@ func Align(root *state.Root, params AlignParams) []*SvgFamily {
 	// align roots
 	for fi, gf := range graphFamilies {
 		f := &SvgFamily{
+			Uri: gf.uri,
+			Loc: gf.Name.Loc(),
 			Title: Node{
 				Rect: Rect{
 					Width:  int(float64(gf.Name.CharsNum) * ss.FamilyTitleSize * params.FontRatio),
@@ -195,6 +197,7 @@ func flexTreeToSvgPerson(tree *flex.Tree, walk func(*SvgPerson)) *SvgPerson {
 
 	if token := gp.Token(); token != nil {
 		p.Name = token.Text
+		p.Loc = token.Loc()
 	}
 
 	p.Children = make([]*SvgPerson, len(tree.Children))

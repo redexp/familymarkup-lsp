@@ -1,5 +1,10 @@
 package layout
 
+import (
+	"github.com/redexp/familymarkup-lsp/types"
+	fm "github.com/redexp/familymarkup-parser"
+)
+
 type Pos struct {
 	X int `json:"x"`
 	Y int `json:"y"`
@@ -73,6 +78,8 @@ type Node struct {
 type SvgFamily struct {
 	Rect
 
+	Uri      types.Uri    `json:"uri"`
+	Loc      fm.Loc       `json:"loc"`
 	Title    Node         `json:"title"`
 	Roots    []*SvgPerson `json:"roots"`
 	Bounding []Pos        `json:"bounding"`
@@ -89,7 +96,9 @@ func (f *SvgFamily) Walk(cb func(*SvgPerson)) {
 type SvgPerson struct {
 	Rect
 
-	Name        string `json:"name"`
+	Name string `json:"name"`
+	Loc  fm.Loc `json:"loc"`
+
 	graphPerson *GraphPerson
 	Link        *Pos `json:"link,omitempty"`
 

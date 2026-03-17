@@ -4,6 +4,7 @@ import (
 	"sync"
 
 	. "github.com/redexp/familymarkup-lsp/state"
+	"github.com/redexp/familymarkup-lsp/types"
 	fm "github.com/redexp/familymarkup-parser"
 )
 
@@ -41,8 +42,9 @@ func GraphDocumentFamilies(root *Root) []*GraphFamily {
 
 	var list []*GraphFamily
 
-	for f := range root.FmFamilyIter() {
+	for f, doc := range root.FmFamilyIter() {
 		gf := &GraphFamily{
+			uri:  doc.Uri,
 			Name: f.Name,
 		}
 
@@ -161,6 +163,7 @@ type GraphFamily struct {
 	Name        *fm.Token
 	RootPersons []*GraphPerson
 
+	uri       types.Uri
 	svgFamily *SvgFamily
 }
 
