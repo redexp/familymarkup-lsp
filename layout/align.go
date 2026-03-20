@@ -117,6 +117,28 @@ func Align(root *state.Root, params AlignParams) []*SvgFamily {
 
 	alignByLevels(svgFamilies)
 
+	for _, family := range svgFamilies {
+		family.Walk(func(person *SvgPerson) {
+			link := person.graphPerson.Link
+
+			if link == nil {
+				return
+			}
+
+			svgPerson := link.svgPerson
+
+			person.Pointers = append(person.Pointers, &SvgPointer{
+				Family: link.Family.svgFamily.Rect,
+				Person: svgPerson.Rect,
+			})
+
+			svgPerson.Pointers = append(svgPerson.Pointers, &SvgPointer{
+				Family: family.Rect,
+				Person: person.Rect,
+			})
+		})
+	}
+
 	return svgFamilies
 }
 

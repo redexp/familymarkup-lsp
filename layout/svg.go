@@ -100,9 +100,9 @@ type SvgPerson struct {
 	Loc  fm.Loc `json:"loc"`
 
 	graphPerson *GraphPerson
-	Link        *Pos `json:"link,omitempty"`
 
-	Children []*SvgPerson `json:"children"`
+	Children []*SvgPerson  `json:"children"`
+	Pointers []*SvgPointer `json:"pointers,omitempty"`
 }
 
 func (p *SvgPerson) Walk(cb func(*SvgPerson)) {
@@ -111,6 +111,12 @@ func (p *SvgPerson) Walk(cb func(*SvgPerson)) {
 	for _, child := range p.Children {
 		child.Walk(cb)
 	}
+}
+
+type SvgPointer struct {
+	Label  string `json:"label"`
+	Family Rect   `json:"family"`
+	Person Rect   `json:"person"`
 }
 
 type SvgLink struct {
