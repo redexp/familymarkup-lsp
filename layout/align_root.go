@@ -158,15 +158,18 @@ func (root *AlignRoot) align(levels []*Level, from, to Rect) Pos {
 
 	results[0].distance = getDistance(results[0])
 
+	targetFirstLevel := levels[0]
+	targetLastLevel := lastItem(levels)
+
 	for _, level := range root.levels {
 		res := &Result{}
 		res.dir = 0
 		res.X = results[0].X
 
 		if level.Y <= fromLevel.Y {
-			res.Y = level.Y - len(levels)*ss.LevelHeight
+			res.Y = level.Y - targetLastLevel.Y - ss.LevelHeight
 		} else {
-			res.Y = level.Y
+			res.Y = level.Y + ss.LevelHeight - targetFirstLevel.Y
 		}
 
 		res.distance = getDistance(res)
