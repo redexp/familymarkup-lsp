@@ -19,6 +19,10 @@ case "$1" in
         GOOS=wasip1 GOARCH=wasm tinygo build -o build/main.wasm main.go
         ls -la build/main.wasm
         ;;
+    ws)
+        echo "run websockets"
+        go run main.go --web-socket=7000
+        ;;
     *)
         echo "go run"
         go run main.go
