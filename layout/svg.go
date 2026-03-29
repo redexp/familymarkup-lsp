@@ -101,6 +101,8 @@ type SvgPerson struct {
 
 	graphPerson *GraphPerson
 
+	Rel *SvgRel `json:"rel,omitempty"`
+
 	Children []*SvgPerson  `json:"children"`
 	Pointers []*SvgPointer `json:"pointers,omitempty"`
 }
@@ -123,4 +125,9 @@ type SvgLink struct {
 	Family *SvgFamily
 	From   Rect
 	To     Rect
+}
+
+type SvgRel struct {
+	Type  string `json:"type"`
+	Label string `json:"label,omitempty"`
 }

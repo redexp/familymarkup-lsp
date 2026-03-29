@@ -97,6 +97,10 @@ func GraphDocumentFamilies(root *Root) []*GraphFamily {
 				Partners: partners,
 			}
 
+			if rel.Label != nil {
+				gr.Label = rel.Label.Text
+			}
+
 			gp.Relations = append(gp.Relations, gr)
 
 			if rel.Targets == nil {
@@ -191,6 +195,7 @@ func (p *GraphPerson) Token() (token *fm.Token) {
 }
 
 type GraphRelation struct {
+	Label    string
 	Partners []*GraphPerson
 	Children []*GraphPerson
 }

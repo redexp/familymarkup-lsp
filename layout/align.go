@@ -228,6 +228,38 @@ func flexTreeToSvgPerson(tree *flex.Tree, walk func(*SvgPerson)) *SvgPerson {
 		p.Children[i] = flexTreeToSvgPerson(child, walk)
 	}
 
+	if gp != nil {
+		for i, rel := range gp.Relations {
+			if len(rel.Partners) == 0 {
+				p.Rel = &SvgRel{
+					Label: rel.Label,
+				}
+				continue
+			}
+
+			count := len(rel.Partners)
+			svgPartner := p.Children[i]
+
+			for j := range rel.Partners {
+				svgRel := &SvgRel{
+					Type: "+",
+				}
+
+				if j == count {
+					svgRel.Label = rel.Label
+				}
+
+				svgPartner.Rel = svgRel
+
+				if len(svgPartner.Children) == 0 {
+					break
+				}
+
+				svgPartner = svgPartner.Children[0]
+			}
+		}
+	}
+
 	walk(p)
 
 	return p
