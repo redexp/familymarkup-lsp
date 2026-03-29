@@ -142,8 +142,7 @@ func ResolveSymbol(_ *Ctx, symbol *WorkspaceSymbol) (res *WorkspaceSymbolLocatio
 
 	var f *Family
 
-	switch symbol.Kind {
-	case proto.SymbolKindNamespace:
+	if symbol.Kind == proto.SymbolKindNamespace || (symbol.Kind == proto.SymbolKindConstant && symbol.ContainerName == nil) {
 		f, err = getFamily(symbol.Name)
 
 		if err != nil {
@@ -154,8 +153,7 @@ func ResolveSymbol(_ *Ctx, symbol *WorkspaceSymbol) (res *WorkspaceSymbolLocatio
 			URI:   f.Uri,
 			Range: LocToRange(f.Node.Loc),
 		}
-
-	case proto.SymbolKindConstant:
+	} else if symbol.Kind == proto.SymbolKindConstant {
 		f, err = getFamily(*symbol.ContainerName)
 
 		if err != nil {
