@@ -33,13 +33,6 @@ func GraphDocumentFamilies(root *Root) []*GraphFamily {
 		return
 	}
 
-	toGP := func(f *GraphFamily, p *fm.Person) *GraphPerson {
-		return &GraphPerson{
-			Family: f,
-			Person: p,
-		}
-	}
-
 	var list []*GraphFamily
 
 	for f, doc := range root.FmFamilyIter() {
@@ -60,8 +53,12 @@ func GraphDocumentFamilies(root *Root) []*GraphFamily {
 			var mem *Member
 
 			for _, p := range rel.Sources.Persons {
+				if !isValidPerson(p) {
+					continue
+				}
+
 				if gp != nil {
-					partner := toGP(gf, p)
+					partner := createGraphPerson(gf, p)
 
 					mem = personMem[p]
 
@@ -79,7 +76,7 @@ func GraphDocumentFamilies(root *Root) []*GraphFamily {
 					continue
 				}
 
-				gp = toGP(gf, p)
+				gp = createGraphPerson(gf, p)
 				memGP[mem] = gp
 				gf.RootPersons = append(gf.RootPersons, gp)
 			}
@@ -108,7 +105,11 @@ func GraphDocumentFamilies(root *Root) []*GraphFamily {
 			}
 
 			for _, p := range rel.Targets.Persons {
-				child := toGP(gf, p)
+				if !isValidPerson(p) {
+					continue
+				}
+
+				child := createGraphPerson(gf, p)
 				gr.Children = append(gr.Children, child)
 
 				mem = personMem[p]
@@ -198,4 +199,15 @@ type GraphRelation struct {
 	Label    string
 	Partners []*GraphPerson
 	Children []*GraphPerson
+}
+
+func createGraphPerson(f *GraphFamily, p *fm.Person) *GraphPerson {
+	return &GraphPerson{
+		Family: f,
+		Person: p,
+	}
+}
+
+func isValidPerson(p *fm.Person) bool {
+	return p.Name != nil || p.Unknown != nil
 }
