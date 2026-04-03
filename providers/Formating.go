@@ -2,13 +2,14 @@ package providers
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
+
 	. "github.com/redexp/familymarkup-lsp/state"
 	. "github.com/redexp/familymarkup-lsp/types"
 	. "github.com/redexp/familymarkup-lsp/utils"
 	fm "github.com/redexp/familymarkup-parser"
 	proto "github.com/tliron/glsp/protocol_3_16"
-	"strconv"
-	"strings"
 )
 
 func DocFormating(_ *Ctx, params *proto.DocumentFormattingParams) (list []proto.TextEdit, err error) {
@@ -178,7 +179,7 @@ func prettify(uri Uri, r *Range) (list []proto.TextEdit) {
 			prev = nil
 		}
 
-		if next != nil && next.Line != token.Line || next.SubType == fm.TokenNL {
+		if next != nil && (next.Line != token.Line || next.SubType == fm.TokenNL) {
 			next = nil
 		}
 
