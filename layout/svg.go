@@ -96,8 +96,9 @@ func (f *SvgFamily) Walk(cb func(*SvgPerson)) {
 type SvgPerson struct {
 	Rect
 
-	Name string `json:"name"`
-	Loc  fm.Loc `json:"loc"`
+	Name    string `json:"name"`
+	Loc     fm.Loc `json:"loc"`
+	Unknown bool   `json:"unknown"`
 
 	graphPerson *GraphPerson
 

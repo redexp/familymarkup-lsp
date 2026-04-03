@@ -4,6 +4,7 @@ import (
 	"sync"
 
 	"github.com/redexp/familymarkup-lsp/state"
+	fm "github.com/redexp/familymarkup-parser"
 	flex "github.com/redexp/go-flextree"
 )
 
@@ -220,6 +221,7 @@ func flexTreeToSvgPerson(tree *flex.Tree, walk func(*SvgPerson)) *SvgPerson {
 	if token := gp.Token(); token != nil {
 		p.Name = token.Text
 		p.Loc = token.Loc()
+		p.Unknown = token.Type == fm.TokenUnknown
 	}
 
 	p.Children = make([]*SvgPerson, len(tree.Children))
