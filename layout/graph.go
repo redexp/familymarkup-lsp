@@ -63,7 +63,9 @@ func GraphDocumentFamilies(root *Root) []*GraphFamily {
 					mem = personMem[p]
 
 					if mem != nil {
-						memGP[mem] = partner
+						if _, ok := memGP[mem]; !ok {
+							memGP[mem] = partner
+						}
 					}
 
 					partners = append(partners, partner)
