@@ -222,6 +222,7 @@ func flexTreeToSvgPerson(tree *flex.Tree, walk func(*SvgPerson)) *SvgPerson {
 		p.Name = token.Text
 		p.Loc = token.Loc()
 		p.Unknown = token.Type == fm.TokenUnknown
+		p.External = !gp.Person.IsChild && gp.Person.Surname != nil
 	}
 
 	p.Children = make([]*SvgPerson, len(tree.Children))
