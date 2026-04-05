@@ -20,6 +20,10 @@ func alignByLevels(families []*SvgFamily) {
 	linksSet := make(map[*SvgLink]struct{})
 
 	move := func(f *SvgFamily, links []*SvgLink) {
+		if len(links) == 0 {
+			return
+		}
+
 		root := moved[f]
 
 		if root == nil {
@@ -73,15 +77,17 @@ func alignByLevels(families []*SvgFamily) {
 	var cluster []*SvgFamily
 
 	flush := func() {
-		for _, f := range cluster {
-			links := make([]*SvgLink, 0, len(f.links))
-			for _, link := range f.links {
-				if slices.Contains(cluster, link.Family) {
-					links = append(links, link)
+		if len(cluster) > 1 {
+			for _, f := range cluster {
+				links := make([]*SvgLink, 0, len(f.links))
+				for _, link := range f.links {
+					if slices.Contains(cluster, link.Family) {
+						links = append(links, link)
+					}
 				}
-			}
 
-			move(f, links)
+				move(f, links)
+			}
 		}
 
 		cluster = make([]*SvgFamily, 0)
@@ -201,22 +207,22 @@ func (root *AlignRoot) align(levels []*Level, from, to Rect) Pos {
 
 	results[0].distance = getDistance(results[0])
 
+	rootFirstLevel := root.levels[0]
+	rootLastLevel := lastItem(root.levels)
+
 	targetFirstLevel := levels[0]
 	targetLastLevel := lastItem(levels)
 
-	for _, level := range root.levels {
+	topStart := -(targetLastLevel.Y + ss.LevelHeight - rootFirstLevel.Y)
+
+	for targetFirstLevel.Y+topStart < rootLastLevel.Y {
 		res := &Result{}
 		res.dir = 0
 		res.X = results[0].X
-
-		if level.Y <= fromLevel.Y {
-			res.Y = level.Y - targetLastLevel.Y - ss.LevelHeight
-		} else {
-			res.Y = level.Y + ss.LevelHeight - targetFirstLevel.Y
-		}
-
+		res.Y = targetFirstLevel.Y + topStart
 		res.distance = getDistance(res)
 		results = append(results, res)
+		topStart += ss.LevelHeight
 	}
 
 	for _, level := range levels {
