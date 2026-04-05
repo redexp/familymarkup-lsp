@@ -17,8 +17,9 @@ func alignByLevels(families []*SvgFamily) {
 	}
 
 	moved := make(map[*SvgFamily]*AlignRoot)
+	linksSet := make(map[*SvgLink]struct{})
 
-	for _, f := range families {
+	move := func(f *SvgFamily, links []*SvgLink) {
 		root := moved[f]
 
 		if root == nil {
@@ -31,12 +32,18 @@ func alignByLevels(families []*SvgFamily) {
 			moved[f] = root
 		}
 
-		for _, link := range f.links {
+		for _, link := range links {
+			if _, exist := linksSet[link]; exist {
+				continue
+			}
+
+			linksSet[link] = struct{}{}
+
 			target := link.Family
 			from := link.From.Move(f.X, f.Y)
 			to := link.To.Move(target.X, target.Y)
 
-			if targetRoot, ok := moved[target]; ok {
+			if targetRoot, exist := moved[target]; exist {
 				if root == targetRoot {
 					continue
 				}
@@ -61,6 +68,42 @@ func alignByLevels(families []*SvgFamily) {
 
 			root.mergeLevels(pos, target.levels)
 		}
+	}
+
+	var cluster []*SvgFamily
+
+	flush := func() {
+		for _, f := range cluster {
+			links := make([]*SvgLink, 0, len(f.links))
+			for _, link := range f.links {
+				if slices.Contains(cluster, link.Family) {
+					links = append(links, link)
+				}
+			}
+
+			move(f, links)
+		}
+
+		cluster = make([]*SvgFamily, 0)
+	}
+
+	prevUri := families[0].Uri
+
+	for _, f := range families {
+		if f.Uri == prevUri {
+			cluster = append(cluster, f)
+			continue
+		}
+
+		flush()
+		cluster = append(cluster, f)
+		prevUri = f.Uri
+	}
+
+	flush()
+
+	for _, f := range families {
+		move(f, f.links)
 	}
 
 	rootMap := make(map[*AlignRoot]struct{})
