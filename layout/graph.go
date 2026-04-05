@@ -48,48 +48,55 @@ func GraphDocumentFamilies(root *Root) []*GraphFamily {
 				continue
 			}
 
-			var gp *GraphPerson
-			var partners []*GraphPerson
-			var mem *Member
+			var mainPerson *fm.Person
+			restPersons := make([]*fm.Person, 0, len(rel.Sources.Persons))
 
 			for _, p := range rel.Sources.Persons {
 				if !isValidPerson(p) {
 					continue
 				}
 
-				if gp != nil {
-					partner := createGraphPerson(gf, p)
-
-					mem = personMem[p]
-
-					if mem != nil {
-						if _, ok := memGP[mem]; !ok {
-							memGP[mem] = partner
-						}
-					}
-
-					partners = append(partners, partner)
+				if mainPerson == nil && p.Surname == nil {
+					mainPerson = p
 					continue
 				}
 
-				gp, mem = findGP(p)
+				restPersons = append(restPersons, p)
+			}
 
-				if gp != nil {
+			if mainPerson == nil {
+				if len(restPersons) == 0 {
 					continue
 				}
 
-				gp = createGraphPerson(gf, p)
+				mainPerson = restPersons[0]
+				restPersons = restPersons[1:]
+			}
+
+			var gp *GraphPerson
+			partners := make([]*GraphPerson, len(restPersons))
+			var mem *Member
+
+			gp, mem = findGP(mainPerson)
+
+			if gp == nil {
+				gp = createGraphPerson(gf, mainPerson)
 				memGP[mem] = gp
 				gf.RootPersons = append(gf.RootPersons, gp)
 			}
 
-			if gp == nil {
-				if len(partners) == 0 {
-					continue
+			for i, p := range restPersons {
+				partner := createGraphPerson(gf, p)
+
+				mem = personMem[p]
+
+				if mem != nil {
+					if _, ok := memGP[mem]; !ok {
+						memGP[mem] = partner
+					}
 				}
 
-				gp = partners[0]
-				partners = partners[1:]
+				partners[i] = partner
 			}
 
 			gr := &GraphRelation{
