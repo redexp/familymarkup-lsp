@@ -103,6 +103,10 @@ func GraphDocumentFamilies(root *Root) []*GraphFamily {
 				Partners: partners,
 			}
 
+			for _, sep := range rel.Sources.Separators {
+				gr.Separators = append(gr.Separators, sep.Text)
+			}
+
 			if rel.Label != nil {
 				gr.Label = rel.Label.Text
 			}
@@ -205,9 +209,10 @@ func (p *GraphPerson) Token() (token *fm.Token) {
 }
 
 type GraphRelation struct {
-	Label    string
-	Partners []*GraphPerson
-	Children []*GraphPerson
+	Separators []string
+	Label      string
+	Partners   []*GraphPerson
+	Children   []*GraphPerson
 }
 
 func createGraphPerson(f *GraphFamily, p *fm.Person) *GraphPerson {

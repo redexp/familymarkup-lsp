@@ -119,8 +119,8 @@ func Align(root *state.Root, params AlignParams) []*SvgFamily {
 	alignByLevels(svgFamilies)
 
 	for _, family := range svgFamilies {
-		family.Walk(func(person *SvgPerson) {
-			link := person.graphPerson.Link
+		family.Walk(func(p *SvgPerson) {
+			link := p.graphPerson.Link
 
 			if link == nil {
 				return
@@ -128,14 +128,14 @@ func Align(root *state.Root, params AlignParams) []*SvgFamily {
 
 			svgPerson := link.svgPerson
 
-			person.Pointers = append(person.Pointers, &SvgPointer{
+			p.Pointers = append(p.Pointers, &SvgPointer{
 				Family: link.Family.svgFamily.Rect,
 				Person: svgPerson.Rect,
 			})
 
 			svgPerson.Pointers = append(svgPerson.Pointers, &SvgPointer{
 				Family: family.Rect,
-				Person: person.Rect,
+				Person: p.Rect,
 			})
 		})
 	}
@@ -229,21 +229,26 @@ func flexTreeToSvgPerson(tree *flex.Tree, walk func(*SvgPerson)) *SvgPerson {
 	if gp != nil {
 		for i, rel := range gp.Relations {
 			if len(rel.Partners) == 0 {
-				p.Rel = &SvgRel{
-					Label: rel.Label,
+				if len(rel.Label) > 0 {
+					p.Rel = &SvgRel{
+						Label: rel.Label,
+					}
 				}
+
 				continue
 			}
 
-			count := len(rel.Partners)
+			last := len(rel.Partners) - 1
 			svgPartner := p.Children[i]
 
 			for j := range rel.Partners {
-				svgRel := &SvgRel{
-					Type: "+",
+				svgRel := &SvgRel{}
+
+				if j < len(rel.Separators) {
+					svgRel.Separator = rel.Separators[j]
 				}
 
-				if j == count {
+				if j == last {
 					svgRel.Label = rel.Label
 				}
 

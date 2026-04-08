@@ -130,6 +130,6 @@ type SvgLink struct {
 }
 
 type SvgRel struct {
-	Type  string `json:"type"`
-	Label string `json:"label,omitempty"`
+	Separator string `json:"separator,omitempty"`
+	Label     string `json:"label,omitempty"`
 }
