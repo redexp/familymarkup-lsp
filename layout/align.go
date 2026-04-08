@@ -168,16 +168,11 @@ func createFlexTree(p *GraphPerson, params AlignParams) *flex.Tree {
 			last = node
 		}
 
-		if first == nil {
-			first = &flex.Tree{
-				Width:  ss.PersonHeight,
-				Height: ss.PersonHeight,
-			}
-
-			last = first
+		if first != nil {
+			tree.Children[i] = first
+		} else {
+			last = tree
 		}
-
-		tree.Children[i] = first
 
 		last.Children = make([]*flex.Tree, len(rel.Children))
 
