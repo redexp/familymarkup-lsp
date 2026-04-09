@@ -129,11 +129,13 @@ func Align(root *state.Root, params AlignParams) []*SvgFamily {
 			svgPerson := link.svgPerson
 
 			p.Pointers = append(p.Pointers, &SvgPointer{
+				Label:  p.graphPerson.Person.Surname.Text,
 				Family: link.Family.svgFamily.Rect,
 				Person: svgPerson.Rect,
 			})
 
 			svgPerson.Pointers = append(svgPerson.Pointers, &SvgPointer{
+				Label:  family.Title.Name,
 				Family: family.Rect,
 				Person: p.Rect,
 			})
