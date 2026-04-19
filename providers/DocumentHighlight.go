@@ -12,11 +12,10 @@ func DocumentHighlight(_ *Ctx, params *proto.DocumentHighlightParams) (res []pro
 
 	def, err := getDefinition(uri, params.Position)
 
-	if err != nil || def == nil {
+	if err != nil {
 		return
 	}
 
-	res = make([]proto.DocumentHighlight, 0)
 	kind := P(proto.DocumentHighlightKindRead)
 
 	add := func(loc fm.Loc) {
@@ -24,6 +23,17 @@ func DocumentHighlight(_ *Ctx, params *proto.DocumentHighlightParams) (res []pro
 			Range: LocToRange(loc),
 			Kind:  kind,
 		})
+	}
+
+	if def == nil {
+		doc := GetDoc(uri)
+		token := doc.GetTokenByPosition(params.Position)
+
+		if token != nil && token.Type == fm.TokenUnknown {
+			add(token.Loc())
+		}
+
+		return
 	}
 
 	nodes := root.NodeRefs[uri]
