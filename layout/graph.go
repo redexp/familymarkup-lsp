@@ -8,7 +8,7 @@ import (
 	fm "github.com/redexp/familymarkup-parser"
 )
 
-func GraphDocumentFamilies(root *Root) []*GraphFamily {
+func createGraphFamilies(root *Root) ([]*GraphFamily, []*GraphRelation) {
 	personMem := make(map[*fm.Person]*Member)
 
 	for ref := range root.RefsIter() {
@@ -174,7 +174,57 @@ func GraphDocumentFamilies(root *Root) []*GraphFamily {
 
 	wg.Wait()
 
-	return list
+	var relations []*GraphRelation
+
+	for _, doc := range root.Docs {
+		for _, f := range doc.Root.Families {
+			for _, rel := range f.Relations {
+				if rel.IsFamilyDef {
+					continue
+				}
+
+				gr := &GraphRelation{
+					Partners: make([]*GraphPerson, 0, len(rel.Sources.Persons)),
+				}
+
+				if rel.Label != nil {
+					gr.Label = rel.Label.Text
+				}
+
+				for _, p := range rel.Sources.Persons {
+					gp, _ := findGP(p)
+
+					if gp == nil {
+						continue
+					}
+
+					gr.Partners = append(gr.Partners, gp)
+				}
+
+				if rel.Targets != nil {
+					gr.Children = make([]*GraphPerson, 0, len(rel.Targets.Persons))
+
+					for _, p := range rel.Targets.Persons {
+						gp, _ := findGP(p)
+
+						if gp == nil {
+							continue
+						}
+
+						gr.Children = append(gr.Children, gp)
+					}
+				}
+
+				if len(gr.Partners)+len(gr.Children) < 2 {
+					continue
+				}
+
+				relations = append(relations, gr)
+			}
+		}
+	}
+
+	return list, relations
 }
 
 type GraphFamily struct {

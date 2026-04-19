@@ -84,7 +84,7 @@ type SvgFamily struct {
 	Roots    []*SvgPerson `json:"roots"`
 	Bounding []Pos        `json:"bounding"`
 	levels   []*Level
-	links    []*SvgLink
+	links    []*SvgFamilyLink
 }
 
 func (f *SvgFamily) Walk(cb func(*SvgPerson)) {
@@ -105,8 +105,8 @@ type SvgPerson struct {
 
 	Rel *SvgRel `json:"rel,omitempty"`
 
-	Children []*SvgPerson  `json:"children"`
-	Pointers []*SvgPointer `json:"pointers,omitempty"`
+	Children []*SvgPerson    `json:"children,omitempty"`
+	Links    []SvgPersonLink `json:"links,omitempty"`
 }
 
 func (p *SvgPerson) Walk(cb func(*SvgPerson)) {
@@ -117,13 +117,13 @@ func (p *SvgPerson) Walk(cb func(*SvgPerson)) {
 	}
 }
 
-type SvgPointer struct {
-	Label  string `json:"label"`
-	Family Rect   `json:"family"`
-	Person Rect   `json:"person"`
+func (p *SvgPerson) AbsRect() Rect {
+	f := p.graphPerson.Family.svgFamily
+
+	return p.Rect.Move(f.X, f.Y)
 }
 
-type SvgLink struct {
+type SvgFamilyLink struct {
 	Family *SvgFamily
 	From   Rect
 	To     Rect
@@ -132,4 +132,15 @@ type SvgLink struct {
 type SvgRel struct {
 	Separator string `json:"separator,omitempty"`
 	Label     string `json:"label,omitempty"`
+}
+
+type SvgPersonLink struct {
+	Rect
+	Label string `json:"label,omitempty"`
+}
+
+type SvgRelation struct {
+	Label   string          `json:"label,omitempty"`
+	Sources []SvgPersonLink `json:"sources"`
+	Targets []SvgPersonLink `json:"targets,omitempty"`
 }

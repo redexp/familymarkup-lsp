@@ -8,15 +8,15 @@ import (
 	flex "github.com/redexp/go-flextree"
 )
 
-func Align(root *state.Root, params AlignParams) []*SvgFamily {
-	graphFamilies := GraphDocumentFamilies(root)
+func Align(root *state.Root, params AlignParams) ([]*SvgFamily, []*SvgRelation) {
+	gFamilies, gRelations := createGraphFamilies(root)
 
-	svgFamilies := make([]*SvgFamily, len(graphFamilies))
+	svgFamilies := make([]*SvgFamily, 0, len(gFamilies))
 
 	var wg sync.WaitGroup
 
 	// align roots
-	for fi, gf := range graphFamilies {
+	for _, gf := range gFamilies {
 		f := &SvgFamily{
 			Uri: gf.uri,
 			Loc: gf.Name.Loc(),
@@ -30,7 +30,7 @@ func Align(root *state.Root, params AlignParams) []*SvgFamily {
 		}
 
 		gf.svgFamily = f
-		svgFamilies[fi] = f
+		svgFamilies = append(svgFamilies, f)
 
 		wg.Go(func() {
 			tree := &flex.Tree{
@@ -98,7 +98,7 @@ func Align(root *state.Root, params AlignParams) []*SvgFamily {
 				link := p.graphPerson.Link
 
 				if link != nil {
-					f.links = append(f.links, &SvgLink{
+					f.links = append(f.links, &SvgFamilyLink{
 						Family: link.Family.svgFamily,
 						From:   p.Rect,
 						To:     link.svgPerson.Rect,
@@ -118,31 +118,59 @@ func Align(root *state.Root, params AlignParams) []*SvgFamily {
 
 	alignByLevels(svgFamilies)
 
-	for _, family := range svgFamilies {
-		family.Walk(func(p *SvgPerson) {
-			link := p.graphPerson.Link
+	wg.Go(func() {
+		for _, family := range svgFamilies {
+			family.Walk(func(p *SvgPerson) {
+				link := p.graphPerson.Link
 
-			if link == nil {
-				return
+				if link == nil {
+					return
+				}
+
+				p.Links = append(p.Links, SvgPersonLink{
+					Label: p.graphPerson.Person.Surname.Text,
+					Rect:  link.svgPerson.AbsRect(),
+				})
+
+				link.svgPerson.Links = append(link.svgPerson.Links, SvgPersonLink{
+					Label: family.Title.Name,
+					Rect:  p.AbsRect(),
+				})
+			})
+		}
+	})
+
+	svgRelations := make([]*SvgRelation, 0, len(gRelations))
+
+	wg.Go(func() {
+		for _, gr := range gRelations {
+			rel := &SvgRelation{
+				Label:   gr.Label,
+				Sources: make([]SvgPersonLink, 0, len(gr.Partners)),
+				Targets: make([]SvgPersonLink, 0, len(gr.Children)),
 			}
 
-			svgPerson := link.svgPerson
+			svgRelations = append(svgRelations, rel)
 
-			p.Pointers = append(p.Pointers, &SvgPointer{
-				Label:  p.graphPerson.Person.Surname.Text,
-				Family: link.Family.svgFamily.Rect,
-				Person: svgPerson.Rect,
-			})
+			for _, gp := range gr.Partners {
+				rel.Sources = append(rel.Sources, SvgPersonLink{
+					Rect:  gp.svgPerson.AbsRect(),
+					Label: gp.svgPerson.Name,
+				})
+			}
 
-			svgPerson.Pointers = append(svgPerson.Pointers, &SvgPointer{
-				Label:  family.Title.Name,
-				Family: family.Rect,
-				Person: p.Rect,
-			})
-		})
-	}
+			for _, gp := range gr.Children {
+				rel.Targets = append(rel.Targets, SvgPersonLink{
+					Rect:  gp.svgPerson.AbsRect(),
+					Label: gp.svgPerson.Name,
+				})
+			}
+		}
+	})
 
-	return svgFamilies
+	wg.Wait()
+
+	return svgFamilies, svgRelations
 }
 
 type AlignParams struct {

@@ -17,13 +17,9 @@ func alignByLevels(families []*SvgFamily) {
 	}
 
 	moved := make(map[*SvgFamily]*AlignRoot)
-	linksSet := make(map[*SvgLink]struct{})
+	linksSet := make(map[*SvgFamilyLink]struct{})
 
-	move := func(f *SvgFamily, links []*SvgLink) {
-		if len(links) == 0 {
-			return
-		}
-
+	move := func(f *SvgFamily, links []*SvgFamilyLink) {
 		root := moved[f]
 
 		if root == nil {
@@ -79,7 +75,7 @@ func alignByLevels(families []*SvgFamily) {
 	flush := func() {
 		if len(cluster) > 1 {
 			for _, f := range cluster {
-				links := make([]*SvgLink, 0, len(f.links))
+				links := make([]*SvgFamilyLink, 0, len(f.links))
 				for _, link := range f.links {
 					if slices.Contains(cluster, link.Family) {
 						links = append(links, link)

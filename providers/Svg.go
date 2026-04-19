@@ -7,12 +7,15 @@ import (
 	. "github.com/redexp/familymarkup-lsp/types"
 )
 
-func SvgFamilies(_ *Ctx, params *SvgFamiliesParams) ([]*layout.SvgFamily, error) {
-	list := layout.Align(root, layout.AlignParams{
+func SvgFamilies(_ *Ctx, params *SvgFamiliesParams) (SvgFamiliesResult, error) {
+	families, relations := layout.Align(root, layout.AlignParams{
 		FontRatio: params.FontRatio,
 	})
 
-	return list, nil
+	return SvgFamiliesResult{
+		Families:  families,
+		Relations: relations,
+	}, nil
 }
 
 type SvgHandlers struct {
@@ -41,4 +44,9 @@ type SvgFamiliesParams struct {
 	FontRatio float64 `json:"fontRatio"`
 }
 
-type SvgFamiliesFunc func(*Ctx, *SvgFamiliesParams) ([]*layout.SvgFamily, error)
+type SvgFamiliesResult struct {
+	Families  []*layout.SvgFamily   `json:"families"`
+	Relations []*layout.SvgRelation `json:"relations"`
+}
+
+type SvgFamiliesFunc func(*Ctx, *SvgFamiliesParams) (SvgFamiliesResult, error)

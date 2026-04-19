@@ -13,12 +13,17 @@ import (
 func TestAlign(t *testing.T) {
 	root := testRoot(t)
 
-	list := Align(root, AlignParams{
+	list, relations := Align(root, AlignParams{
 		FontRatio: 0.615,
 	})
 
 	if len(list) == 0 {
 		t.Error("list == 0")
+		return
+	}
+
+	if len(relations) == 0 {
+		t.Error("relations == 0")
 		return
 	}
 
