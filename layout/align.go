@@ -9,7 +9,7 @@ import (
 )
 
 func Align(root *state.Root, params AlignParams) ([]*SvgFamily, []*SvgRelation) {
-	gFamilies, gRelations := createGraphFamilies(root)
+	gFamilies, gRelations := CreateGraphFamilies(root)
 
 	svgFamilies := make([]*SvgFamily, 0, len(gFamilies))
 
@@ -18,7 +18,7 @@ func Align(root *state.Root, params AlignParams) ([]*SvgFamily, []*SvgRelation) 
 	// align roots
 	for _, gf := range gFamilies {
 		f := &SvgFamily{
-			Uri: gf.uri,
+			Uri: gf.Uri,
 			Loc: gf.Name.Loc(),
 			Title: Node{
 				Rect: Rect{

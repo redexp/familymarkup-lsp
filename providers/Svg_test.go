@@ -8,16 +8,9 @@ import (
 )
 
 func TestSvgFamilies(t *testing.T) {
-	root = CreateRoot()
-	root.SetFolders([]Uri{"/home/sergii/projects/relatives"})
-	err := root.UpdateDirty()
+	root = testRoot(t)
 
-	if err != nil {
-		t.Error(err)
-		return
-	}
-
-	list, err := SvgFamilies(nil, &SvgFamiliesParams{
+	res, err := SvgFamilies(nil, &SvgFamiliesParams{
 		URI:       "file:///home/sergii/projects/relatives/Ключник/Ключник.family",
 		FontRatio: 1,
 	})
@@ -27,14 +20,59 @@ func TestSvgFamilies(t *testing.T) {
 		return
 	}
 
-	if len(list) == 0 {
-		t.Error("len(list) == 0")
+	if len(res.Families) == 0 {
+		t.Error("len(res.Families) == 0")
 		return
 	}
 
-	f := list[0]
+	f := res.Families[0]
 
 	if f == nil {
 		return
 	}
+}
+
+func TestSvgPath(t *testing.T) {
+	root = testRoot(t)
+
+	res, err := SvgPath(nil, &SvgPathParams{
+		Persons: []SvgPathPerson{
+			{
+				URI: "file:///home/sergii/projects/Родина/Нагорні/Ивановы.family",
+				Position: Position{
+					Line:      16,
+					Character: 3,
+				},
+			},
+			{
+				URI: "file:///home/sergii/projects/Родина/Ключник/Ключник.family",
+				Position: Position{
+					Line:      18,
+					Character: 3,
+				},
+			},
+		},
+	})
+
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	if len(res.Path) == 0 {
+		t.Errorf("len(res.Path) == 0")
+		return
+	}
+}
+
+func testRoot(t *testing.T) *Root {
+	root := CreateRoot()
+	root.SetFolders([]Uri{"/home/sergii/projects/Родина"})
+	err := root.UpdateDirty()
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return root
 }

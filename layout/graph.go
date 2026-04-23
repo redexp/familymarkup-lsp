@@ -8,7 +8,7 @@ import (
 	fm "github.com/redexp/familymarkup-parser"
 )
 
-func createGraphFamilies(root *Root) ([]*GraphFamily, []*GraphRelation) {
+func CreateGraphFamilies(root *Root) ([]*GraphFamily, []*GraphRelation) {
 	personMem := make(map[*fm.Person]*Member)
 
 	for ref := range root.RefsIter() {
@@ -37,7 +37,7 @@ func createGraphFamilies(root *Root) ([]*GraphFamily, []*GraphRelation) {
 
 	for f, doc := range root.FmFamilyIter() {
 		gf := &GraphFamily{
-			uri:  doc.Uri,
+			Uri:  doc.Uri,
 			Name: f.Name,
 		}
 
@@ -231,8 +231,14 @@ type GraphFamily struct {
 	Name        *fm.Token
 	RootPersons []*GraphPerson
 
-	uri       types.Uri
+	Uri       types.Uri
 	svgFamily *SvgFamily
+}
+
+func (f *GraphFamily) Walk(cb func(*GraphPerson)) {
+	for _, p := range f.RootPersons {
+		p.Walk(cb)
+	}
 }
 
 type GraphPerson struct {
@@ -256,6 +262,16 @@ func (p *GraphPerson) Token() (token *fm.Token) {
 	}
 
 	return
+}
+
+func (p *GraphPerson) Walk(cb func(*GraphPerson)) {
+	cb(p)
+
+	for _, rel := range p.Relations {
+		for _, child := range rel.Children {
+			child.Walk(cb)
+		}
+	}
 }
 
 type GraphRelation struct {

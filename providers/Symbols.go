@@ -50,31 +50,49 @@ func DocSymbols(_ *Ctx, params *proto.DocumentSymbolParams) (res any, err error)
 	return list, nil
 }
 
-func AllSymbols(_ *Ctx, params *proto.WorkspaceSymbolParams) (list []WorkspaceSymbol, err error) {
+func AllSymbols(_ *Ctx, params *WorkspaceSymbolParams) (list []proto.SymbolInformation, err error) {
+	defer func() {
+		if len(list) == 0 && err == nil {
+			list = make([]proto.SymbolInformation, 0)
+		}
+	}()
+
 	parts := splitQuery(params.Query)
 	count := len(parts)
 
-	list = make([]WorkspaceSymbol, 0)
+	addFamily := func(f *Family, name string) {
+		if params.OnlyMembers {
+			return
+		}
 
-	add := func(uri Uri, name string, container *string) {
-		list = append(list, WorkspaceSymbol{
-			SymbolInformation: proto.SymbolInformation{
-				Kind:          proto.SymbolKindConstant,
-				Name:          name,
-				ContainerName: container,
+		list = append(list, proto.SymbolInformation{
+			Kind: proto.SymbolKindConstant,
+			Name: name,
+			Location: proto.Location{
+				URI:   f.Uri,
+				Range: LocToRange(f.Node.Name.Loc()),
 			},
-			Location: proto.TextDocumentIdentifier{
-				URI: uri,
+		})
+	}
+
+	addMember := func(f *Family, mem *Member, name string, surname string) {
+		list = append(list, proto.SymbolInformation{
+			Kind:          proto.SymbolKindField,
+			Name:          name,
+			ContainerName: &surname,
+			Location: proto.Location{
+				URI:   f.Uri,
+				Range: LocToRange(mem.Person.Name.Loc()),
 			},
 		})
 	}
 
 	if count == 0 {
 		for f := range root.FamilyIter() {
-			add(f.Uri, f.Name, nil)
+			addFamily(f, f.Name)
 
 			for mem := range f.MembersIter() {
-				add(f.Uri, mem.Name, &f.Name)
+				addMember(f, mem, mem.Name, f.Name)
 			}
 		}
 
@@ -98,22 +116,34 @@ func AllSymbols(_ *Ctx, params *proto.WorkspaceSymbolParams) (list []WorkspaceSy
 		}
 
 		if count == 1 && surname != "" {
-			add(f.Uri, surname, nil)
+			addFamily(f, surname)
+			continue
+		}
+
+		if params.ExactMatch && count > 1 && surname == "" {
 			continue
 		}
 
 		for mem := range f.MembersIter() {
 			for name := range mem.NamesIter() {
-				if startsWith(name, parts[0]) {
-					title := name
+				if !startsWith(name, parts[0]) {
+					continue
+				}
 
-					if surname != "" {
-						title = fmt.Sprintf("%s %s", name, surname)
-					}
-
-					add(f.Uri, title, &f.Name)
+				if params.ExactMatch && surname != "" {
+					addMember(f, mem, name, surname)
 					break
 				}
+
+				title := name
+
+				if surname != "" {
+					title = fmt.Sprintf("%s %s", name, surname)
+				}
+
+				addMember(f, mem, title, f.Name)
+
+				break
 			}
 		}
 	}
@@ -121,13 +151,11 @@ func AllSymbols(_ *Ctx, params *proto.WorkspaceSymbolParams) (list []WorkspaceSy
 	return
 }
 
-func ResolveSymbol(_ *Ctx, symbol *WorkspaceSymbol) (res *WorkspaceSymbolLocation, err error) {
-	res = &WorkspaceSymbolLocation{
-		SymbolInformation: proto.SymbolInformation{
-			Kind:          symbol.Kind,
-			Name:          symbol.Name,
-			ContainerName: symbol.ContainerName,
-		},
+func ResolveSymbol(_ *Ctx, symbol *WorkspaceSymbol) (res *proto.SymbolInformation, err error) {
+	res = &proto.SymbolInformation{
+		Kind:          symbol.Kind,
+		Name:          symbol.Name,
+		ContainerName: symbol.ContainerName,
 	}
 
 	getFamily := func(name string) (*Family, error) {
@@ -178,6 +206,34 @@ func ResolveSymbol(_ *Ctx, symbol *WorkspaceSymbol) (res *WorkspaceSymbolLocatio
 	return
 }
 
+func MemberSymbol(_ *Ctx, params *MemberSymbolParams) (res *proto.SymbolInformation, err error) {
+	uri := NormalizeUri(params.URI)
+
+	ref := root.GetRefByPosition(uri, params.Position)
+
+	if ref == nil || ref.Member == nil {
+		return
+	}
+
+	mem := ref.Member
+
+	if mem.Origin != nil {
+		mem = mem.Origin
+	}
+
+	res = &proto.SymbolInformation{
+		Kind:          proto.SymbolKindConstant,
+		Name:          mem.Name,
+		ContainerName: P(mem.Family.Name),
+		Location: proto.Location{
+			URI:   mem.Family.Uri,
+			Range: LocToRange(mem.Person.Name.Loc()),
+		},
+	}
+
+	return
+}
+
 func splitQuery(query string) []string {
 	query = strings.Trim(query, " ")
 
@@ -222,19 +278,13 @@ type WorkspaceSymbolOptions struct {
 type WorkspaceSymbol struct {
 	proto.SymbolInformation
 
-	Location proto.TextDocumentIdentifier `json:"location"`
-	Data     any                          `json:"data,omitempty"`
-}
-
-type WorkspaceSymbolLocation struct {
-	proto.SymbolInformation
-
-	Location proto.Location `json:"location"`
+	Data any `json:"data,omitempty"`
 }
 
 type WorkspaceHandler struct {
 	WorkspaceSymbol        WorkspaceSymbolFunc
 	WorkspaceSymbolResolve WorkspaceSymbolResolveFunc
+	MemberSymbol           MemberSymbolFunc
 }
 
 func (req *WorkspaceHandler) Handle(ctx *Ctx) (res any, validMethod bool, validParams bool, err error) {
@@ -242,7 +292,7 @@ func (req *WorkspaceHandler) Handle(ctx *Ctx) (res any, validMethod bool, validP
 	case proto.MethodWorkspaceSymbol:
 		validMethod = true
 
-		var params proto.WorkspaceSymbolParams
+		var params WorkspaceSymbolParams
 		if err = json.Unmarshal(ctx.Params, &params); err == nil {
 			validParams = true
 			res, err = req.WorkspaceSymbol(ctx, &params)
@@ -256,13 +306,38 @@ func (req *WorkspaceHandler) Handle(ctx *Ctx) (res any, validMethod bool, validP
 			validParams = true
 			res, err = req.WorkspaceSymbolResolve(ctx, &params)
 		}
+
+	case MethodMemberSymbol:
+		validMethod = true
+
+		var params MemberSymbolParams
+		if err = json.Unmarshal(ctx.Params, &params); err == nil {
+			validParams = true
+			res, err = req.MemberSymbol(ctx, &params)
+		}
 	}
 
 	return
 }
 
-type WorkspaceSymbolFunc func(ctx *Ctx, params *proto.WorkspaceSymbolParams) ([]WorkspaceSymbol, error)
+type WorkspaceSymbolFunc func(ctx *Ctx, params *WorkspaceSymbolParams) ([]proto.SymbolInformation, error)
+
+type WorkspaceSymbolParams struct {
+	proto.WorkspaceSymbolParams
+
+	ExactMatch  bool `json:"exactMatch"`
+	OnlyMembers bool `json:"onlyMembers"`
+}
 
 const MethodWorkspaceSymbolResolve = "workspaceSymbol/resolve"
 
-type WorkspaceSymbolResolveFunc func(ctx *Ctx, symbol *WorkspaceSymbol) (*WorkspaceSymbolLocation, error)
+type WorkspaceSymbolResolveFunc func(ctx *Ctx, symbol *WorkspaceSymbol) (*proto.SymbolInformation, error)
+
+const MethodMemberSymbol = "workspaceSymbol/member"
+
+type MemberSymbolFunc func(ctx *Ctx, params *MemberSymbolParams) (*proto.SymbolInformation, error)
+
+type MemberSymbolParams struct {
+	URI      Uri            `json:"URI"`
+	Position proto.Position `json:"position"`
+}

@@ -16,6 +16,7 @@ func CreateRequestHandler() *RequestHandler {
 			&WorkspaceHandler{
 				WorkspaceSymbol:        AllSymbols,
 				WorkspaceSymbolResolve: ResolveSymbol,
+				MemberSymbol:           MemberSymbol,
 			},
 			&TreeHandlers{
 				TreeFamilies:  TreeFamilies,
@@ -31,6 +32,7 @@ func CreateRequestHandler() *RequestHandler {
 			},
 			&SvgHandlers{
 				Families: SvgFamilies,
+				Path:     SvgPath,
 			},
 		},
 	}

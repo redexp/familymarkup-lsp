@@ -17,7 +17,7 @@ func TestGraph(t *testing.T) {
 		return
 	}
 
-	list, _ := createGraphFamilies(root)
+	list, _ := CreateGraphFamilies(root)
 
 	if len(list) == 0 {
 		t.Error("list == 0")
