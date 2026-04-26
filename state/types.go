@@ -1,6 +1,8 @@
 package state
 
 import (
+	"iter"
+
 	. "github.com/redexp/familymarkup-lsp/types"
 	fm "github.com/redexp/familymarkup-parser"
 )
@@ -32,9 +34,8 @@ type Duplicate struct {
 type (
 	Families   map[string]*Family
 	Members    map[string]*Member
-	NodeRefs   map[Uri]map[string]*Ref
+	NodeRefs   map[Uri]map[fm.Position]*Ref
 	Duplicates map[string][]*Duplicate
-	Refs       []*Ref
 	Listeners  map[string][]func()
 )
 
@@ -55,4 +56,16 @@ func (ref *Ref) TargetUri() Uri {
 	}
 
 	return ref.Uri
+}
+
+func (nodes NodeRefs) RefsIter() iter.Seq2[*Ref, Uri] {
+	return func(yield func(*Ref, Uri) bool) {
+		for uri, refs := range nodes {
+			for _, ref := range refs {
+				if !yield(ref, uri) {
+					return
+				}
+			}
+		}
+	}
 }

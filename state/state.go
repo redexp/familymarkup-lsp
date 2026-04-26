@@ -1,7 +1,6 @@
 package state
 
 import (
-	"fmt"
 	"iter"
 	"slices"
 	"strings"
@@ -35,7 +34,6 @@ func CreateRoot() *Root {
 		Families:     make(Families),
 		Duplicates:   make(Duplicates),
 		NodeRefs:     make(NodeRefs),
-		UnknownRefs:  make([]*Ref, 0),
 		UnknownFiles: make(Files),
 		DirtyUris:    make(DirtyUris),
 		Labels:       make(map[Uri][]string),
@@ -225,7 +223,7 @@ func (root *Root) UpdateUnknownRefs() {
 	}
 
 	list := root.UnknownRefs
-	root.UnknownRefs = Refs{}
+	root.UnknownRefs = nil
 
 	for _, ref := range list {
 		root.AddRef(ref)
@@ -740,59 +738,48 @@ func (root *Root) AddRef(ref *Ref) {
 }
 
 func (root *Root) AddNodeRef(uri Uri, ref *Ref) {
-	_, exist := root.NodeRefs[uri]
-
-	if !exist {
-		root.NodeRefs[uri] = make(map[string]*Ref)
+	if _, exist := root.NodeRefs[uri]; !exist {
+		root.NodeRefs[uri] = make(map[fm.Position]*Ref)
 	}
 
-	pos := TokenToPosString(ref.Token)
-
-	root.NodeRefs[uri][pos] = ref
+	root.NodeRefs[uri][TokenToPos(ref.Token)] = ref
 }
 
 func (root *Root) GetRefByToken(uri Uri, token *fm.Token) *Ref {
-	nodesMap, exist := root.NodeRefs[uri]
-
-	if !exist {
+	if _, exist := root.NodeRefs[uri]; !exist {
 		return nil
 	}
 
-	ref, exist := nodesMap[TokenToPosString(token)]
-
-	if !exist {
-		return nil
-	}
-
-	return ref
+	return root.NodeRefs[uri][TokenToPos(token)]
 }
 
-func (root *Root) GetRefByPosition(uri Uri, pos Position) *Ref {
-	nodesMap, exist := root.NodeRefs[uri]
-
-	if !exist {
+func (root *Root) GetRefByPosition(uri Uri, position Position) *Ref {
+	if _, exist := root.NodeRefs[uri]; !exist {
 		return nil
 	}
 
-	line := int(pos.Line)
-	char := int(pos.Character)
+	pos := fm.Position{
+		Line: int(position.Line),
+		Char: int(position.Character),
+	}
 
+	if ref, exist := root.NodeRefs[uri][pos]; exist {
+		return ref
+	}
+
+	c := pos.Char
 	var endRef *Ref
 
-	for _, ref := range nodesMap {
+	for _, ref := range root.NodeRefs[uri] {
 		token := ref.Token
-
-		if token.Line != line {
-			continue
-		}
 
 		end := token.EndChar()
 
-		if token.Char <= char && char < end {
+		if token.Char <= c && c < end {
 			return ref
 		}
 
-		if char == end {
+		if c == end {
 			endRef = ref
 		}
 	}
@@ -856,15 +843,7 @@ func (root *Root) AddLabel(uri Uri, label string) {
 }
 
 func (root *Root) RefsIter() iter.Seq2[*Ref, Uri] {
-	return func(yield func(*Ref, Uri) bool) {
-		for uri, refs := range root.NodeRefs {
-			for _, ref := range refs {
-				if !yield(ref, uri) {
-					return
-				}
-			}
-		}
-	}
+	return root.NodeRefs.RefsIter()
 }
 
 func (root *Root) Trigger(event string) {
@@ -891,6 +870,9 @@ func (root *Root) OnUpdate(cb func()) {
 	root.Listeners[RootOnUpdate] = append(list, cb)
 }
 
-func TokenToPosString(token *fm.Token) string {
-	return fmt.Sprintf("%d:%d", token.Line, token.Char)
+func TokenToPos(token *fm.Token) fm.Position {
+	return fm.Position{
+		Line: token.Line,
+		Char: token.Char,
+	}
 }
