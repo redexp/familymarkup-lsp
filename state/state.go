@@ -459,6 +459,30 @@ func (root *Root) FindFamily(name string) *Family {
 	return nil
 }
 
+func (root *Root) FindFamilyDuplicates(name string) (list []*Family) {
+	if dups, exist := root.Duplicates[name]; exist {
+		for _, dup := range dups {
+			list = append(list, dup.Family)
+		}
+	}
+
+	if len(list) > 0 {
+		return
+	}
+
+	source := []rune(name)
+
+	for key, dups := range root.Duplicates {
+		if compareNames(source, []rune(key)) <= 2 {
+			for _, dup := range dups {
+				list = append(list, dup.Family)
+			}
+		}
+	}
+
+	return
+}
+
 func (root *Root) RemoveFamily(f *Family) {
 	for name, v := range root.Families {
 		if v != f {
@@ -619,6 +643,20 @@ func (root *Root) FindMember(surname string, name string) (family *Family, membe
 	}
 
 	member = family.FindMember(name)
+
+	if member != nil {
+		return
+	}
+
+	list := root.FindFamilyDuplicates(surname)
+
+	for _, f := range list {
+		member = f.FindMember(name)
+
+		if member != nil {
+			return f, member
+		}
+	}
 
 	return
 }

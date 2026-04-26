@@ -146,38 +146,26 @@ func CreateGraphFamilies(root *Root) ([]*GraphFamily, []*GraphRelation) {
 		}
 	}
 
-	var walk func(*GraphFamily, *GraphPerson)
-
-	walk = func(gf *GraphFamily, p *GraphPerson) {
-		setLink(p)
-
-		for _, rel := range p.Relations {
-			for _, partner := range rel.Partners {
-				setLink(partner)
-			}
-
-			for _, child := range rel.Children {
-				walk(gf, child)
-			}
-		}
-	}
-
 	var wg sync.WaitGroup
 
-	for _, gf := range list {
-		for _, gp := range gf.RootPersons {
-			wg.Go(func() {
-				walk(gf, gp)
+	wg.Go(func() {
+		for _, gf := range list {
+			gf.WalkSkipPartners(func(p *GraphPerson) {
+				setLink(p)
+
+				for _, rel := range p.Relations {
+					for _, partner := range rel.Partners {
+						setLink(partner)
+					}
+				}
 			})
 		}
-	}
-
-	wg.Wait()
+	})
 
 	var relations []*GraphRelation
 
-	for _, doc := range root.Docs {
-		for _, f := range doc.Root.Families {
+	wg.Go(func() {
+		for f := range root.FmFamilyIter() {
 			for _, rel := range f.Relations {
 				if rel.IsFamilyDef {
 					continue
@@ -222,7 +210,9 @@ func CreateGraphFamilies(root *Root) ([]*GraphFamily, []*GraphRelation) {
 				relations = append(relations, gr)
 			}
 		}
-	}
+	})
+
+	wg.Wait()
 
 	return list, relations
 }
@@ -238,6 +228,12 @@ type GraphFamily struct {
 func (f *GraphFamily) Walk(cb func(*GraphPerson)) {
 	for _, p := range f.RootPersons {
 		p.Walk(cb)
+	}
+}
+
+func (f *GraphFamily) WalkSkipPartners(cb func(*GraphPerson)) {
+	for _, p := range f.RootPersons {
+		p.WalkSkipPartners(cb)
 	}
 }
 
@@ -265,6 +261,20 @@ func (p *GraphPerson) Token() (token *fm.Token) {
 }
 
 func (p *GraphPerson) Walk(cb func(*GraphPerson)) {
+	cb(p)
+
+	for _, rel := range p.Relations {
+		for _, partner := range rel.Partners {
+			cb(partner)
+		}
+
+		for _, child := range rel.Children {
+			child.Walk(cb)
+		}
+	}
+}
+
+func (p *GraphPerson) WalkSkipPartners(cb func(*GraphPerson)) {
 	cb(p)
 
 	for _, rel := range p.Relations {
