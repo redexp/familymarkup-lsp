@@ -26,7 +26,7 @@ func SvgFamilies(_ *Ctx, params *SvgFamiliesParams) (SvgFamiliesResult, error) {
 
 func SvgPath(_ *Ctx, params *SvgPathParams) (res SvgPathResult, err error) {
 	if len(params.Persons) < 2 {
-		err = fmt.Errorf("should be more than 1 persons")
+		err = errors.New("should be more than 1 persons")
 		return
 	}
 
@@ -48,11 +48,7 @@ func SvgPath(_ *Ctx, params *SvgPathParams) (res SvgPathResult, err error) {
 	found := 0
 
 	edge := func(a *layout.GraphPerson, b *layout.GraphPerson) {
-		err := g.AddEdge(a, b)
-
-		if err != nil {
-			fmt.Println(err.Error())
-		}
+		_ = g.AddEdge(a, b)
 	}
 
 	var add func(*layout.GraphPerson)
@@ -61,10 +57,6 @@ func SvgPath(_ *Ctx, params *SvgPathParams) (res SvgPathResult, err error) {
 		err := g.AddVertex(p)
 
 		if err != nil {
-			if !errors.Is(err, graph.ErrVertexAlreadyExists) {
-				fmt.Println(err.Error())
-			}
-
 			return
 		}
 
@@ -93,7 +85,7 @@ func SvgPath(_ *Ctx, params *SvgPathParams) (res SvgPathResult, err error) {
 	}
 
 	for _, f := range families {
-		f.Walk(func(p *layout.GraphPerson) {
+		f.WalkSkipPartners(func(p *layout.GraphPerson) {
 			for _, rel := range p.Relations {
 				list := make([]*layout.GraphPerson, 0, 1+len(rel.Partners)+len(rel.Children))
 
