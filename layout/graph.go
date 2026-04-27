@@ -14,7 +14,13 @@ func CreateGraphFamilies(root *Root) ([]*GraphFamily, []*GraphRelation) {
 	for ref := range root.RefsIter() {
 		switch ref.Type {
 		case RefTypeName, RefTypeNameSurname:
-			personMem[ref.Person] = ref.Member
+			mem := ref.Member
+
+			if mem.Origin != nil {
+				mem = mem.Origin
+			}
+
+			personMem[ref.Person] = mem
 
 		case RefTypeOrigin:
 			personMem[ref.Person] = ref.Member.Origin
