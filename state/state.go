@@ -767,19 +767,22 @@ func (root *Root) GetRefByPosition(uri Uri, position Position) *Ref {
 		return ref
 	}
 
-	c := pos.Char
 	var endRef *Ref
 
 	for _, ref := range root.NodeRefs[uri] {
 		token := ref.Token
 
+		if token.Line != pos.Line {
+			continue
+		}
+
 		end := token.EndChar()
 
-		if token.Char <= c && c < end {
+		if token.Char <= pos.Char && pos.Char < end {
 			return ref
 		}
 
-		if c == end {
+		if pos.Char == end {
 			endRef = ref
 		}
 	}
