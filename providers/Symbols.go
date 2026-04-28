@@ -3,12 +3,14 @@ package providers
 import (
 	"encoding/json"
 	"fmt"
+	"slices"
 	"strings"
 	"unicode"
 
 	. "github.com/redexp/familymarkup-lsp/state"
 	. "github.com/redexp/familymarkup-lsp/types"
 	. "github.com/redexp/familymarkup-lsp/utils"
+	fm "github.com/redexp/familymarkup-parser"
 	proto "github.com/tliron/glsp/protocol_3_16"
 )
 
@@ -50,10 +52,56 @@ func DocSymbols(_ *Ctx, params *proto.DocumentSymbolParams) (res any, err error)
 	return list, nil
 }
 
-func AllSymbols(_ *Ctx, params *WorkspaceSymbolParams) (list []proto.SymbolInformation, err error) {
+func AllSymbols(_ *Ctx, params *WorkspaceSymbolParams) (list []SymbolInformation, err error) {
+	memberKind := proto.SymbolKindField
+
 	defer func() {
-		if len(list) == 0 && err == nil {
-			list = make([]proto.SymbolInformation, 0)
+		if err != nil {
+			return
+		}
+
+		if list == nil {
+			list = make([]SymbolInformation, 0)
+			return
+		}
+
+		if len(list) < 2 {
+			return
+		}
+
+		slices.SortFunc(list, func(a, b SymbolInformation) int {
+			dir := strings.Compare(a.Name, b.Name)
+
+			if dir == 0 && a.Kind == memberKind && b.Kind == memberKind {
+				return strings.Compare(*a.ContainerName, *b.ContainerName)
+			}
+
+			return dir
+		})
+
+		indexes := make(map[int]struct{})
+
+		for i := 1; i < len(list); i++ {
+			item := list[i]
+			prev := list[i-1]
+
+			if item.Kind == memberKind &&
+				prev.Kind == memberKind &&
+				item.Name == prev.Name &&
+				*item.ContainerName == *prev.ContainerName {
+				indexes[i] = struct{}{}
+				indexes[i-1] = struct{}{}
+			}
+		}
+
+		for index := range indexes {
+			p := list[index].member.Person
+
+			if p.Side == fm.SideTargets {
+				list[index].Details = L("child_of_source", p.Relation.Sources.Format())
+			} else {
+				list[index].Details = p.Relation.Sources.Format()
+			}
 		}
 	}()
 
@@ -65,24 +113,29 @@ func AllSymbols(_ *Ctx, params *WorkspaceSymbolParams) (list []proto.SymbolInfor
 			return
 		}
 
-		list = append(list, proto.SymbolInformation{
-			Kind: proto.SymbolKindConstant,
-			Name: name,
-			Location: proto.Location{
-				URI:   f.Uri,
-				Range: LocToRange(f.Node.Name.Loc()),
+		list = append(list, SymbolInformation{
+			SymbolInformation: proto.SymbolInformation{
+				Kind: proto.SymbolKindConstant,
+				Name: name,
+				Location: proto.Location{
+					URI:   f.Uri,
+					Range: LocToRange(f.Node.Name.Loc()),
+				},
 			},
 		})
 	}
 
 	addMember := func(f *Family, mem *Member, name string, surname string) {
-		list = append(list, proto.SymbolInformation{
-			Kind:          proto.SymbolKindField,
-			Name:          name,
-			ContainerName: &surname,
-			Location: proto.Location{
-				URI:   f.Uri,
-				Range: LocToRange(mem.Person.Name.Loc()),
+		list = append(list, SymbolInformation{
+			member: mem,
+			SymbolInformation: proto.SymbolInformation{
+				Kind:          memberKind,
+				Name:          name,
+				ContainerName: &surname,
+				Location: proto.Location{
+					URI:   f.Uri,
+					Range: LocToRange(mem.Person.Name.Loc()),
+				},
 			},
 		})
 	}
@@ -99,11 +152,7 @@ func AllSymbols(_ *Ctx, params *WorkspaceSymbolParams) (list []proto.SymbolInfor
 		return
 	}
 
-	surnameQuery := parts[0]
-
-	if count > 1 {
-		surnameQuery = parts[1]
-	}
+	surnameQuery := parts[count-1]
 
 	for f := range root.FamilyIter() {
 		surname := ""
@@ -281,6 +330,13 @@ type WorkspaceSymbol struct {
 	Data any `json:"data,omitempty"`
 }
 
+type SymbolInformation struct {
+	proto.SymbolInformation
+
+	Details string `json:"details,omitempty"`
+	member  *Member
+}
+
 type WorkspaceHandler struct {
 	WorkspaceSymbol        WorkspaceSymbolFunc
 	WorkspaceSymbolResolve WorkspaceSymbolResolveFunc
@@ -320,7 +376,7 @@ func (req *WorkspaceHandler) Handle(ctx *Ctx) (res any, validMethod bool, validP
 	return
 }
 
-type WorkspaceSymbolFunc func(ctx *Ctx, params *WorkspaceSymbolParams) ([]proto.SymbolInformation, error)
+type WorkspaceSymbolFunc func(ctx *Ctx, params *WorkspaceSymbolParams) ([]SymbolInformation, error)
 
 type WorkspaceSymbolParams struct {
 	proto.WorkspaceSymbolParams
