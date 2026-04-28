@@ -707,6 +707,21 @@ func (root *Root) AddRef(ref *Ref) {
 
 		f, origin := root.FindMember(mem.Surname, mem.Name)
 
+		if origin == mem {
+			list := root.FindFamilyDuplicates(mem.Surname)
+			origin = nil
+			for _, item := range list {
+				origin = item.FindMember(mem.Name)
+
+				if origin != nil && origin != mem {
+					f = item
+					break
+				}
+
+				origin = nil
+			}
+		}
+
 		if origin == nil {
 			root.AddUnknownRef(ref)
 			return
