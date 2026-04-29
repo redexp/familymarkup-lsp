@@ -1,9 +1,10 @@
 package state
 
 import (
-	fm "github.com/redexp/familymarkup-parser"
 	"iter"
 	"slices"
+
+	fm "github.com/redexp/familymarkup-parser"
 
 	. "github.com/redexp/familymarkup-lsp/types"
 )
@@ -56,7 +57,7 @@ func (member *Member) NormalizeName(name string) (res string) {
 	}
 
 	runeName := []rune(name)
-	min := uint(len(runeName))
+	min := len(runeName)
 
 	for n := range member.NamesIter() {
 		diff := compareNames([]rune(n), runeName)

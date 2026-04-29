@@ -2,7 +2,6 @@ package state
 
 import (
 	"io/fs"
-	"math"
 	"path/filepath"
 	"slices"
 
@@ -20,21 +19,29 @@ func addDuplicate(duplicates Duplicates, name string, dup *Duplicate) {
 	duplicates[name] = append(duplicates[name], dup)
 }
 
-func compareNames(a []rune, b []rune) uint {
-	al := float64(len(a))
-	bl := float64(len(b))
-	max := uint(math.Max(al, bl))
-	min := uint(math.Min(al, bl))
-	diff := max - min
+func compareNames(a []rune, b []rune) int {
+	mx := max(len(a), len(b))
+	mn := min(len(a), len(b))
+	diff := mx - mn
 
 	if diff > 2 {
 		return diff
 	}
 
-	for i := uint(0); i < min; i++ {
-		if a[i] != b[i] {
-			return max - 1 - i
+	for i := 0; i < mn; i++ {
+		if a[i] == b[i] {
+			continue
 		}
+
+		if mn <= 2 {
+			return mx
+		}
+
+		if mn == 3 && i < 2 {
+			return mx
+		}
+
+		return mx - 1 - i
 	}
 
 	return diff

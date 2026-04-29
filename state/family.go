@@ -1,8 +1,9 @@
 package state
 
 import (
-	fm "github.com/redexp/familymarkup-parser"
 	"iter"
+
+	fm "github.com/redexp/familymarkup-parser"
 
 	. "github.com/redexp/familymarkup-lsp/types"
 	. "github.com/redexp/familymarkup-lsp/utils"
@@ -36,7 +37,7 @@ func (family *Family) FindMember(name string) (mem *Member) {
 	}
 
 	source := []rune(name)
-	min := uint(len(source))
+	min := len(source)
 
 	for key, m := range family.Members {
 		diff := compareNames(source, []rune(key))

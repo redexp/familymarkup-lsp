@@ -439,7 +439,7 @@ func (root *Root) FindFamily(name string) *Family {
 	}
 
 	source := []rune(name)
-	min := uint(len(source))
+	min := len(source)
 
 	for key, f := range root.Families {
 		diff := compareNames(source, []rune(key))
