@@ -14,6 +14,9 @@ import (
 	proto "github.com/tliron/glsp/protocol_3_16"
 )
 
+const SymbolKindFamily = proto.SymbolKindConstant
+const SymbolKindMember = proto.SymbolKindField
+
 func DocSymbols(_ *Ctx, params *proto.DocumentSymbolParams) (res any, err error) {
 	uri := NormalizeUri(params.TextDocument.URI)
 
@@ -38,7 +41,7 @@ func DocSymbols(_ *Ctx, params *proto.DocumentSymbolParams) (res any, err error)
 			r := LocToRange(mem.Person.Name.Loc())
 
 			symbol.Children = append(symbol.Children, proto.DocumentSymbol{
-				Kind:           proto.SymbolKindConstant,
+				Kind:           SymbolKindMember,
 				Name:           mem.Name,
 				Detail:         P(fmt.Sprintf("%s %s", f.Name, mem.Name)),
 				Range:          r,
@@ -53,8 +56,6 @@ func DocSymbols(_ *Ctx, params *proto.DocumentSymbolParams) (res any, err error)
 }
 
 func AllSymbols(_ *Ctx, params *WorkspaceSymbolParams) (list []SymbolInformation, err error) {
-	memberKind := proto.SymbolKindField
-
 	defer func() {
 		if err != nil {
 			return
@@ -72,7 +73,7 @@ func AllSymbols(_ *Ctx, params *WorkspaceSymbolParams) (list []SymbolInformation
 		slices.SortFunc(list, func(a, b SymbolInformation) int {
 			dir := strings.Compare(a.Name, b.Name)
 
-			if dir == 0 && a.Kind == memberKind && b.Kind == memberKind {
+			if dir == 0 && a.Kind == SymbolKindMember && b.Kind == SymbolKindMember {
 				return strings.Compare(*a.ContainerName, *b.ContainerName)
 			}
 
@@ -85,8 +86,8 @@ func AllSymbols(_ *Ctx, params *WorkspaceSymbolParams) (list []SymbolInformation
 			item := list[i]
 			prev := list[i-1]
 
-			if item.Kind == memberKind &&
-				prev.Kind == memberKind &&
+			if item.Kind == SymbolKindMember &&
+				prev.Kind == SymbolKindMember &&
 				item.Name == prev.Name &&
 				*item.ContainerName == *prev.ContainerName {
 				indexes[i] = struct{}{}
@@ -115,7 +116,7 @@ func AllSymbols(_ *Ctx, params *WorkspaceSymbolParams) (list []SymbolInformation
 
 		list = append(list, SymbolInformation{
 			SymbolInformation: proto.SymbolInformation{
-				Kind: proto.SymbolKindConstant,
+				Kind: SymbolKindFamily,
 				Name: name,
 				Location: proto.Location{
 					URI:   f.Uri,
@@ -129,7 +130,7 @@ func AllSymbols(_ *Ctx, params *WorkspaceSymbolParams) (list []SymbolInformation
 		list = append(list, SymbolInformation{
 			member: mem,
 			SymbolInformation: proto.SymbolInformation{
-				Kind:          memberKind,
+				Kind:          SymbolKindMember,
 				Name:          name,
 				ContainerName: &surname,
 				Location: proto.Location{
@@ -219,7 +220,7 @@ func ResolveSymbol(_ *Ctx, symbol *WorkspaceSymbol) (res *proto.SymbolInformatio
 
 	var f *Family
 
-	if symbol.Kind == proto.SymbolKindNamespace || (symbol.Kind == proto.SymbolKindConstant && symbol.ContainerName == nil) {
+	if symbol.Kind == proto.SymbolKindNamespace || (symbol.Kind == SymbolKindFamily && symbol.ContainerName == nil) {
 		f, err = getFamily(symbol.Name)
 
 		if err != nil {
@@ -230,7 +231,7 @@ func ResolveSymbol(_ *Ctx, symbol *WorkspaceSymbol) (res *proto.SymbolInformatio
 			URI:   f.Uri,
 			Range: LocToRange(f.Node.Loc),
 		}
-	} else if symbol.Kind == proto.SymbolKindConstant {
+	} else if symbol.Kind == SymbolKindFamily {
 		f, err = getFamily(*symbol.ContainerName)
 
 		if err != nil {
@@ -266,12 +267,8 @@ func MemberSymbol(_ *Ctx, params *MemberSymbolParams) (res *proto.SymbolInformat
 
 	mem := ref.Member
 
-	if mem.Origin != nil {
-		mem = mem.Origin
-	}
-
 	res = &proto.SymbolInformation{
-		Kind:          proto.SymbolKindConstant,
+		Kind:          SymbolKindMember,
 		Name:          mem.Name,
 		ContainerName: P(mem.Family.Name),
 		Location: proto.Location{
