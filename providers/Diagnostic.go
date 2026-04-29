@@ -2,6 +2,7 @@ package providers
 
 import (
 	"encoding/json"
+
 	. "github.com/redexp/familymarkup-lsp/state"
 	. "github.com/redexp/familymarkup-lsp/types"
 	. "github.com/redexp/familymarkup-lsp/utils"
@@ -103,9 +104,9 @@ func GetDiagnostics(uri Uri) (list []proto.Diagnostic) {
 		list = append(list, item)
 	}
 
-	Error := P(proto.DiagnosticSeverityError)
-	Warning := P(proto.DiagnosticSeverityWarning)
-	Info := P(proto.DiagnosticSeverityInformation)
+	Error := new(proto.DiagnosticSeverityError)
+	Warning := new(proto.DiagnosticSeverityWarning)
+	Info := new(proto.DiagnosticSeverityInformation)
 
 	// syntax errors
 	for _, token := range doc.Tokens {

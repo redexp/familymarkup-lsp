@@ -16,7 +16,7 @@ func FoldingRange(_ *Ctx, params *proto.FoldingRangeParams) (res []proto.Folding
 }
 
 func getFoldingRanges(root *fm.Root) (list []proto.FoldingRange) {
-	kind := P("region")
+	kind := new("region")
 
 	add := func(loc fm.Loc) {
 		list = append(list, proto.FoldingRange{

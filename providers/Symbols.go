@@ -43,7 +43,7 @@ func DocSymbols(_ *Ctx, params *proto.DocumentSymbolParams) (res any, err error)
 			symbol.Children = append(symbol.Children, proto.DocumentSymbol{
 				Kind:           SymbolKindMember,
 				Name:           mem.Name,
-				Detail:         P(fmt.Sprintf("%s %s", f.Name, mem.Name)),
+				Detail:         new(fmt.Sprintf("%s %s", f.Name, mem.Name)),
 				Range:          r,
 				SelectionRange: r,
 			})
@@ -270,7 +270,7 @@ func MemberSymbol(_ *Ctx, params *MemberSymbolParams) (res *proto.SymbolInformat
 	res = &proto.SymbolInformation{
 		Kind:          SymbolKindMember,
 		Name:          mem.Name,
-		ContainerName: P(mem.Family.Name),
+		ContainerName: new(mem.Family.Name),
 		Location: proto.Location{
 			URI:   mem.Family.Uri,
 			Range: LocToRange(mem.Person.Name.Loc()),

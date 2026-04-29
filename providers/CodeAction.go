@@ -2,6 +2,7 @@ package providers
 
 import (
 	"fmt"
+
 	"github.com/mitchellh/mapstructure"
 	. "github.com/redexp/familymarkup-lsp/state"
 	. "github.com/redexp/familymarkup-lsp/types"
@@ -31,7 +32,7 @@ func CodeAction(_ *Ctx, params *proto.CodeActionParams) (res any, err error) {
 	uri := NormalizeUri(params.TextDocument.URI)
 
 	list := make([]proto.CodeAction, 0)
-	QuickFix := P(proto.CodeActionKindQuickFix)
+	QuickFix := new(proto.CodeActionKindQuickFix)
 
 	add := func(items ...proto.CodeAction) {
 		list = append(list, items...)

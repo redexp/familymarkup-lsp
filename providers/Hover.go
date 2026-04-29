@@ -2,8 +2,9 @@ package providers
 
 import (
 	"fmt"
-	fm "github.com/redexp/familymarkup-parser"
 	"strings"
+
+	fm "github.com/redexp/familymarkup-parser"
 
 	. "github.com/redexp/familymarkup-lsp/state"
 	. "github.com/redexp/familymarkup-lsp/utils"
@@ -73,10 +74,8 @@ func Hover(_ *Ctx, params *proto.HoverParams) (h *proto.Hover, err error) {
 		return
 	}
 
-	r := TokenToRange(target)
-
 	h = &proto.Hover{
-		Range: &r,
+		Range: new(TokenToRange(target)),
 		Contents: proto.MarkupContent{
 			Kind:  proto.MarkupKindMarkdown,
 			Value: fmt.Sprintf("```fml\n%s\n```", message),

@@ -24,7 +24,7 @@ func Completion(_ *Ctx, params *proto.CompletionParams) (res any, err error) {
 		hash[word] = true
 	}
 
-	kind := P(proto.CompletionItemKindVariable)
+	kind := new(proto.CompletionItemKindVariable)
 
 	add := func(names ...string) {
 		for _, name := range names {

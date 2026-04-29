@@ -1,17 +1,17 @@
 module github.com/redexp/familymarkup-lsp
 
-go 1.25.1
+go 1.26
 
 require (
 	github.com/bep/debounce v1.2.1
 	github.com/dominikbraun/graph v0.23.0
 	github.com/mitchellh/mapstructure v1.5.0
-	github.com/redexp/familymarkup-parser v0.11.0
+	github.com/redexp/familymarkup-parser v0.12.0
 	github.com/redexp/go-flextree v1.1.0
 	github.com/sourcegraph/jsonrpc2 v0.2.1
 	github.com/tliron/glsp v0.2.2
 	go.uber.org/multierr v1.11.0
-	golang.org/x/net v0.41.0
+	golang.org/x/net v0.53.0
 )
 
 require (
@@ -28,7 +28,7 @@ require (
 	github.com/segmentio/ksuid v1.0.4 // indirect
 	github.com/tliron/commonlog v0.2.19 // indirect
 	github.com/tliron/kutil v0.3.26 // indirect
-	golang.org/x/crypto v0.39.0 // indirect
-	golang.org/x/sys v0.33.0 // indirect
-	golang.org/x/term v0.32.0 // indirect
+	golang.org/x/crypto v0.50.0 // indirect
+	golang.org/x/sys v0.43.0 // indirect
+	golang.org/x/term v0.42.0 // indirect
 )

@@ -47,7 +47,3 @@ func IsUriName(uri Uri, name string) bool {
 
 	return name+ext == base
 }
-
-func P[T ~string | ~int32](src T) *T {
-	return &src
-}

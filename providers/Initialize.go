@@ -27,7 +27,7 @@ func Initialize(_ *Ctx, params *proto.InitializeParams) (any, error) {
 	fileFilters := proto.FileOperationRegistrationOptions{
 		Filters: []proto.FileOperationFilter{
 			{
-				Scheme: P("file"),
+				Scheme: new("file"),
 				Pattern: proto.FileOperationPattern{
 					Glob: fmt.Sprintf("**/*.{%s}", strings.Join(AllExt, ",")),
 				},
@@ -35,7 +35,7 @@ func Initialize(_ *Ctx, params *proto.InitializeParams) (any, error) {
 			{
 				Pattern: proto.FileOperationPattern{
 					Glob:    "**",
-					Matches: P(proto.FileOperationPatternKindFolder),
+					Matches: new(proto.FileOperationPatternKindFolder),
 				},
 			},
 		},

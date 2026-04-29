@@ -16,7 +16,7 @@ func DocumentHighlight(_ *Ctx, params *proto.DocumentHighlightParams) (res []pro
 		return
 	}
 
-	kind := P(proto.DocumentHighlightKindRead)
+	kind := new(proto.DocumentHighlightKindRead)
 
 	add := func(loc fm.Loc) {
 		res = append(res, proto.DocumentHighlight{
