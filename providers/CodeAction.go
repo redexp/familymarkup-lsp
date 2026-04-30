@@ -61,6 +61,10 @@ func CodeAction(_ *Ctx, params *proto.CodeActionParams) (res any, err error) {
 
 			token := doc.GetTokenByPosition(d.Range.Start)
 
+			if token == nil {
+				continue
+			}
+
 			add(
 				proto.CodeAction{
 					Title:       L("create_family_after", token.Text, family.Name.Text),
@@ -198,11 +202,16 @@ func CodeActionResolve(_ *Ctx, params *proto.CodeAction) (res *proto.CodeAction,
 
 		person := doc.FindPersonByRange(r)
 
-		if person != nil && !person.IsChild {
-			text = fmt.Sprintf("%s? + ? =\n1. %s", text, person.Name.Text)
-		} else if person != nil && person.IsChild && person.Surname == token {
-			f := doc.FindFamilyByRange(r)
-			text = fmt.Sprintf("%s? + %s %s = ", text, person.Name.Text, f.Name.Text)
+		if person != nil && person.Name != nil {
+			if !person.IsChild {
+				text = fmt.Sprintf("%s? + ? =\n1. %s", text, person.Name.Text)
+			} else if person.Surname == token {
+				f := doc.FindFamilyByRange(r)
+
+				if f != nil {
+					text = fmt.Sprintf("%s? + %s %s = ", text, person.Name.Text, f.Name.Text)
+				}
+			}
 		}
 
 		if data.Mod == CreateFamilyOnNewFile {
