@@ -121,13 +121,18 @@ func alignByLevels(families []*SvgFamily) {
 
 		rootMap[root] = struct{}{}
 
-		y := prev.Bottom()
-		top := root.Top()
+		prevRect := prev.Rect()
+		y := prevRect.Y + prevRect.Height
+		rootRect := root.Rect()
+		top := rootRect.Y
+
 		if top < 0 {
 			y += -top
 		}
 
-		root.Move(0, y)
+		x := (prevRect.X + prevRect.Width/2) - rootRect.Width/2
+
+		root.Move(x, y)
 
 		prev = root
 	}
@@ -143,7 +148,7 @@ func (root *AlignRoot) Move(x, y int) {
 	}
 }
 
-func (root *AlignRoot) getHeight() int {
+func (root *AlignRoot) Height() int {
 	return len(root.levels) * ss.LevelHeight
 }
 
@@ -155,6 +160,34 @@ func (root *AlignRoot) Bottom() int {
 	last := lastItem(root.levels)
 
 	return last.Y + ss.LevelHeight + root.Y
+}
+
+func (root *AlignRoot) Rect() Rect {
+	y := root.Top()
+	height := root.Height()
+
+	minLeft := root.levels[0].Left()
+	maxRight := root.levels[0].Right()
+
+	for _, level := range root.levels {
+		left := level.Left()
+		right := level.Right()
+
+		if left < minLeft {
+			minLeft = left
+		}
+
+		if right > maxRight {
+			maxRight = right
+		}
+	}
+
+	return Rect{
+		X:      root.X + minLeft,
+		Y:      y,
+		Width:  maxRight - minLeft,
+		Height: height,
+	}
 }
 
 func (root *AlignRoot) align(levels []*Level, from, to Rect) Pos {
